@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# WhatsApp session data
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Google credentials
+credentials/
+*.json.key
+
+# Data files (keep structure, ignore actual data)
+data/*.json
+data/audios/
+
+# Keep data directory structure
+!data/.gitkeep
+!data/audios/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp files
+temp_audio_*

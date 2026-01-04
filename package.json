@@ -1,0 +1,40 @@
+{
+  "name": "creaactivo-logistics",
+  "version": "1.0.0",
+  "description": "Sistema de Captura y Consulta de Decisiones Logísticas para Creaactivo",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "watch": "tsx watch src/index.ts"
+  },
+  "keywords": [
+    "whatsapp",
+    "logistics",
+    "bot",
+    "transcription"
+  ],
+  "author": "Flaco Huber",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "dotenv": "^17.2.3",
+    "googleapis": "^169.0.0",
+    "node-cron": "^4.2.1",
+    "openai": "^6.15.0",
+    "qrcode-terminal": "^0.12.0",
+    "typescript": "^5.9.3",
+    "uuid": "^13.0.0",
+    "whatsapp-web.js": "^1.34.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/node-cron": "^3.0.11",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@types/uuid": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0"
+  }
+}
