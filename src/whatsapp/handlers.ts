@@ -70,18 +70,8 @@ export async function handleMessage(msg: Message): Promise<string> {
     // Route to appropriate handler (still needed for storage)
     await routeExtraction(extraction);
 
-    // Return only the JSON
-    const jsonData = JSON.stringify(extraction.resultado, null, 2);
-
-    // If it's an audio, include transcription
-    if (msg.hasMedia && (msg.type === 'ptt' || msg.type === 'audio')) {
-      return `📝 "${textToProcess}"
-
-${jsonData}`;
-    }
-
-    // For text messages, just return JSON (or empty if type is 'otro')
-    return extraction.resultado.tipo !== 'otro' ? jsonData : '';
+    // Format compact response
+    return formatCompactResponse(extraction.resultado, textToProcess);
 
   } catch (error) {
     console.error('[Handler] Error:', error);
@@ -392,4 +382,43 @@ function formatFecha(fecha: Date): string {
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
   return `${dias[fecha.getDay()]} ${fecha.getDate()} ${meses[fecha.getMonth()]}`;
+}
+
+/**
+ * Format response as compact JSON for LLM consumption
+ */
+function formatCompactResponse(resultado: any, transcripcion: string): string {
+  let resp = `📝 "${transcripcion}"\n\n`;
+
+  if (resultado.tipo === 'otro') {
+    // Build compact JSON object
+    const compact: any = { tipo: 'otro' };
+
+    if (resultado.items?.length > 0) {
+      compact.items = resultado.items.map((i: any) => `${i.cantidad} ${i.nombre}`);
+    }
+
+    if (resultado.personas?.length > 0) {
+      compact.personas = resultado.personas.map((p: any) => ({ [p.nombre]: p.rol }));
+    }
+
+    if (resultado.montos?.length > 0) {
+      compact.montos = resultado.montos.map((m: any) => m.valor);
+    }
+
+    if (resultado.lugares?.length > 0) {
+      compact.lugares = resultado.lugares;
+    }
+
+    if (resultado.fechas?.length > 0) {
+      compact.fechas = resultado.fechas;
+    }
+
+    resp += JSON.stringify(compact);
+  } else {
+    // For other types, compact JSON (no indentation)
+    resp += JSON.stringify(resultado);
+  }
+
+  return resp;
 }

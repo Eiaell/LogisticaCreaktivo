@@ -213,9 +213,30 @@ export interface ExtraccionReporte {
   fechaFin?: string;
 }
 
+export interface ItemExtraido {
+  nombre: string;
+  cantidad: number;
+  unidad: string;
+}
+
+export interface PersonaExtraida {
+  nombre: string;
+  rol: string;
+}
+
+export interface MontoExtraido {
+  valor: number;
+  concepto: string;
+}
+
 export interface ExtraccionOtro {
   tipo: 'otro';
   mensaje: string;
+  items?: ItemExtraido[];
+  personas?: PersonaExtraida[];
+  montos?: MontoExtraido[];
+  lugares?: string[];
+  fechas?: string[];
 }
 
 export type ResultadoExtraccion =

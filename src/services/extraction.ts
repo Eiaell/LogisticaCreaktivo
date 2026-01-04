@@ -141,11 +141,16 @@ Para cambio_estado:
   }
 }
 
-Para otro:
+Para otro (SIEMPRE extrae todos los datos estructurados):
 {
   "tipo": "otro",
   "datos": {
-    "mensaje": "el mensaje original"
+    "mensaje": "el mensaje original",
+    "items": [{"nombre": "producto", "cantidad": 5, "unidad": "unidades"}],
+    "personas": [{"nombre": "Hugo", "rol": "proveedor"}],
+    "montos": [{"valor": 150, "concepto": "adelanto"}],
+    "lugares": [],
+    "fechas": []
   }
 }`;
 
@@ -197,6 +202,24 @@ export async function extractEntities(
 
     const parsed = JSON.parse(jsonStr);
 
+    // Special handling for tipo "otro" to include extracted entities
+    if (parsed.tipo === 'otro') {
+      return {
+        resultado: {
+          tipo: 'otro',
+          mensaje: parsed.datos?.mensaje || transcription,
+          items: parsed.datos?.items || [],
+          personas: parsed.datos?.personas || [],
+          montos: parsed.datos?.montos || [],
+          lugares: parsed.datos?.lugares || [],
+          fechas: parsed.datos?.fechas || [],
+        },
+        confianza: parsed.confianza || 80,
+        camposFaltantes: parsed.campos_faltantes || [],
+        transcripcionOriginal: transcription,
+      };
+    }
+
     // Convert to our type structure
     const resultado = convertToResultado(parsed.tipo, parsed.datos);
 
@@ -214,6 +237,11 @@ export async function extractEntities(
       resultado: {
         tipo: 'otro',
         mensaje: transcription,
+        items: [],
+        personas: [],
+        montos: [],
+        lugares: [],
+        fechas: [],
       },
       confianza: 0,
       camposFaltantes: ['error_parsing'],
