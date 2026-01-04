@@ -67,26 +67,21 @@ export async function handleMessage(msg: Message): Promise<string> {
     console.log('[Handler] Extraction result:', extraction.resultado.tipo);
     console.log('[Handler] Datos extraídos:', JSON.stringify(extraction.resultado, null, 2));
 
-    // Route to appropriate handler
-    const response = await routeExtraction(extraction);
+    // Route to appropriate handler (still needed for storage)
+    await routeExtraction(extraction);
 
-    // Build JSON response
+    // Return only the JSON
     const jsonData = JSON.stringify(extraction.resultado, null, 2);
 
-    // If we got a response, prepend the transcription for audio messages
-    if (response && msg.hasMedia && (msg.type === 'ptt' || msg.type === 'audio')) {
+    // If it's an audio, include transcription
+    if (msg.hasMedia && (msg.type === 'ptt' || msg.type === 'audio')) {
       return `📝 "${textToProcess}"
 
-${response}
-
-📊 JSON:
 ${jsonData}`;
     }
 
-    return response ? `${response}
-
-📊 JSON:
-${jsonData}` : '';
+    // For text messages, just return JSON (or empty if type is 'otro')
+    return extraction.resultado.tipo !== 'otro' ? jsonData : '';
 
   } catch (error) {
     console.error('[Handler] Error:', error);
