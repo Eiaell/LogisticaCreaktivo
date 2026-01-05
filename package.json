@@ -7,7 +7,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "watch": "tsx watch src/index.ts"
+    "watch": "tsx watch src/index.ts",
+    "sync": "tsx scripts/sync.ts",
+    "auth": "tsx scripts/setup_auth.ts"
   },
   "keywords": [
     "whatsapp",
@@ -23,6 +25,7 @@
     "dotenv": "^17.2.3",
     "googleapis": "^169.0.0",
     "node-cron": "^4.2.1",
+    "open": "^11.0.0",
     "openai": "^6.15.0",
     "qrcode-terminal": "^0.12.0",
     "typescript": "^5.9.3",

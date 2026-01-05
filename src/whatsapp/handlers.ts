@@ -31,6 +31,7 @@ import {
   ExtraccionCambioEstado,
   ExtraccionCompleta,
 } from '../models/types';
+import { logEvent } from '../services/eventLogger';
 
 /**
  * Main message handler - routes to appropriate handler based on message type
@@ -86,6 +87,20 @@ export async function handleMessage(msg: Message): Promise<string> {
 
     // Save to history
     guardarEnHistorial(textToProcess, extraction.resultado);
+
+    // Log event to Event Clock
+    const artifacts = extractArtifacts(extraction.resultado);
+    await logEvent(
+      'Usuario',
+      `mensaje_${extraction.resultado.tipo}`,
+      {
+        transcripcion: textToProcess,
+        tipo: extraction.resultado.tipo,
+        esAudio: msg.hasMedia && (msg.type === 'ptt' || msg.type === 'audio'),
+      },
+      artifacts,
+      extraction.resultado.tipo === 'otro' ? 'Mensaje no clasificado' : undefined
+    );
 
     // Route to appropriate handler (still needed for storage)
     await routeExtraction(extraction);
@@ -493,4 +508,59 @@ function formatCompactResponse(resultado: any, transcripcion: string): string {
   }
 
   return resp;
+}
+
+/**
+ * Extract artifacts from extraction result for Event Clock logging
+ */
+function extractArtifacts(resultado: any): string[] {
+  const artifacts: string[] = [];
+
+  // Add type-specific artifacts
+  if (resultado.proveedor) {
+    artifacts.push(`Proveedor:${resultado.proveedor}`);
+  }
+  if (resultado.producto) {
+    artifacts.push(`Producto:${resultado.producto}`);
+  }
+  if (resultado.cantidad) {
+    artifacts.push(`Cantidad:${resultado.cantidad}`);
+  }
+  if (resultado.cliente) {
+    artifacts.push(`Cliente:${resultado.cliente}`);
+  }
+  if (resultado.destino) {
+    artifacts.push(`Destino:${resultado.destino}`);
+  }
+  if (resultado.origen) {
+    artifacts.push(`Origen:${resultado.origen}`);
+  }
+  if (resultado.monto || resultado.costo) {
+    artifacts.push(`Monto:S/.${resultado.monto || resultado.costo}`);
+  }
+  if (resultado.costoTotal) {
+    artifacts.push(`CostoTotal:S/.${resultado.costoTotal}`);
+  }
+  if (resultado.adelanto) {
+    artifacts.push(`Adelanto:S/.${resultado.adelanto}`);
+  }
+
+  // For 'otro' type, extract generic items
+  if (resultado.items?.length > 0) {
+    for (const item of resultado.items) {
+      artifacts.push(`Item:${item.cantidad} ${item.nombre}`);
+    }
+  }
+  if (resultado.personas?.length > 0) {
+    for (const persona of resultado.personas) {
+      artifacts.push(`Persona:${persona.nombre}`);
+    }
+  }
+  if (resultado.lugares?.length > 0) {
+    for (const lugar of resultado.lugares) {
+      artifacts.push(`Lugar:${lugar}`);
+    }
+  }
+
+  return artifacts;
 }

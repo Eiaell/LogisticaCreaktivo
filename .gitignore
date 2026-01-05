@@ -16,6 +16,8 @@ dist/
 # Google credentials
 credentials/
 *.json.key
+credentials.json
+token.json
 
 # Data files (keep structure, ignore actual data)
 data/*.json
@@ -39,3 +41,15 @@ npm-debug.log*
 
 # Temp files
 temp_audio_*
+
+# Knowledge base (private business data)
+knowledge_base/
+
+# Claude Code local config
+.claude/
+
+# Compiled libraries
+lib/
+
+# Windows temp files
+nul
