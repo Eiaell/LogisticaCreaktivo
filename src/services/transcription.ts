@@ -70,7 +70,8 @@ export async function transcribeAudioFile(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     console.log('[Transcription] Starting local Whisper transcription...');
 
-    const python = spawn('python', [SCRIPT_PATH, filePath]);
+    // Usar ruta absoluta de Python (Anaconda) donde está instalado faster-whisper
+    const python = spawn('D:/Anaconda/python.exe', [SCRIPT_PATH, filePath]);
 
     let stdout = '';
     let stderr = '';
