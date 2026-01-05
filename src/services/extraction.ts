@@ -10,6 +10,7 @@ import {
   ResultadoExtraccion,
   TipoExtraccion,
 } from '../models/types';
+import { generarEjemplosDeCorrecciones } from './memoria';
 
 const deepseek = new OpenAI({
   apiKey: DEEPSEEK_API_KEY,
@@ -167,9 +168,13 @@ export async function extractEntities(
       month: 'long',
       day: 'numeric'
     });
+
+    // Obtener ejemplos de correcciones anteriores para mejorar la extraccion
+    const ejemplosCorrecciones = generarEjemplosDeCorrecciones();
+
     const prompt = EXTRACTION_PROMPT
       .replace('{fecha_actual}', fechaActual)
-      .replace('{transcripcion}', transcription);
+      .replace('{transcripcion}', transcription) + ejemplosCorrecciones;
 
     const response = await deepseek.chat.completions.create({
       model: 'deepseek-chat',

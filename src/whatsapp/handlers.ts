@@ -17,6 +17,13 @@ import {
 } from '../services/daily-storage';
 import { saveAudio } from '../services/storage';
 import {
+  guardarEnHistorial,
+  guardarCorreccion,
+  obtenerUltimaEntrada,
+  marcarComoCorregido,
+  obtenerEstadisticas,
+} from '../services/memoria';
+import {
   ExtraccionAcuerdo,
   ExtraccionMovilidad,
   ExtraccionGasto,
@@ -57,6 +64,16 @@ export async function handleMessage(msg: Message): Promise<string> {
       textToProcess = msg.body;
       console.log('[Handler] Processing text message:', textToProcess);
 
+      // Check for correction command
+      if (textToProcess.toUpperCase().startsWith('CORREGIR:')) {
+        return await handleCorreccion(textToProcess);
+      }
+
+      // Check for stats command
+      if (textToProcess.toUpperCase() === 'STATS' || textToProcess.toUpperCase() === 'ESTADISTICAS') {
+        return handleEstadisticas();
+      }
+
     } else {
       // Silently ignore non-audio, non-text messages (images, stickers, etc.)
       return '';
@@ -66,6 +83,9 @@ export async function handleMessage(msg: Message): Promise<string> {
     const extraction = await extractEntities(textToProcess);
     console.log('[Handler] Extraction result:', extraction.resultado.tipo);
     console.log('[Handler] Datos extraídos:', JSON.stringify(extraction.resultado, null, 2));
+
+    // Save to history
+    guardarEnHistorial(textToProcess, extraction.resultado);
 
     // Route to appropriate handler (still needed for storage)
     await routeExtraction(extraction);
@@ -77,6 +97,58 @@ export async function handleMessage(msg: Message): Promise<string> {
     console.error('[Handler] Error:', error);
     return 'Ocurrió un error procesando tu mensaje. Intenta de nuevo.';
   }
+}
+
+/**
+ * Handle correction command
+ */
+async function handleCorreccion(texto: string): Promise<string> {
+  const correccionTexto = texto.substring(9).trim(); // Remove "CORREGIR:"
+
+  if (!correccionTexto) {
+    return 'Formato: CORREGIR: [tu correccion aqui]';
+  }
+
+  const ultimaEntrada = obtenerUltimaEntrada();
+  if (!ultimaEntrada) {
+    return 'No hay mensaje anterior para corregir.';
+  }
+
+  // Save the correction
+  guardarCorreccion(
+    ultimaEntrada.transcripcion,
+    ultimaEntrada.extraccion,
+    correccionTexto
+  );
+
+  // Mark the entry as corrected
+  marcarComoCorregido(ultimaEntrada.id);
+
+  console.log('[Handler] Correccion guardada para:', ultimaEntrada.transcripcion);
+
+  return `Correccion guardada. Aprendere de esto para el futuro.
+
+Original: "${ultimaEntrada.transcripcion}"
+Correccion: ${correccionTexto}`;
+}
+
+/**
+ * Handle stats command
+ */
+function handleEstadisticas(): string {
+  const stats = obtenerEstadisticas();
+
+  let resp = `📊 Estadisticas del Bot\n\n`;
+  resp += `Total procesados: ${stats.totalProcesados}\n`;
+  resp += `Corregidos: ${stats.totalCorregidos}\n`;
+  resp += `Exito: ${stats.porcentajeExito}%\n\n`;
+  resp += `Tipos mas frecuentes:\n`;
+
+  for (const [tipo, count] of Object.entries(stats.tiposMasFrecuentes)) {
+    resp += `• ${tipo}: ${count}\n`;
+  }
+
+  return resp;
 }
 
 /**
