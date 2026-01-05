@@ -10,6 +10,9 @@ Output: Transcribed text to stdout
 import sys
 import os
 
+# Force UTF-8 encoding for stdout
+sys.stdout.reconfigure(encoding='utf-8')
+
 # Suppress warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
