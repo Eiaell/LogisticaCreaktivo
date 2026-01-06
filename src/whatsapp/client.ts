@@ -53,14 +53,14 @@ client.on('ready', () => {
 // Message event (message_create captures both sent and received messages)
 client.on('message_create', async (msg: Message) => {
   try {
-    // Skip messages sent by the bot itself (prevent loops!)
-    if (msg.fromMe && msg.body && !msg.hasMedia) {
-      // Only process our own messages if they are audio/ptt
+    // Only process messages sent by the user (fromMe = true)
+    if (!msg.fromMe) {
       return;
     }
 
-    // Only process our own messages (fromMe = true means WE sent it)
-    if (!msg.fromMe) {
+    // Skip bot's own replies (prevent infinite loops!)
+    // Bot replies contain 📝, {"tipo", or are replies to messages
+    if (msg.body && (msg.body.includes('📝') || msg.body.includes('{"tipo"') || msg.hasQuotedMsg)) {
       return;
     }
 

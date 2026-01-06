@@ -54,9 +54,17 @@ const CORRECCIONES: Record<string, string> = {
   'la victoria': 'La Victoria',
   'san isidro': 'San Isidro',
   'mira flores': 'Miraflores',
+  // Cliente TYC - variantes comunes de Whisper
+  't&c': 'TYC',
+  't and c': 'TYC',
+  'tnc': 'TYC',
+  't n c': 'TYC',
+  'tic': 'TYC',
+  'tec': 'TYC',
+  'tyc': 'TYC',
 };
 
-function aplicarCorrecciones(texto: string): string {
+export function aplicarCorrecciones(texto: string): string {
   let resultado = texto;
   for (const [mal, bien] of Object.entries(CORRECCIONES)) {
     // Reemplazar con límites de palabra (case insensitive)

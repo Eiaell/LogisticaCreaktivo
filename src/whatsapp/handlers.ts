@@ -4,7 +4,7 @@
 // ============================================
 
 import { Message } from 'whatsapp-web.js';
-import { transcribeAudio } from '../services/transcription';
+import { transcribeAudio, aplicarCorrecciones } from '../services/transcription';
 import { extractEntities, generateResponse } from '../services/extraction';
 import { processQuery } from '../services/queries';
 import {
@@ -61,8 +61,8 @@ export async function handleMessage(msg: Message): Promise<string> {
       console.log('[Handler] Transcription:', textToProcess);
 
     } else if (msg.body) {
-      // Text message
-      textToProcess = msg.body;
+      // Text message - apply same corrections as audio
+      textToProcess = aplicarCorrecciones(msg.body);
       console.log('[Handler] Processing text message:', textToProcess);
 
       // Check for correction command
