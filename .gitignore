@@ -53,3 +53,8 @@ lib/
 
 # Windows temp files
 nul
+
+# SQLite database files
+data/*.db
+data/*.db-wal
+data/*.db-shm

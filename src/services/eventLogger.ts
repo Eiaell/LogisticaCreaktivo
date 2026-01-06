@@ -1,10 +1,24 @@
 // ============================================
 // CREAACTIVO LOGISTICS INTELLIGENCE SYSTEM
 // Event Clock Logger Service (Celonis-Style)
+// Now with SQLite Storage
 // ============================================
 
 import fs from 'fs/promises';
 import path from 'path';
+import {
+  createCase,
+  createEvent,
+  createArtifact,
+  createMovement,
+  createExpense,
+  upsertProvider,
+  updateCase,
+  getCaseById,
+  getEventsByDate as getEventsFromDb,
+  type Case,
+  type Event,
+} from './db';
 
 const TRACES_DIR = path.join(process.cwd(), 'knowledge_base', 'traces');
 
@@ -34,6 +48,68 @@ interface CelonisEvent {
 let lastCaseId: string | null = null;
 let lastCaseTimestamp: number = 0;
 const CASE_CONTINUITY_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Parse artifact strings like "Proveedor:patricia" into structured data
+ */
+function parseArtifactStrings(artifacts: string[]): {
+  proveedor?: string;
+  producto?: string;
+  cantidad?: number;
+  cliente?: string;
+  monto?: number;
+  destino?: string;
+  origen?: string;
+} {
+  const result: ReturnType<typeof parseArtifactStrings> = {};
+
+  for (const art of artifacts) {
+    const colonIndex = art.indexOf(':');
+    if (colonIndex === -1) continue;
+
+    const key = art.substring(0, colonIndex).trim().toLowerCase();
+    const value = art.substring(colonIndex + 1).trim();
+
+    if (key === 'proveedor') {
+      result.proveedor = value;
+    } else if (key === 'producto') {
+      result.producto = value;
+    } else if (key === 'cantidad') {
+      result.cantidad = parseInt(value, 10) || undefined;
+    } else if (key === 'cliente') {
+      result.cliente = value;
+    } else if (key.includes('costo') || key === 'monto') {
+      const montoMatch = value.match(/[\d.]+/);
+      if (montoMatch) {
+        result.monto = parseFloat(montoMatch[0]);
+      }
+    } else if (key === 'destino') {
+      result.destino = value;
+    } else if (key === 'origen') {
+      result.origen = value;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Map process state string to valid Case estado
+ */
+function mapToEstado(processState: string): Case['estado'] {
+  const stateMap: Record<string, Case['estado']> = {
+    'cotizacion': 'cotizacion',
+    'aprobado': 'aprobado',
+    'en_produccion': 'en_produccion',
+    'listo_recoger': 'listo_recoger',
+    'listo': 'listo_recoger',
+    'en_campo': 'en_campo',
+    'entregado': 'entregado',
+    'cerrado': 'cerrado',
+  };
+
+  return stateMap[processState.toLowerCase()] || 'cotizacion';
+}
 
 /**
  * Generate a Case ID based on context
@@ -151,7 +227,7 @@ function getTodayDateCompact(): string {
 }
 
 /**
- * Log an event to the daily JSONL file (Celonis-style)
+ * Log an event to SQLite (and to JSONL for backward compatibility)
  *
  * @param actor - Who performed the action (Resource in Celonis terms)
  * @param action - What action was performed (Activity in Celonis terms)
@@ -167,8 +243,6 @@ export async function logEvent(
   reasoning?: string
 ): Promise<void> {
   try {
-    await ensureTracesDir();
-
     // Generate Case ID
     const caseId = generateCaseId(context, artifacts);
 
@@ -178,21 +252,160 @@ export async function logEvent(
 
     // Determine process state
     const processState = determineProcessState(action, context);
+    const tipo = (context.tipo as string) || action;
+
+    // Parse artifacts for structured data
+    const parsedArtifacts = parseArtifactStrings(artifacts);
+    const cliente = parsedArtifacts.cliente || (context.cliente as string) || 'Desconocido';
+
+    // Ensure case exists in SQLite
+    const existingCase = getCaseById(caseId);
+    if (!existingCase) {
+      try {
+        createCase({
+          id: caseId,
+          cliente,
+          estado: mapToEstado(processState),
+          fecha_creacion: new Date().toISOString(),
+        });
+        console.log(`[EventLogger] Created case: ${caseId}`);
+      } catch (err) {
+        // Case might already exist (race condition), ignore
+        if (!String(err).includes('UNIQUE constraint')) {
+          console.error('[EventLogger] Error creating case:', err);
+        }
+      }
+    } else {
+      // Update case state if needed
+      try {
+        updateCase(caseId, { estado: mapToEstado(processState) });
+      } catch (err) {
+        console.error('[EventLogger] Error updating case:', err);
+      }
+    }
+
+    // Create event in SQLite
+    try {
+      createEvent({
+        case_id: caseId,
+        tipo,
+        actor,
+        timestamp: new Date().toISOString(),
+        transcripcion: context.transcripcion as string | undefined,
+        es_audio: (context.esAudio as boolean) || false,
+        raw_data: context,
+        process_state: processState,
+        reasoning,
+      });
+    } catch (err) {
+      console.error('[EventLogger] Error creating event:', err);
+    }
+
+    // Create artifacts in SQLite
+    if (parsedArtifacts.proveedor) {
+      try {
+        createArtifact({
+          case_id: caseId,
+          tipo: 'proveedor',
+          valor: parsedArtifacts.proveedor,
+        });
+        upsertProvider({ nombre: parsedArtifacts.proveedor });
+      } catch (err) {
+        // Ignore duplicate artifacts
+      }
+    }
+
+    if (parsedArtifacts.producto) {
+      try {
+        createArtifact({
+          case_id: caseId,
+          tipo: 'producto',
+          valor: parsedArtifacts.producto,
+          cantidad: parsedArtifacts.cantidad,
+        });
+      } catch (err) {
+        // Ignore duplicate artifacts
+      }
+    }
+
+    if (parsedArtifacts.monto) {
+      try {
+        createArtifact({
+          case_id: caseId,
+          tipo: 'monto',
+          valor: `S/.${parsedArtifacts.monto}`,
+          monto: parsedArtifacts.monto,
+        });
+      } catch (err) {
+        // Ignore duplicate artifacts
+      }
+    }
+
+    // Handle movements
+    if (tipo === 'movimiento_movilidad') {
+      try {
+        createMovement({
+          case_id: caseId,
+          fecha: getTodayDate(),
+          destino: parsedArtifacts.destino || parsedArtifacts.proveedor || 'Desconocido',
+          origen: parsedArtifacts.origen,
+          costo: parsedArtifacts.monto || 0,
+          recogedor: 'Huber',
+          proposito: context.transcripcion as string | undefined,
+        });
+      } catch (err) {
+        console.error('[EventLogger] Error creating movement:', err);
+      }
+    }
+
+    // Handle expenses
+    if (tipo === 'registro_gasto') {
+      try {
+        createExpense({
+          case_id: caseId,
+          fecha: getTodayDate(),
+          descripcion: (context.transcripcion as string) || 'Gasto sin descripcion',
+          monto: parsedArtifacts.monto || 0,
+          categoria: 'otro',
+        });
+      } catch (err) {
+        console.error('[EventLogger] Error creating expense:', err);
+      }
+    }
+
+    // Also write to JSONL for backward compatibility
+    await writeToJsonl(caseId, action, actor, context, artifacts, processState, reasoning);
+
+    console.log(`[EventLogger] Logged: ${action} by ${actor} | Case: ${caseId} | State: ${processState}`);
+  } catch (error) {
+    console.error('[EventLogger] Error logging event:', error);
+  }
+}
+
+/**
+ * Write event to JSONL file for backward compatibility
+ */
+async function writeToJsonl(
+  caseId: string,
+  action: string,
+  actor: string,
+  context: Record<string, unknown>,
+  artifacts: string[],
+  processState: string,
+  reasoning?: string
+): Promise<void> {
+  try {
+    await ensureTracesDir();
 
     const entry: CelonisEvent = {
-      // Celonis core fields
       caseId,
       activity: action,
       timestamp: new Date().toISOString(),
       resource: actor,
-
-      // Legacy fields (for backward compatibility)
       actor,
       action,
       context,
       artifacts,
-
-      // Process tracking
       processState,
     };
 
@@ -204,9 +417,8 @@ export async function logEvent(
     const line = JSON.stringify(entry) + '\n';
 
     await fs.appendFile(todayFile, line, 'utf-8');
-    console.log(`[EventLogger] Logged: ${action} by ${actor} | Case: ${caseId} | State: ${processState}`);
   } catch (error) {
-    console.error('[EventLogger] Error logging event:', error);
+    console.error('[EventLogger] Error writing to JSONL:', error);
   }
 }
 
@@ -218,33 +430,30 @@ export function getTodayTraceFile(): string {
 }
 
 /**
- * Read today's events from the JSONL file
+ * Read today's events from SQLite
  */
-export async function getTodayEvents(): Promise<CelonisEvent[]> {
+export async function getTodayEvents(): Promise<Event[]> {
   try {
-    const todayFile = getTodayTraceFile();
-    const content = await fs.readFile(todayFile, 'utf-8');
-    const lines = content.trim().split('\n').filter(Boolean);
-    return lines.map(line => JSON.parse(line) as CelonisEvent);
+    return getEventsFromDb(getTodayDate());
   } catch (error) {
-    // File might not exist yet
+    console.error('[EventLogger] Error getting today events:', error);
     return [];
   }
 }
 
 /**
- * Get events grouped by Case ID
+ * Get events grouped by Case ID from SQLite
  */
-export async function getEventsByCase(): Promise<Map<string, CelonisEvent[]>> {
+export async function getEventsByCase(): Promise<Map<string, Event[]>> {
   const events = await getTodayEvents();
-  const caseMap = new Map<string, CelonisEvent[]>();
+  const caseMap = new Map<string, Event[]>();
 
   for (const event of events) {
-    const caseId = event.caseId || 'UNKNOWN';
-    if (!caseMap.has(caseId)) {
-      caseMap.set(caseId, []);
+    const id = event.case_id || 'UNKNOWN';
+    if (!caseMap.has(id)) {
+      caseMap.set(id, []);
     }
-    caseMap.get(caseId)!.push(event);
+    caseMap.get(id)!.push(event);
   }
 
   return caseMap;
@@ -268,3 +477,6 @@ export function getCurrentCaseId(): string | null {
   }
   return null;
 }
+
+// Re-export types for convenience
+export type { CelonisEvent };
