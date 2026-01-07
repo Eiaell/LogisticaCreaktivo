@@ -1,0 +1,6 @@
+[x] Story 1: Inicializar WebApp (Vite + React + TypeScript) e instalar dependencias clave (sql.js, vis-network, tailwind).
+[x] Story 2: Crear el 'Data Loader' (Componente para arrastrar y soltar el archivo .db y cargarlo en memoria con sql.js).
+[x] Story 3: Implementar la 'Capa Semántica' (Hooks que ejecuten SQL para extraer KPIs: Total Pedidos, Monto en Producción, Alertas).
+[x] Story 4: Construir el 'Process Explorer' (Recrear el grafo de NetworkX pero usando vis-network en React para interactividad total).
+[x] Story 5: Crear la 'Operational View' (Tabla de pedidos con filtros y búsqueda estilo Excel).
+[x] Story 6: Estilizado Final (Dark Mode corporativo estilo Celonis Studio).
