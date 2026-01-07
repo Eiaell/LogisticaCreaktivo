@@ -4,3 +4,10 @@
 [x] Story 4: Construir el 'Process Explorer' (Recrear el grafo de NetworkX pero usando vis-network en React para interactividad total).
 [x] Story 5: Crear la 'Operational View' (Tabla de pedidos con filtros y búsqueda estilo Excel).
 [x] Story 6: Estilizado Final (Dark Mode corporativo estilo Celonis Studio).
+
+Phase 2: Dashboard Refinements & Payments
+[ ] Story 1: Restaurar la columna 'Proveedor' en la tabla Operational View (hacer JOIN o subquery para traer el nombre del proveedor).
+[ ] Story 2: Interactividad del Grafo: Al hacer clic en un nodo de estado (ej: 'En Producción'), filtrar la tabla inferior para mostrar solo esos pedidos.
+[ ] Story 3: Gestión de Pagos Múltiples (Backend): Crear tabla 'payments' en SQLite y migrar la lógica de adelantos para soportar N pagos por pedido.
+[ ] Story 4: Gestión de Pagos Múltiples (Frontend): Quitar columna 'Adelanto' estática. Agregar botón '+' en 'Precio'. Crear Modal para registrar nuevos pagos. La columna 'Pagado' debe ser la suma automática.
+[ ] Story 5: Pulido Visual: Arreglar el bug de decimales largos en el footer (toFixed(2)) y asegurar que el proveedor se vea bien.

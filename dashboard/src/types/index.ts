@@ -1,22 +1,37 @@
 // Database types for the logistics system
+
+export interface Payment {
+    id: string;
+    pedidoId: string;
+    monto: number;
+    fecha: string;
+    nota?: string;
+}
+
 export interface Pedido {
     id: string;
     cliente: string;
     vendedora: string;
     descripcion: string;
     estado: string;
-    fecha_compromiso: string;
-    rq_numero: string | null;
+    fecha_compromiso?: string;
+    rq_numero?: string | null;
     created_at: string;
     updated_at: string;
+    precio?: number;
+    pagado?: number;
+    adelanto?: number; // Legacy support
 }
 
 export interface Proveedor {
     id: string;
     nombre: string;
-    contacto: string | null;
+    contacto?: string | null;
+    telefono?: string;
+    direccion?: string;
+    notas?: string;
     especialidad: string;
-    condiciones_pago: string | null;
+    condiciones_pago?: string | null;
     factor_demora: number;
 }
 
