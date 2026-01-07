@@ -20,18 +20,18 @@ export function useKPIs(): KPIs | null {
         } catch { return null; }
     }
 
-    if (dataSource === 'jsonl') {
+    if (dataSource === 'jsonl' || dataSource === 'supabase') {
         // Calculate from the shared 'pedidos' state
         const totalPedidos = pedidos.length;
-        const pedidosActivos = pedidos.filter(p => !['entregado', 'cerrado'].includes(p.estado)).length;
+        const pedidosActivos = pedidos.filter(p => !['entregado', 'cerrado', 'liquidado'].includes(p.estado)).length;
 
         // Sum prices of active orders for 'Monto en Producción'
         const montoProduccion = pedidos
-            .filter(p => p.estado === 'en_produccion' || p.estado === 'cotizacion' || p.estado === 'aprobado')
+            .filter(p => p.estado === 'en_produccion' || p.estado === 'cotizacion' || p.estado === 'aprobado' || p.estado === 'listo_recoger')
             .reduce((sum, p) => sum + (p.precio || 0), 0);
 
-        const alertas = 0; // Logic for alerts could be improved later
-        const movilidadHoy = 0; // This would need the event stream, but for now 0
+        const alertas = 0;
+        const movilidadHoy = 0;
 
         return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy };
     }

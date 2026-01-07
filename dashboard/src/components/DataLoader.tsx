@@ -62,7 +62,7 @@ export function DataLoader() {
                         </p>
                         <input
                             type="file"
-                            accept=".db,.jsonl"
+                            accept=".db,.jsonl,.json"
                             multiple
                             onChange={handleFileSelect}
                             className="hidden"

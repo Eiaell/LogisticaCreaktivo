@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import initSqlJs, { type Database } from 'sql.js';
 import type { Pedido, Payment, Proveedor, Cliente } from '../types';
+import { supabase } from '../supabaseClient';
 
 // Event from JSONL trace files
 export interface TraceEvent {
@@ -19,7 +20,7 @@ export interface TraceEvent {
         origen?: string;
         destino?: string;
         nuevoEstado?: string;
-        precio?: number; // Add support for direct price
+        precio?: number;
         [key: string]: unknown;
     };
     artifacts: string[];
@@ -30,35 +31,34 @@ interface DatabaseContextType {
     db: Database | null;
     events: TraceEvent[];
     pedidos: Pedido[];
-    payments: Payment[]; // New global payments state
-    proveedores: Record<string, Proveedor>; // Shared providers
-    clientes: Record<string, Cliente>; // New
+    payments: Payment[];
+    proveedores: Record<string, Proveedor>;
+    clientes: Record<string, Cliente>;
     setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
-    updatePedido: (id: string, changes: Partial<Pedido>) => void;
-    addPayment: (pedidoId: string, monto: number, nota?: string) => void;
-    updateProveedor: (nombre: string, data: Partial<Proveedor>) => void; // Update fn
-    updateCliente: (nombre: string, data: Partial<Cliente>) => void; // New fn
+    updatePedido: (id: string, changes: Partial<Pedido>) => Promise<void>;
+    addPayment: (pedidoId: string, monto: number, nota?: string) => Promise<void>;
+    updateProveedor: (nombre: string, data: Partial<Proveedor>) => Promise<void>;
+    updateCliente: (nombre: string, data: Partial<Cliente>) => Promise<void>;
 
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
 
     isLoading: boolean;
     error: string | null;
-    dataSource: 'db' | 'jsonl' | null;
+    dataSource: 'db' | 'jsonl' | 'supabase' | null;
     loadDatabase: (files: FileList | File[]) => Promise<void>;
     resetDatabase: () => void;
     exportBackup: () => void;
+    uploadLogo: (file: File, path: string) => Promise<string | null>;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | null>(null);
 
-// Helper to normalize text
 function normalizeText(text: string): string {
     if (!text) return '';
     return text.trim().replace(/^\w/, c => c.toUpperCase());
 }
 
-// Initial parsing now needs to handle potential legacy payments/adelantos
 function parseEventsToPedidos(events: TraceEvent[]): { pedidos: Pedido[], payments: Payment[] } {
     const casesMap = new Map<string, Pedido>();
     const initialPayments: Payment[] = [];
@@ -67,13 +67,13 @@ function parseEventsToPedidos(events: TraceEvent[]): { pedidos: Pedido[], paymen
         const ctx = event.context || {};
         if (ctx.tipo === 'otro') continue;
 
-        const caseId = event.caseId || `CASE-${event.actor?.slice(0, 3).toUpperCase()}-${event.timestamp?.slice(0, 10).replace(/-/g, '')}`;
+        const caseId = event.caseId || `CASE-${event.actor?.slice(0, 3).toUpperCase() || 'SYS'}-${event.timestamp?.slice(2, 10).replace(/-/g, '') || Date.now()}`;
 
         if (!casesMap.has(caseId)) {
             casesMap.set(caseId, {
                 id: caseId,
                 cliente: '',
-                vendedora: event.actor || '', // Default loading from actor
+                vendedora: event.actor || '',
                 descripcion: '',
                 estado: 'en_produccion',
                 created_at: event.timestamp || new Date().toISOString(),
@@ -85,7 +85,6 @@ function parseEventsToPedidos(events: TraceEvent[]): { pedidos: Pedido[], paymen
 
         const pedido = casesMap.get(caseId)!;
 
-        // Update fields
         if (ctx.cliente) pedido.cliente = normalizeText(ctx.cliente as string);
         if (ctx.producto) pedido.descripcion = ctx.producto as string;
         if (ctx.nuevoEstado) pedido.estado = ctx.nuevoEstado as string;
@@ -93,34 +92,31 @@ function parseEventsToPedidos(events: TraceEvent[]): { pedidos: Pedido[], paymen
         if (ctx.precio) pedido.precio = Number(ctx.precio);
         if (ctx.proveedor) pedido.vendedora = normalizeText(ctx.proveedor as string);
 
-        // If there was an "adelanto" in context, convert to a Payment
         if (ctx.adelanto) {
-            const monto = Number(ctx.adelanto);
             initialPayments.push({
                 id: `PAY-${Date.now()}-${Math.random()}`,
                 pedidoId: caseId,
-                monto: monto,
+                monto: Number(ctx.adelanto),
                 fecha: event.timestamp || new Date().toISOString(),
-                nota: 'Adelanto inicial (detectado)'
+                nota: 'Adelanto inicial'
             });
         }
 
-        // Artifacts parsing
         for (const art of event.artifacts || []) {
             const artLower = art.toLowerCase();
             if (artLower.startsWith('cliente:')) pedido.cliente = normalizeText(art.split(':')[1]);
             if (artLower.startsWith('producto:')) pedido.descripcion = art.split(':')[1];
             if (artLower.startsWith('proveedor:')) pedido.vendedora = normalizeText(art.split(':')[1]);
+            if (artLower.startsWith('vendedora:')) pedido.vendedora = normalizeText(art.split(':')[1]);
+            if (artLower.startsWith('rq:')) pedido.rq_numero = art.split(':')[1].trim();
             if (artLower.startsWith('costototal:') || artLower.startsWith('precio:')) {
                 const val = art.split(':')[1].replace(/[^\d.]/g, '');
                 pedido.precio = Number(val);
             }
         }
-
-        pedido.updated_at = event.timestamp;
+        pedido.updated_at = event.timestamp || pedido.updated_at;
     }
 
-    // Calc initial totals
     const pedidos = Array.from(casesMap.values());
     pedidos.forEach(p => {
         const pPayments = initialPayments.filter(pay => pay.pedidoId === p.id);
@@ -134,72 +130,166 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [db, setDb] = useState<Database | null>(null);
     const [events, setEvents] = useState<TraceEvent[]>([]);
     const [pedidos, setPedidos] = useState<Pedido[]>([]);
-    const [payments, setPayments] = useState<Payment[]>([]); // State
-    // New: Providers metadata
+    const [payments, setPayments] = useState<Payment[]>([]);
     const [proveedores, setProveedores] = useState<Record<string, Proveedor>>({});
-    const [clientes, setClientes] = useState<Record<string, Cliente>>({}); // New
-
+    const [clientes, setClientes] = useState<Record<string, Cliente>>({});
     const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
-
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [dataSource, setDataSource] = useState<'db' | 'jsonl' | null>(null);
+    const [dataSource, setDataSource] = useState<'db' | 'jsonl' | 'supabase' | null>(null);
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            setIsLoading(true);
+            try {
+                const { data: clientsData } = await supabase.from('clientes').select('*');
+                if (clientsData) {
+                    const clientsMap: Record<string, Cliente> = {};
+                    clientsData.forEach(c => clientsMap[c.nombre] = { ...c, id: c.nombre, logo: c.logo_url });
+                    setClientes(clientsMap);
+                }
+
+                const { data: provData } = await supabase.from('proveedores').select('*');
+                if (provData) {
+                    const provMap: Record<string, Proveedor> = {};
+                    provData.forEach(p => provMap[p.nombre] = { ...p, id: p.nombre, logo: p.logo_url });
+                    setProveedores(provMap);
+                }
+
+                const { data: ordersData } = await supabase.from('pedidos').select('*');
+                if (ordersData) {
+                    const mappedOrders = (ordersData as any[]).map(p => ({
+                        ...p,
+                        cliente: p.cliente_nombre,
+                        vendedora: p.vendedora || '',
+                        rq_numero: p.rq_numero || '',
+                        precio: p.precio || 0,
+                        pagado: p.pagado || 0
+                    }));
+                    setPedidos(mappedOrders as Pedido[]);
+                }
+
+                const { data: paymentsData } = await supabase.from('pagos').select('*');
+                if (paymentsData) {
+                    setPayments(paymentsData.map(p => ({
+                        id: p.id,
+                        pedidoId: p.pedido_id,
+                        monto: p.monto,
+                        fecha: p.fecha,
+                        nota: p.nota
+                    })));
+                }
+
+                // Sincronizar dataSource SOLO si logramos leer algo o terminar el proceso
+                setDataSource('supabase');
+                console.log("Supabase Sync Complete. Pedidos:", ordersData?.length || 0);
+            } catch (err) {
+                console.error("Initial fetch error:", err);
+                // Si falla la red, no bloqueamos la app, pero avisamos
+                setDataSource(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchInitialData();
+    }, []);
 
     const resetDatabase = () => {
         setDb(null);
         setEvents([]);
         setPedidos([]);
         setPayments([]);
-        setProveedores({});
-        setClientes({});
-        setDataSource(null);
+        setDataSource('supabase');
         setError(null);
         setSelectedStateFilter(null);
     };
 
-    const updatePedido = (id: string, changes: Partial<Pedido>) => {
+    const updatePedido = async (id: string, changes: Partial<Pedido>) => {
         setPedidos(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p));
+        try {
+            const dbChanges: any = { ...changes };
+            if (dbChanges.cliente !== undefined) {
+                dbChanges.cliente_nombre = dbChanges.cliente;
+                delete dbChanges.cliente;
+            }
+            // Asegurar que vendedora y rq_numero se mapean si existen en changes
+            if (dbChanges.vendedora !== undefined) dbChanges.vendedora = dbChanges.vendedora;
+            if (dbChanges.rq_numero !== undefined) dbChanges.rq_numero = dbChanges.rq_numero;
+
+            const { error } = await supabase.from('pedidos').update(dbChanges).eq('id', id);
+            if (error) throw error;
+            console.log("Pedido actualizado en Supabase:", id, dbChanges);
+        } catch (err) {
+            console.error("Error updating pedido:", err);
+        }
     };
 
-    const updateProveedor = (nombre: string, data: Partial<Proveedor>) => {
-        setProveedores(prev => ({
-            ...prev,
-            [nombre]: { ...(prev[nombre] || { id: nombre, nombre, especialidad: 'General', factor_demora: 0 }), ...data }
-        }));
+    const updateProveedor = async (nombre: string, data: Partial<Proveedor>) => {
+        const fullData = { ...(proveedores[nombre] || { nombre, especialidad: 'General', factor_demora: 0 }), ...data };
+        setProveedores(prev => ({ ...prev, [nombre]: fullData }));
+        try {
+            await supabase.from('proveedores').upsert({
+                nombre: fullData.nombre,
+                contacto: fullData.contacto,
+                telefono: fullData.telefono,
+                direccion: fullData.direccion,
+                notas: fullData.notas,
+                especialidad: fullData.especialidad,
+                factor_demora: fullData.factor_demora,
+                logo_url: fullData.logo
+            }, { onConflict: 'nombre' });
+        } catch (err) {
+            console.error("Error updating proveedor:", err);
+        }
     };
 
-    const updateCliente = (nombre: string, data: Partial<Cliente>) => {
-        setClientes(prev => ({
-            ...prev,
-            [nombre]: { ...(prev[nombre] || { id: nombre, nombre }), ...data }
-        }));
+    const updateCliente = async (nombre: string, data: Partial<Cliente>) => {
+        const fullData = { ...(clientes[nombre] || { nombre }), ...data };
+        setClientes(prev => ({ ...prev, [nombre]: fullData }));
+        try {
+            await supabase.from('clientes').upsert({
+                nombre: fullData.nombre,
+                ruc: fullData.ruc,
+                direccion: fullData.direccion,
+                contacto: fullData.contacto,
+                telefono: fullData.telefono,
+                email: fullData.email,
+                notas: fullData.notas,
+                logo_url: fullData.logo
+            }, { onConflict: 'nombre' });
+        } catch (err) {
+            console.error("Error updating cliente:", err);
+        }
     };
 
-    const addPayment = (pedidoId: string, monto: number, nota: string = 'Pago registrado') => {
-        const newPayment: Payment = {
+    const addPayment = async (pedidoId: string, monto: number, nota: string = 'Pago registrado') => {
+        const newPaymentLocal: Payment = {
             id: `PAY-${Date.now()}`,
             pedidoId,
             monto,
             fecha: new Date().toISOString(),
             nota
         };
-        setPayments(prev => [...prev, newPayment]);
-
-        // Update pedido total immediately
-        setPedidos(prev => prev.map(p => {
-            if (p.id === pedidoId) {
-                return { ...p, pagado: (p.pagado || 0) + monto };
-            }
-            return p;
-        }));
+        setPayments(prev => [...prev, newPaymentLocal]);
+        setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, pagado: (p.pagado || 0) + monto } : p));
+        try {
+            await supabase.from('pagos').insert({
+                pedido_id: pedidoId,
+                monto,
+                nota,
+                fecha: new Date().toISOString()
+            });
+            const { data: pedido } = await supabase.from('pedidos').select('pagado').eq('id', pedidoId).single();
+            await supabase.from('pedidos').update({ pagado: (pedido?.pagado || 0) + monto }).eq('id', pedidoId);
+        } catch (err) {
+            console.error("Error adding payment:", err);
+        }
     };
 
     const exportBackup = () => {
         const backup = {
             meta: { version: 1, date: new Date().toISOString(), type: 'backup' },
-            clientes,
-            proveedores,
-            payments
+            clientes, proveedores, payments, pedidos
         };
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -212,107 +302,103 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         URL.revokeObjectURL(url);
     };
 
-    // ... (update functions remain same)
+    const uploadLogo = async (file: File, path: string): Promise<string | null> => {
+        try {
+            // Sanitizar nombre de archivo (quitar espacios y caracteres raros)
+            const sanitizedPath = path.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+            const fileName = `${sanitizedPath}-${Date.now()}.${file.name.split('.').pop()}`;
+
+            const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, file);
+
+            if (uploadError) {
+                console.error("Supabase Storage Error:", uploadError);
+                throw uploadError;
+            }
+
+            const { data } = supabase.storage.from('logos').getPublicUrl(fileName);
+            return data.publicUrl;
+        } catch (err) {
+            console.error("Error completo en uploadLogo:", err);
+            return null;
+        }
+    };
 
     const loadDatabase = async (files: FileList | File[]) => {
         setIsLoading(true);
         setError(null);
-
         try {
             const fileList = Array.from(files);
-            if (fileList.length === 0) return;
+            const jsonlFile = fileList.find(f => f.name.toLowerCase().endsWith('.jsonl'));
+            const dbFile = fileList.find(f => f.name.toLowerCase().endsWith('.db'));
+            const backupFile = fileList.find(f => f.name.toLowerCase().endsWith('.json'));
 
-            // Check if any file is a backup JSON
-            for (const file of fileList) {
-                if (file.name.toLowerCase().endsWith('.json')) {
-                    try {
-                        const text = await file.text();
-                        const json = JSON.parse(text);
-                        if (json.meta?.type === 'backup') {
-                            setClientes(prev => ({ ...prev, ...json.clientes }));
-                            setProveedores(prev => ({ ...prev, ...json.proveedores }));
-                            // Filter existing payments to avoid duplicates
-                            setPayments(prev => {
-                                const existIds = new Set(prev.map(p => p.id));
-                                const newPays = (json.payments as Payment[]).filter(p => !existIds.has(p.id));
-                                return [...prev, ...newPays];
-                            });
-                            // If only loading backup, we might stop here or continue loading other files
-                            // For now, let's allow mixing.
-                            continue;
-                        }
-                    } catch (e) {
-                        console.warn("Error parsing potential backup file", file.name, e);
-                    }
+            if (backupFile) {
+                const text = await backupFile.text();
+                const json = JSON.parse(text);
+                if (json.meta?.type === 'backup') {
+                    setClientes(prev => ({ ...prev, ...json.clientes }));
+                    setProveedores(prev => ({ ...prev, ...json.proveedores }));
+                    if (json.pedidos) setPedidos(json.pedidos);
+                    if (json.payments) setPayments(json.payments);
+                    setDataSource('supabase');
                 }
             }
 
-            const firstFile = fileList.find(f => !f.name.endsWith('.json') || !f.name.includes('backup'));
-            // If we only loaded backup, stop.
-            if (!firstFile && fileList.some(f => f.name.includes('backup'))) {
-                // Just backup loaded
-                setIsLoading(false);
-                return;
-            }
-
-            // ... (rest of DB/JSONL loading logic)
-            if (!firstFile) return;
-
-            const fileName = firstFile.name.toLowerCase();
-
-            if (fileName.endsWith('.db')) {
-                // ... existing db logic
-                // COPY FROM EXISTING FILE (I will rely on the tool to keep existing lines if I scope carefully, but replace_file_content replaces block)
-                // I have to reproduce the logic or scope precisely.
-                // Since I am replacing a large block, I must reproduce the DB logic.
-
-                const SQL = await initSqlJs({
-                    locateFile: (f: string) => `https://sql.js.org/dist/${f}`
-                });
-
-                const arrayBuffer = await firstFile.arrayBuffer();
-                const database = new SQL.Database(new Uint8Array(arrayBuffer));
-
+            if (dbFile) {
+                const SQL = await initSqlJs({ locateFile: (f: string) => `https://sql.js.org/dist/${f}` });
+                const database = new SQL.Database(new Uint8Array(await dbFile.arrayBuffer()));
                 setDb(database);
-                setEvents([]);
-                setPedidos([]);
-                // setPayments([]); // Don't clear payments if we just loaded backup! 
-                // But usually loading DB implies fresh start. 
-                // Let's decide: Backup should be loaded AFTER or WITH db. 
-                // If I reset here, I lose backup. 
-                // Correction: resetDatabase() shouldn't be called inside loadDatabase if we want to merge?
-                // The current logic resets state on setDb(database).
-                // I will modify to NOT reset payments/clients/proveedores if they are not empty.
-
                 setDataSource('db');
-
-            } else if (fileName.endsWith('.jsonl')) {
-                // ... existing jsonl logic
-                const allEvents: TraceEvent[] = [];
-                for (const file of fileList) {
-                    if (!file.name.toLowerCase().endsWith('.jsonl')) continue;
-                    const text = await file.text();
-                    const lines = text.split('\n').filter(line => line.trim());
-                    for (const line of lines) {
-                        try {
-                            allEvents.push(JSON.parse(line));
-                        } catch (e) { console.error(e); }
-                    }
-                }
-
-                // Sort events
-                allEvents.sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
-
-                setDb(null);
+            } else if (jsonlFile) {
+                const text = await jsonlFile.text();
+                const allEvents: TraceEvent[] = text.split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
+                allEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
                 setEvents(allEvents);
 
-                // PARSE PEDIDOS & PAYMENTS
-                const { pedidos: parsedPedidos, payments: parsedPayments } = parseEventsToPedidos(allEvents);
-                setPedidos(parsedPedidos);
-                // Merge parsed payments with backup payments
-                setPayments(prev => [...prev, ...parsedPayments]);
+                const { pedidos: parsed, payments: pays } = parseEventsToPedidos(allEvents);
 
-                setDataSource('jsonl');
+                // SMART MERGE: Preservar ediciones previas o datos de backup
+                setPedidos(prev => {
+                    if (prev.length === 0) return parsed;
+                    const existingMap = new Map(prev.map(p => [p.id, p]));
+                    return parsed.map(p => {
+                        const existing = existingMap.get(p.id);
+                        if (existing) {
+                            return {
+                                ...p,
+                                vendedora: existing.vendedora || p.vendedora,
+                                cliente: existing.cliente || p.cliente,
+                                precio: existing.precio !== 0 ? existing.precio : p.precio,
+                                descripcion: existing.descripcion || p.descripcion
+                            };
+                        }
+                        return p;
+                    });
+                });
+
+                setPayments(prev => {
+                    const existIds = new Set(prev.map(py => py.id));
+                    const newPays = pays.filter(py => !existIds.has(py.id));
+                    return [...prev, ...newPays];
+                });
+
+                setDataSource('supabase');
+
+                // Sincronizar con Supabase en segundo plano
+                supabase.from('pedidos').upsert(parsed.map(p => ({
+                    id: p.id,
+                    vendedora: p.vendedora,
+                    cliente_nombre: p.cliente,
+                    descripcion: p.descripcion,
+                    estado: p.estado,
+                    precio: p.precio || 0,
+                    pagado: p.pagado || 0,
+                    rq_numero: p.rq_numero,
+                    created_at: p.created_at,
+                    updated_at: p.updated_at
+                }))).then(({ error }) => {
+                    if (error) console.warn("Supabase Sync Error:", error);
+                });
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error loading file');
@@ -323,36 +409,18 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     return (
         <DatabaseContext.Provider value={{
-            db,
-            events,
-            pedidos,
-            payments,
-            proveedores,
-            clientes,
-            setPedidos,
-            updatePedido,
-            addPayment,
-            updateProveedor,
-            updateCliente,
-            selectedStateFilter,
-            setSelectedStateFilter,
-            isLoading,
-            error,
-            dataSource,
-            loadDatabase,
-            resetDatabase,
-            exportBackup // New
+            db, events, pedidos, payments, proveedores, clientes,
+            setPedidos, updatePedido, addPayment, updateProveedor, updateCliente,
+            selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
+            loadDatabase, resetDatabase, exportBackup, uploadLogo
         }}>
             {children}
         </DatabaseContext.Provider>
     );
-
 }
 
 export function useDatabase() {
     const context = useContext(DatabaseContext);
-    if (!context) {
-        throw new Error('useDatabase must be used within a DatabaseProvider');
-    }
+    if (!context) throw new Error('useDatabase must be used within a DatabaseProvider');
     return context;
 }

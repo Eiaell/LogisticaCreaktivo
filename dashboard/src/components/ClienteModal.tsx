@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function ClienteModal({ nombre, isOpen, onClose }: Props) {
-    const { clientes, updateCliente } = useDatabase();
+    const { clientes, updateCliente, uploadLogo } = useDatabase();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Load existing data or default
@@ -23,9 +23,11 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
         contacto: '',
         telefono: '',
         email: '',
-        notas: '',
-        logo: ''
+        logo: '',
+        notas: ''
     });
+    const [isUploading, setIsUploading] = useState(false);
+    const [error, setLocalError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -47,14 +49,23 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
         onClose();
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, logo: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
+            setIsUploading(true);
+            setLocalError(null);
+            try {
+                const publicUrl = await uploadLogo(file, `cliente-${nombre}`);
+                if (publicUrl) {
+                    setFormData(prev => ({ ...prev, logo: publicUrl }));
+                } else {
+                    setLocalError("No se pudo obtener la URL de la imagen.");
+                }
+            } catch (err: any) {
+                setLocalError(err.message || "Error al subir la imagen");
+            } finally {
+                setIsUploading(false);
+            }
         }
     };
 
@@ -79,14 +90,17 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                             onClick={() => fileInputRef.current?.click()}
                         >
                             {formData.logo ? (
-                                <img src={formData.logo} alt="Logo" className="w-full h-full object-cover" />
+                                <img src={formData.logo} alt="Logo" className={`w-full h-full object-cover ${isUploading ? 'opacity-50' : ''}`} />
                             ) : (
-                                <span className="text-4xl select-none">👤</span>
+                                <span className={`text-4xl select-none ${isUploading ? 'animate-pulse text-blue-400' : ''}`}>👤</span>
                             )}
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-xs text-white font-bold">Cambiar Logo</span>
+                            <div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                <span className="text-[10px] text-white font-bold text-center">
+                                    {isUploading ? 'SUBIENDO...' : 'CAMBIAR LOGO'}
+                                </span>
                             </div>
                         </div>
+                        {error && <p className="text-[10px] text-red-400 mt-1 text-center font-mono">{error}</p>}
                         <input
                             type="file"
                             ref={fileInputRef}

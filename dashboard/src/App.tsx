@@ -167,20 +167,23 @@ function Dashboard() {
 }
 
 function AppContent() {
-  const { db, events, isLoading } = useDatabase();
+  const { db, events, isLoading, clientes, pedidos, dataSource } = useDatabase();
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+          <p className="text-cyan-500 font-mono text-xs animate-pulse">Sincronizando con la nube...</p>
+        </div>
       </div>
     );
   }
 
-  // Show dashboard if we have a DB OR if we have events loaded
-  if (!db && events.length === 0) {
-    return <DataLoader />;
-  }
+  if (dataSource === 'supabase') return <Dashboard />;
+
+  const hasData = db || events.length > 0 || Object.keys(clientes).length > 0 || pedidos.length > 0;
+  if (!hasData) return <DataLoader />;
 
   return <Dashboard />;
 }
