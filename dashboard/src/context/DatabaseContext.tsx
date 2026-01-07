@@ -47,6 +47,7 @@ interface DatabaseContextType {
     dataSource: 'db' | 'jsonl' | null;
     loadDatabase: (files: FileList | File[]) => Promise<void>;
     resetDatabase: () => void;
+    exportBackup: () => void;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | null>(null);
@@ -193,6 +194,26 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         }));
     };
 
+    const exportBackup = () => {
+        const backup = {
+            meta: { version: 1, date: new Date().toISOString(), type: 'backup' },
+            clientes,
+            proveedores,
+            payments
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_logistica_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // ... (update functions remain same)
+
     const loadDatabase = async (files: FileList | File[]) => {
         setIsLoading(true);
         setError(null);
@@ -201,10 +222,50 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             const fileList = Array.from(files);
             if (fileList.length === 0) return;
 
-            const firstFile = fileList[0];
+            // Check if any file is a backup JSON
+            for (const file of fileList) {
+                if (file.name.toLowerCase().endsWith('.json')) {
+                    try {
+                        const text = await file.text();
+                        const json = JSON.parse(text);
+                        if (json.meta?.type === 'backup') {
+                            setClientes(prev => ({ ...prev, ...json.clientes }));
+                            setProveedores(prev => ({ ...prev, ...json.proveedores }));
+                            // Filter existing payments to avoid duplicates
+                            setPayments(prev => {
+                                const existIds = new Set(prev.map(p => p.id));
+                                const newPays = (json.payments as Payment[]).filter(p => !existIds.has(p.id));
+                                return [...prev, ...newPays];
+                            });
+                            // If only loading backup, we might stop here or continue loading other files
+                            // For now, let's allow mixing.
+                            continue;
+                        }
+                    } catch (e) {
+                        console.warn("Error parsing potential backup file", file.name, e);
+                    }
+                }
+            }
+
+            const firstFile = fileList.find(f => !f.name.endsWith('.json') || !f.name.includes('backup'));
+            // If we only loaded backup, stop.
+            if (!firstFile && fileList.some(f => f.name.includes('backup'))) {
+                // Just backup loaded
+                setIsLoading(false);
+                return;
+            }
+
+            // ... (rest of DB/JSONL loading logic)
+            if (!firstFile) return;
+
             const fileName = firstFile.name.toLowerCase();
 
             if (fileName.endsWith('.db')) {
+                // ... existing db logic
+                // COPY FROM EXISTING FILE (I will rely on the tool to keep existing lines if I scope carefully, but replace_file_content replaces block)
+                // I have to reproduce the logic or scope precisely.
+                // Since I am replacing a large block, I must reproduce the DB logic.
+
                 const SQL = await initSqlJs({
                     locateFile: (f: string) => `https://sql.js.org/dist/${f}`
                 });
@@ -215,10 +276,18 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 setDb(database);
                 setEvents([]);
                 setPedidos([]);
-                setPayments([]);
+                // setPayments([]); // Don't clear payments if we just loaded backup! 
+                // But usually loading DB implies fresh start. 
+                // Let's decide: Backup should be loaded AFTER or WITH db. 
+                // If I reset here, I lose backup. 
+                // Correction: resetDatabase() shouldn't be called inside loadDatabase if we want to merge?
+                // The current logic resets state on setDb(database).
+                // I will modify to NOT reset payments/clients/proveedores if they are not empty.
+
                 setDataSource('db');
 
             } else if (fileName.endsWith('.jsonl')) {
+                // ... existing jsonl logic
                 const allEvents: TraceEvent[] = [];
                 for (const file of fileList) {
                     if (!file.name.toLowerCase().endsWith('.jsonl')) continue;
@@ -240,7 +309,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 // PARSE PEDIDOS & PAYMENTS
                 const { pedidos: parsedPedidos, payments: parsedPayments } = parseEventsToPedidos(allEvents);
                 setPedidos(parsedPedidos);
-                setPayments(parsedPayments);
+                // Merge parsed payments with backup payments
+                setPayments(prev => [...prev, ...parsedPayments]);
 
                 setDataSource('jsonl');
             }
@@ -270,11 +340,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             error,
             dataSource,
             loadDatabase,
-            resetDatabase
+            resetDatabase,
+            exportBackup // New
         }}>
             {children}
         </DatabaseContext.Provider>
     );
+
 }
 
 export function useDatabase() {

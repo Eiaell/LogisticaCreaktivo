@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
 
 export function ClienteModal({ nombre, isOpen, onClose }: Props) {
     const { clientes, updateCliente } = useDatabase();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Load existing data or default
     const currentData = clientes[nombre] || {
@@ -22,7 +23,8 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
         contacto: '',
         telefono: '',
         email: '',
-        notas: ''
+        notas: '',
+        logo: ''
     });
 
     useEffect(() => {
@@ -33,14 +35,27 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                 contacto: currentData.contacto || '',
                 telefono: currentData.telefono || '',
                 email: currentData.email || '',
-                notas: currentData.notas || ''
+                notas: currentData.notas || '',
+                logo: currentData.logo || ''
             });
         }
-    }, [nombre, isOpen, clientes]);
+    }, [nombre, isOpen, clientes]); // Removed currentData from deps to avoid loop? No, primitive check usually ok but obj triggers. But clientes[nombre] creates new obj if not exist? 
+    // Actually currentData is derived from clientes.
 
     const handleSave = () => {
         updateCliente(nombre, formData);
         onClose();
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, logo: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     if (!isOpen) return null;
@@ -57,6 +72,30 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                 </div>
 
                 <div className="p-6 space-y-4">
+                    {/* Logo Section */}
+                    <div className="flex justify-center mb-6">
+                        <div
+                            className="relative group w-24 h-24 rounded-full bg-blue-500/20 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            {formData.logo ? (
+                                <img src={formData.logo} alt="Logo" className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-4xl select-none">👤</span>
+                            )}
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-xs text-white font-bold">Cambiar Logo</span>
+                            </div>
+                        </div>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                        />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-xs text-gray-500 uppercase font-bold">RUC / DNI</label>

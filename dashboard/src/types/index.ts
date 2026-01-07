@@ -1,8 +1,9 @@
 // Database types for the logistics system
 
 // ...
+// ...
 export interface Cliente {
-    id: string; // usually the name if normalized
+    id: string;
     nombre: string;
     ruc?: string;
     direccion?: string;
@@ -10,6 +11,20 @@ export interface Cliente {
     telefono?: string;
     email?: string;
     notas?: string;
+    logo?: string; // Base64 image
+}
+
+export interface Proveedor {
+    id: string;
+    nombre: string;
+    contacto?: string | null;
+    telefono?: string;
+    direccion?: string;
+    notas?: string;
+    especialidad: string;
+    condiciones_pago?: string | null;
+    factor_demora: number;
+    logo?: string; // Base64 image
 }
 
 export interface Payment {
@@ -36,17 +51,7 @@ export interface Pedido {
     adelanto?: number; // Legacy support
 }
 
-export interface Proveedor {
-    id: string;
-    nombre: string;
-    contacto?: string | null;
-    telefono?: string;
-    direccion?: string;
-    notas?: string;
-    especialidad: string;
-    condiciones_pago?: string | null;
-    factor_demora: number;
-}
+
 
 export interface AcuerdoProduccion {
     id: string;

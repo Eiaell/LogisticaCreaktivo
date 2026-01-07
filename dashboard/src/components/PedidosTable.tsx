@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import React from 'react';
 import { usePedidos } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
@@ -7,25 +7,40 @@ import { ClienteModal } from './ClienteModal';
 export function PedidosTable() {
     // Get shared state
     const pedidos = usePedidos();
-    const { updatePedido, addPayment, payments, selectedStateFilter } = useDatabase();
+    const { updatePedido, addPayment, payments, selectedStateFilter, clientes, updateCliente } = useDatabase();
+
+    // Refs
+    const heroFileInputRef = useRef<HTMLInputElement>(null);
 
     // UI Local state
     const [search, setSearch] = useState('');
     const [filterEstado, setFilterEstado] = useState('');
     const [filterCliente, setFilterCliente] = useState(''); // New client filter
+    const [showClienteModal, setShowClienteModal] = useState(false);
+
+    const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+    const [editingCell, setEditingCell] = useState<{ id: string, field: string } | null>(null);
+    const [editValue, setEditValue] = useState('');
+    const [newAdelantoMonto, setNewAdelantoMonto] = useState('');
+    const [newAdelantoNota, setNewAdelantoNota] = useState('');
+
+    // Helpers
+    const currentCliente = filterCliente ? clientes[filterCliente] : null;
+
+    const handleHeroImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && filterCliente) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                updateCliente(filterCliente, { logo: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const [sortField, setSortField] = useState<string>('created_at');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-    // Modals
-    const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
-    const [newAdelantoMonto, setNewAdelantoMonto] = useState('');
-    const [newAdelantoNota, setNewAdelantoNota] = useState('');
-    const [showClienteModal, setShowClienteModal] = useState(false);
-
-    // Edit state
-    const [editingCell, setEditingCell] = useState<{ id: string, field: string } | null>(null);
-    const [editValue, setEditValue] = useState('');
 
     // Sync filter
     useEffect(() => {
@@ -158,9 +173,22 @@ export function PedidosTable() {
             {filterCliente && (
                 <div className="mb-6 p-4 bg-blue-900/10 border border-blue-500/30 rounded-xl flex justify-between items-center animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl border border-blue-500/50">
-                            👤
+                        <div
+                            className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center text-3xl border border-blue-500/50 overflow-hidden cursor-pointer relative group"
+                            onClick={() => heroFileInputRef.current?.click()}
+                            title="Clic para cambiar logo"
+                        >
+                            {currentCliente?.logo ? (
+                                <img src={currentCliente.logo} alt={filterCliente} className="w-full h-full object-cover" />
+                            ) : (
+                                <span>👤</span>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[10px] text-white font-bold uppercase">Logo</span>
+                            </div>
                         </div>
+                        <input type="file" ref={heroFileInputRef} className="hidden" accept="image/*" onChange={handleHeroImageUpload} />
+
                         <div>
                             <div className="text-xs text-blue-400 font-bold uppercase tracking-wider">Cliente Seleccionado</div>
                             <h3 className="text-2xl font-bold text-white">{filterCliente}</h3>
@@ -192,11 +220,11 @@ export function PedidosTable() {
                 <select
                     value={filterCliente}
                     onChange={(e) => setFilterCliente(e.target.value)}
-                    className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm ${filterCliente ? 'bg-blue-900/20 border-blue-500 text-blue-200' : 'bg-gray-950 border-gray-700 text-gray-300'}`}
+                    className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm min-w-[200px] ${filterCliente ? 'bg-blue-900/20 border-blue-500 text-blue-200' : 'bg-gray-950 border-gray-700 text-gray-300'}`}
                 >
-                    <option value="">👤 Todos los Clientes</option>
+                    <option value="" className="bg-gray-950 text-gray-300">👤 Todos los Clientes</option>
                     {clientesList.map(c => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c} className="bg-gray-950 text-gray-300">{c}</option>
                     ))}
                 </select>
 
@@ -205,9 +233,9 @@ export function PedidosTable() {
                     onChange={(e) => setFilterEstado(e.target.value)}
                     className="px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm text-gray-300"
                 >
-                    <option value="">⚡ Todos los Estados</option>
+                    <option value="" className="bg-gray-950 text-gray-300">⚡ Todos los Estados</option>
                     {estados.map(estado => (
-                        <option key={estado} value={estado}>{estado}</option>
+                        <option key={estado} value={estado} className="bg-gray-950 text-gray-300">{estado}</option>
                     ))}
                 </select>
             </div>
@@ -292,7 +320,7 @@ export function PedidosTable() {
 
                                             {/* PRECIO + BOTÓN ADELANTOS */}
                                             <td className="py-2 px-4">
-                                                <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center justify-start gap-3">
                                                     <div className="cursor-pointer" onDoubleClick={() => handleEditStart(pedido.id, 'precio', pedido.precio)}>
                                                         {editingCell?.id === pedido.id && editingCell.field === 'precio' ? (
                                                             <input autoFocus className="bg-gray-900 border border-cyan-500 rounded px-2 w-20" type="number"

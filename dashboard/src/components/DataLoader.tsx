@@ -54,12 +54,10 @@ export function DataLoader() {
                         <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                             Creaactivo Logistics Dashboard
                         </h2>
+                        <p className="text-xl text-gray-300 mb-2">
+                            Arrastra tu base de datos SQLite (.db), trazas (.jsonl) o Backup (.json)
+                        </p>
                         <p className="text-gray-400 mb-6">
-                            Arrastra tus archivos aquí
-                            <br />
-                            <span className="text-cyan-400 font-mono">.db</span> o{' '}
-                            <span className="text-cyan-400 font-mono">.jsonl</span>
-                            <br />
                             <span className="text-xs text-gray-500">(Puedes seleccionar múltiples .jsonl para cargar todo el historial)</span>
                         </p>
                         <input

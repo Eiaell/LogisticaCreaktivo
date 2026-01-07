@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Network } from 'vis-network';
-import { useProcessFlow, usePedidos } from '../hooks/useKPIs';
+import { useProcessFlow } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
-import { ProveedorModal } from './ProveedorModal'; // Import new modal
+import { ProveedorModal } from './ProveedorModal';
 
 export function ProcessGraph() {
     const containerRef = useRef<HTMLDivElement>(null);
     const getFlowData = useProcessFlow();
-    const pedidos = usePedidos(); // Get data to show summaries
-    const { setSelectedStateFilter, selectedStateFilter } = useDatabase();
+    const { pedidos, events, selectedStateFilter, setSelectedStateFilter, proveedores, clientes } = useDatabase();
 
     // New state for provider modal
     const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
@@ -105,31 +104,47 @@ export function ProcessGraph() {
                         <div className="text-xs text-gray-400">{selectedItemsSummary.length} items activos</div>
                     </div>
                     <div className="p-4 overflow-y-auto max-h-[300px] space-y-3">
-                        {selectedItemsSummary.length > 0 ? selectedItemsSummary.map(item => (
-                            <div key={item.id} className="bg-gray-800 p-3 rounded border border-gray-700 hover:border-cyan-500/50 transition-colors shadow-sm">
-                                <div className="flex justify-between items-start mb-1">
-                                    <div className="font-bold text-cyan-400 text-sm">{item.label}</div>
-                                    <div className="text-[10px] text-gray-500 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">
-                                        {item.cliente?.slice(0, 15)}
+                        {selectedItemsSummary.length > 0 ? selectedItemsSummary.map(item => {
+                            const clientDetails = clientes[item.cliente]; // Get client details
+                            return (
+                                <div key={item.id} className="bg-gray-800 p-3 rounded border border-gray-700 hover:border-cyan-500/50 transition-colors shadow-sm">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <div className="font-bold text-cyan-400 text-sm">{item.label}</div>
+                                        <div className="text-[10px] text-gray-500 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">
+                                            {item.cliente?.slice(0, 15)}
+                                        </div>
+                                    </div>
+
+                                    {/* Cliente con Logo */}
+                                    {item.cliente && (
+                                        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700">
+                                            <span className="text-xs text-gray-500">Cliente:</span>
+                                            <div className="flex items-center gap-1">
+                                                {clientDetails?.logo && (
+                                                    <img src={clientDetails.logo} alt="Logo" className="w-4 h-4 rounded-full object-cover" />
+                                                )}
+                                                <span className="text-xs text-gray-300">{item.cliente}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Provider Link */}
+                                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700">
+                                        <span className="text-xs text-gray-500">Prov:</span>
+                                        {item.proveedor ? (
+                                            <button
+                                                onClick={() => setSelectedProvider(item.proveedor)}
+                                                className="text-xs text-purple-400 hover:text-purple-300 hover:underline cursor-pointer flex items-center gap-1 transition-colors"
+                                            >
+                                                🏭 {item.proveedor}
+                                            </button>
+                                        ) : (
+                                            <span className="text-xs text-gray-600 italic">No asignado</span>
+                                        )}
                                     </div>
                                 </div>
-
-                                {/* Provider Link */}
-                                <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700">
-                                    <span className="text-xs text-gray-500">Prov:</span>
-                                    {item.proveedor ? (
-                                        <button
-                                            onClick={() => setSelectedProvider(item.proveedor)}
-                                            className="text-xs text-purple-400 hover:text-purple-300 hover:underline cursor-pointer flex items-center gap-1 transition-colors"
-                                        >
-                                            🏭 {item.proveedor}
-                                        </button>
-                                    ) : (
-                                        <span className="text-xs text-gray-600 italic">No asignado</span>
-                                    )}
-                                </div>
-                            </div>
-                        )) : (
+                            );
+                        }) : (
                             <div className="text-gray-500 italic text-center py-4">Sin items en esta etapa</div>
                         )}
                     </div>

@@ -1,6 +1,10 @@
 import { useKPIs } from '../hooks/useKPIs';
 
-export function KPICards() {
+interface Props {
+    onCardClick?: (title: string) => void;
+}
+
+export function KPICards({ onCardClick }: Props) {
     const kpis = useKPIs();
 
     if (!kpis) return null;
@@ -19,7 +23,7 @@ export function KPICards() {
             color: 'from-cyan-500 to-blue-500',
         },
         {
-            title: 'En Producción',
+            title: 'Gastos de Producción',
             value: `S/. ${kpis.montoProduccion.toLocaleString()}`,
             icon: '🏭',
             color: 'from-amber-500 to-orange-600',
@@ -29,6 +33,7 @@ export function KPICards() {
             value: kpis.alertas,
             icon: '⚠️',
             color: kpis.alertas > 0 ? 'from-red-500 to-pink-600' : 'from-green-500 to-emerald-600',
+            action: true
         },
         {
             title: 'Movilidad Hoy',
@@ -43,7 +48,8 @@ export function KPICards() {
             {cards.map((card) => (
                 <div
                     key={card.title}
-                    className="glass-card p-4 relative overflow-hidden group hover:scale-105 transition-transform"
+                    onClick={() => onCardClick?.(card.title)}
+                    className="glass-card p-4 relative overflow-hidden group hover:scale-105 transition-transform cursor-pointer"
                 >
                     <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-10 group-hover:opacity-20 transition-opacity`} />
                     <div className="relative">
