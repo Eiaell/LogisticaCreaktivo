@@ -8,7 +8,7 @@ import { ProveedorModal } from './components/ProveedorModal';
 import { useDatabase, DatabaseProvider } from './context/DatabaseContext';
 
 function Dashboard() {
-  const { resetDatabase, pedidos, clientes, exportBackup, loadDatabase } = useDatabase();
+  const { pedidos, clientes, exportBackup, loadDatabase } = useDatabase();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
   const [modalType, setModalType] = useState<'cliente' | 'proveedor' | null>(null);
   const [newEntityName, setNewEntityName] = useState('');

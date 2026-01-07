@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Network } from 'vis-network';
 import { useProcessFlow } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
@@ -7,7 +7,7 @@ import { ProveedorModal } from './ProveedorModal';
 export function ProcessGraph() {
     const containerRef = useRef<HTMLDivElement>(null);
     const getFlowData = useProcessFlow();
-    const { pedidos, events, selectedStateFilter, setSelectedStateFilter, proveedores, clientes } = useDatabase();
+    const { pedidos, selectedStateFilter, setSelectedStateFilter, clientes } = useDatabase();
 
     // New state for provider modal
     const [selectedProvider, setSelectedProvider] = useState<string | null>(null);

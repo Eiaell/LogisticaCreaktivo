@@ -38,8 +38,8 @@ export function PedidosTable() {
         }
     };
 
-    const [sortField, setSortField] = useState<string>('created_at');
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const sortField = 'created_at';
+    const sortDir = 'desc' as const;
 
 
     // Sync filter
@@ -103,7 +103,6 @@ export function PedidosTable() {
         }).sort((a, b) => {
             const aVal = (a as any)[sortField];
             const bVal = (b as any)[sortField];
-            if (sortDir === 'asc') return aVal > bVal ? 1 : -1;
             return aVal < bVal ? 1 : -1;
         });
     }, [pedidos, search, filterEstado, filterCliente, sortField, sortDir]);
