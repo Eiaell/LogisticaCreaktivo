@@ -1,6 +1,19 @@
 // Database types for the logistics system
 
+// ...
+export interface Cliente {
+    id: string; // usually the name if normalized
+    nombre: string;
+    ruc?: string;
+    direccion?: string;
+    contacto?: string;
+    telefono?: string;
+    email?: string;
+    notas?: string;
+}
+
 export interface Payment {
+    // ...
     id: string;
     pedidoId: string;
     monto: number;

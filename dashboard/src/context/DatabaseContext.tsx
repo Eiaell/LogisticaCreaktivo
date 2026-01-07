@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import initSqlJs, { type Database } from 'sql.js';
-import type { Pedido, Payment, Proveedor } from '../types';
+import type { Pedido, Payment, Proveedor, Cliente } from '../types';
 
 // Event from JSONL trace files
 export interface TraceEvent {
@@ -32,10 +32,12 @@ interface DatabaseContextType {
     pedidos: Pedido[];
     payments: Payment[]; // New global payments state
     proveedores: Record<string, Proveedor>; // Shared providers
+    clientes: Record<string, Cliente>; // New
     setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
     updatePedido: (id: string, changes: Partial<Pedido>) => void;
     addPayment: (pedidoId: string, monto: number, nota?: string) => void;
     updateProveedor: (nombre: string, data: Partial<Proveedor>) => void; // Update fn
+    updateCliente: (nombre: string, data: Partial<Cliente>) => void; // New fn
 
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
@@ -134,6 +136,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [payments, setPayments] = useState<Payment[]>([]); // State
     // New: Providers metadata
     const [proveedores, setProveedores] = useState<Record<string, Proveedor>>({});
+    const [clientes, setClientes] = useState<Record<string, Cliente>>({}); // New
 
     const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
 
@@ -147,6 +150,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         setPedidos([]);
         setPayments([]);
         setProveedores({});
+        setClientes({});
         setDataSource(null);
         setError(null);
         setSelectedStateFilter(null);
@@ -160,6 +164,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         setProveedores(prev => ({
             ...prev,
             [nombre]: { ...(prev[nombre] || { id: nombre, nombre, especialidad: 'General', factor_demora: 0 }), ...data }
+        }));
+    };
+
+    const updateCliente = (nombre: string, data: Partial<Cliente>) => {
+        setClientes(prev => ({
+            ...prev,
+            [nombre]: { ...(prev[nombre] || { id: nombre, nombre }), ...data }
         }));
     };
 
@@ -247,10 +258,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             pedidos,
             payments,
             proveedores,
+            clientes,
             setPedidos,
             updatePedido,
             addPayment,
             updateProveedor,
+            updateCliente,
             selectedStateFilter,
             setSelectedStateFilter,
             isLoading,

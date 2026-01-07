@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
+import React from 'react';
 import { usePedidos } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
-import React from 'react';
+import { ClienteModal } from './ClienteModal';
 
 export function PedidosTable() {
     // Get shared state
@@ -11,13 +12,16 @@ export function PedidosTable() {
     // UI Local state
     const [search, setSearch] = useState('');
     const [filterEstado, setFilterEstado] = useState('');
+    const [filterCliente, setFilterCliente] = useState(''); // New client filter
+
     const [sortField, setSortField] = useState<string>('created_at');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-    // Expand state for Payments Row
+    // Modals
     const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
     const [newAdelantoMonto, setNewAdelantoMonto] = useState('');
     const [newAdelantoNota, setNewAdelantoNota] = useState('');
+    const [showClienteModal, setShowClienteModal] = useState(false);
 
     // Edit state
     const [editingCell, setEditingCell] = useState<{ id: string, field: string } | null>(null);
@@ -80,6 +84,11 @@ export function PedidosTable() {
         return unique.filter(Boolean);
     }, [pedidos]);
 
+    const clientesList = useMemo(() => {
+        const unique = [...new Set(pedidos.map(p => p.cliente))];
+        return unique.filter(Boolean).sort();
+    }, [pedidos]);
+
     const filteredPedidos = useMemo(() => {
         let result = [...pedidos];
 
@@ -100,6 +109,10 @@ export function PedidosTable() {
             });
         }
 
+        if (filterCliente) {
+            result = result.filter(p => p.cliente === filterCliente);
+        }
+
         result.sort((a, b) => {
             const aVal = String((a as any)[sortField] ?? '');
             const bVal = String((b as any)[sortField] ?? '');
@@ -108,7 +121,7 @@ export function PedidosTable() {
         });
 
         return result;
-    }, [pedidos, search, filterEstado, sortField, sortDir]);
+    }, [pedidos, search, filterEstado, filterCliente, sortField, sortDir]);
 
     const handleSort = (field: string) => {
         if (sortField === field) {
@@ -136,26 +149,63 @@ export function PedidosTable() {
 
     return (
         <div className="glass-card p-6">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <span className="text-cyan-400">📋</span>
                 Operational View
             </h2>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4 mb-4">
-                <input
-                    type="text"
-                    placeholder="Buscar cliente, descripción, proveedor..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 flex-1 min-w-[200px]"
-                />
+            {/* Selected Client Hero Section */}
+            {filterCliente && (
+                <div className="mb-6 p-4 bg-blue-900/10 border border-blue-500/30 rounded-xl flex justify-between items-center animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl border border-blue-500/50">
+                            👤
+                        </div>
+                        <div>
+                            <div className="text-xs text-blue-400 font-bold uppercase tracking-wider">Cliente Seleccionado</div>
+                            <h3 className="text-2xl font-bold text-white">{filterCliente}</h3>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setShowClienteModal(true)}
+                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-lg shadow-blue-900/20 flex items-center gap-2 transition-all hover:scale-105"
+                    >
+                        <span>Ver Ficha Completa</span>
+                        <span className="text-lg">→</span>
+                    </button>
+                </div>
+            )}
+
+            {/* Filters Bar */}
+            <div className="flex flex-wrap gap-4 mb-4 items-center bg-gray-900/40 p-3 rounded-lg border border-gray-800">
+                <div className="flex-1 min-w-[200px]">
+                    <input
+                        type="text"
+                        placeholder="Buscar global..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm"
+                    />
+                </div>
+
+                {/* Client Select */}
+                <select
+                    value={filterCliente}
+                    onChange={(e) => setFilterCliente(e.target.value)}
+                    className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm ${filterCliente ? 'bg-blue-900/20 border-blue-500 text-blue-200' : 'bg-gray-950 border-gray-700 text-gray-300'}`}
+                >
+                    <option value="">👤 Todos los Clientes</option>
+                    {clientesList.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+
                 <select
                     value={filterEstado}
                     onChange={(e) => setFilterEstado(e.target.value)}
-                    className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500"
+                    className="px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm text-gray-300"
                 >
-                    <option value="">Todos los estados</option>
+                    <option value="">⚡ Todos los Estados</option>
                     {estados.map(estado => (
                         <option key={estado} value={estado}>{estado}</option>
                     ))}
@@ -198,7 +248,15 @@ export function PedidosTable() {
                                                     <input autoFocus className="bg-gray-900 border border-cyan-500 rounded px-2 w-full"
                                                         value={editValue} onChange={e => setEditValue(e.target.value)}
                                                         onBlur={handleEditSave} onKeyDown={handleKeyDown} />
-                                                ) : pedido.cliente || <span className="text-gray-600 italic">--</span>}
+                                                ) : (
+                                                    <span
+                                                        className="hover:text-blue-400 hover:underline"
+                                                        onClick={(e) => { e.stopPropagation(); setFilterCliente(pedido.cliente); }}
+                                                        title="Clic para filtrar por este cliente"
+                                                    >
+                                                        {pedido.cliente || <span className="text-gray-600 italic">--</span>}
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* DESCRIPCION */}
@@ -342,6 +400,15 @@ export function PedidosTable() {
                     <span>Pendiente: <span className="text-red-400 font-medium">S/.{(totalVenta - totalCobrado).toFixed(2)}</span></span>
                 </div>
             </div>
+
+            {/* CLIENTE MODAL */}
+            {filterCliente && (
+                <ClienteModal
+                    nombre={filterCliente}
+                    isOpen={showClienteModal}
+                    onClose={() => setShowClienteModal(false)}
+                />
+            )}
         </div>
     );
 }
