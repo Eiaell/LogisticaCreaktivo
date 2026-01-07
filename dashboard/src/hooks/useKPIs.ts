@@ -189,7 +189,7 @@ export function useProcessFlow() {
             { id: 'aprobado', label: 'Aprobado', color: '#8b5cf6' },
             { id: 'en_produccion', label: 'En Producción', color: '#f59e0b' },
             { id: 'listo_recoger', label: 'Listo Recoger', color: '#10b981' },
-            { id: 'en_campo', label: 'En Campo', color: '#06b6d4' },
+            // { id: 'en_campo', label: 'En Campo', color: '#06b6d4' }, // REMOVED as requested
             { id: 'entregado', label: 'Entregado', color: '#22c55e' },
             { id: 'cerrado', label: 'Cerrado', color: '#64748b' },
         ];
@@ -222,6 +222,9 @@ export function useProcessFlow() {
                 if (ctx.tipo === 'movimiento_movilidad') state = 'entregado';
                 if (ctx.nuevoEstado) state = ctx.nuevoEstado as string;
 
+                // Skip en_campo state mapping if it appears in data, map to listo_recoger or entregado depending on logic
+                if (state === 'en_campo') state = 'listo_recoger';
+
                 if (!stateMap[state]) stateMap[state] = new Set();
                 stateMap[state].add(caseId);
             }
@@ -244,8 +247,8 @@ export function useProcessFlow() {
             { id: 'e1', from: 'cotizacion', to: 'aprobado', arrows: 'to' },
             { id: 'e2', from: 'aprobado', to: 'en_produccion', arrows: 'to' },
             { id: 'e3', from: 'en_produccion', to: 'listo_recoger', arrows: 'to' },
-            { id: 'e4', from: 'listo_recoger', to: 'en_campo', arrows: 'to' },
-            { id: 'e5', from: 'en_campo', to: 'entregado', arrows: 'to' },
+            { id: 'e4', from: 'listo_recoger', to: 'entregado', arrows: 'to' }, // Connected direct to Entregado
+            // { id: 'e5', from: 'en_campo', to: 'entregado', arrows: 'to' }, // Removed
             { id: 'e6', from: 'entregado', to: 'cerrado', arrows: 'to' },
         ];
 

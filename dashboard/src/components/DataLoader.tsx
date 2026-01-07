@@ -9,9 +9,8 @@ export function DataLoader() {
         e.preventDefault();
         setIsDragging(false);
 
-        const file = e.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.db') || file.name.endsWith('.jsonl'))) {
-            await loadDatabase(file);
+        if (e.dataTransfer.files.length > 0) {
+            await loadDatabase(e.dataTransfer.files);
         }
     }, [loadDatabase]);
 
@@ -25,9 +24,9 @@ export function DataLoader() {
     }, []);
 
     const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            await loadDatabase(file);
+        const files = e.target.files;
+        if (files && files.length > 0) {
+            await loadDatabase(files);
         }
     }, [loadDatabase]);
 
@@ -56,14 +55,17 @@ export function DataLoader() {
                             Creaactivo Logistics Dashboard
                         </h2>
                         <p className="text-gray-400 mb-6">
-                            Arrastra tu archivo aquí
+                            Arrastra tus archivos aquí
                             <br />
-                            <span className="text-cyan-400 font-mono">.db</span> (SQLite) o{' '}
-                            <span className="text-cyan-400 font-mono">.jsonl</span> (Trazas)
+                            <span className="text-cyan-400 font-mono">.db</span> o{' '}
+                            <span className="text-cyan-400 font-mono">.jsonl</span>
+                            <br />
+                            <span className="text-xs text-gray-500">(Puedes seleccionar múltiples .jsonl para cargar todo el historial)</span>
                         </p>
                         <input
                             type="file"
                             accept=".db,.jsonl"
+                            multiple
                             onChange={handleFileSelect}
                             className="hidden"
                             id="file-input"
@@ -72,7 +74,7 @@ export function DataLoader() {
                             htmlFor="file-input"
                             className="inline-block px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg font-medium cursor-pointer hover:opacity-90 transition-opacity"
                         >
-                            Seleccionar archivo
+                            Seleccionar archivos
                         </label>
                         <p className="text-gray-500 text-xs mt-4">
                             💡 Los archivos .jsonl están en <code>knowledge_base/traces/</code>

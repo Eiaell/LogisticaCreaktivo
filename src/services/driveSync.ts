@@ -168,17 +168,50 @@ export async function syncKnowledgeBase(): Promise<boolean> {
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    // Upload today's trace file
+    console.log('[DriveSync] Merging all history trace files...');
+
+    // 1. Merge all JSONL files into one master file
+    const masterFilePath = path.join(tracesDir, 'master_full_history.jsonl');
+    try {
+      const files = await fs.readdir(tracesDir);
+      let masterContent = '';
+      let fileCount = 0;
+
+      // Sort files to keep chronological order roughly correct by filename
+      files.sort();
+
+      for (const file of files) {
+        if (file.endsWith('.jsonl') && !file.startsWith('master_')) {
+          const content = await fs.readFile(path.join(tracesDir, file), 'utf-8');
+          masterContent += content;
+          if (!content.endsWith('\n')) masterContent += '\n';
+          fileCount++;
+        }
+      }
+
+      await fs.writeFile(masterFilePath, masterContent, 'utf-8');
+      console.log(`[DriveSync] Created master_full_history.jsonl with content from ${fileCount} files.`);
+
+      // Upload Master File
+      const masterId = await uploadFile(masterFilePath, 'application/json', 'master_full_history.jsonl');
+      if (!masterId) success = false;
+
+    } catch (err: any) {
+      console.error('[DriveSync] Error merging files:', err.message);
+      success = false;
+    }
+
+    // 2. Upload today's individual trace file (backup)
     const traceFile = path.join(tracesDir, `${dateStr}.jsonl`);
     try {
       await fs.access(traceFile);
       const traceId = await uploadFile(traceFile, 'application/json', `trace_${dateStr}.jsonl`);
       if (!traceId) success = false;
     } catch {
-      console.log('[DriveSync] No trace file for today yet');
+      console.log('[DriveSync] No individual trace file for today yet');
     }
 
-    // Upload today's graph
+    // 3. Upload today's graph
     const graphFile = path.join(graphsDir, 'graph_today.html');
     try {
       await fs.access(graphFile);

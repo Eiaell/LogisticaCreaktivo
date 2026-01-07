@@ -1,12 +1,51 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { usePedidos } from '../hooks/useKPIs';
+import type { Pedido } from '../types';
 
 export function PedidosTable() {
-    const pedidos = usePedidos();
+    // Get initial data
+    const initialPedidos = usePedidos();
+
+    // Local state for edits
+    const [pedidos, setPedidos] = useState<Pedido[]>([]);
     const [search, setSearch] = useState('');
     const [filterEstado, setFilterEstado] = useState('');
     const [sortField, setSortField] = useState<string>('created_at');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+    // Edit state
+    const [editingCell, setEditingCell] = useState<{ id: string, field: string } | null>(null);
+    const [editValue, setEditValue] = useState('');
+
+    // Sync with initial data load
+    useEffect(() => {
+        setPedidos(initialPedidos);
+    }, [initialPedidos]);
+
+    const handleEdit = (id: string, field: string, value: string) => {
+        setEditingCell({ id, field });
+        setEditValue(value);
+    };
+
+    const saveEdit = () => {
+        if (editingCell) {
+            setPedidos(prev => prev.map(p => {
+                if (p.id === editingCell.id || (p as any).caseId === editingCell.id) {
+                    return { ...p, [editingCell.field]: editValue };
+                }
+                return p;
+            }));
+            setEditingCell(null);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            saveEdit();
+        } else if (e.key === 'Escape') {
+            setEditingCell(null);
+        }
+    };
 
     const estados = useMemo(() => {
         const unique = [...new Set(pedidos.map(p => p.estado))];
@@ -67,6 +106,9 @@ export function PedidosTable() {
                 <span className="text-cyan-400">📋</span>
                 Operational View - Pedidos
             </h2>
+            <p className="text-xs text-gray-500 mb-4">
+                * Haz doble clic en una celda para editar el valor (edición temporal en memoria)
+            </p>
 
             {/* Filters */}
             <div className="flex flex-wrap gap-4 mb-4">
@@ -121,19 +163,69 @@ export function PedidosTable() {
                         ) : (
                             filteredPedidos.map((pedido) => (
                                 <tr
-                                    key={pedido.id}
+                                    key={pedido.id || (pedido as any).caseId}
                                     className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors"
                                 >
-                                    <td className="py-3 px-4 font-medium">{pedido.cliente}</td>
-                                    <td className="py-3 px-4 text-gray-300">{pedido.descripcion}</td>
-                                    <td className="py-3 px-4 text-gray-400">{pedido.vendedora}</td>
+                                    {/* Cliente Editable */}
+                                    <td
+                                        className="py-3 px-4 font-medium cursor-text hover:bg-gray-700/50"
+                                        onDoubleClick={() => handleEdit(pedido.id, 'cliente', pedido.cliente)}
+                                    >
+                                        {editingCell?.id === pedido.id && editingCell?.field === 'cliente' ? (
+                                            <input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value)}
+                                                onBlur={saveEdit}
+                                                onKeyDown={handleKeyDown}
+                                                className="bg-gray-900 border border-cyan-500 rounded px-2 py-1 w-full text-white"
+                                            />
+                                        ) : pedido.cliente}
+                                    </td>
+
+                                    {/* Descripcion Editable */}
+                                    <td
+                                        className="py-3 px-4 text-gray-300 cursor-text hover:bg-gray-700/50"
+                                        onDoubleClick={() => handleEdit(pedido.id, 'descripcion', pedido.descripcion)}
+                                    >
+                                        {editingCell?.id === pedido.id && editingCell?.field === 'descripcion' ? (
+                                            <input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value)}
+                                                onBlur={saveEdit}
+                                                onKeyDown={handleKeyDown}
+                                                className="bg-gray-900 border border-cyan-500 rounded px-2 py-1 w-full text-white"
+                                            />
+                                        ) : pedido.descripcion}
+                                    </td>
+
+                                    {/* Vendedora Editable */}
+                                    <td
+                                        className="py-3 px-4 text-gray-400 cursor-text hover:bg-gray-700/50"
+                                        onDoubleClick={() => handleEdit(pedido.id, 'vendedora', pedido.vendedora)}
+                                    >
+                                        {editingCell?.id === pedido.id && editingCell?.field === 'vendedora' ? (
+                                            <input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value)}
+                                                onBlur={saveEdit}
+                                                onKeyDown={handleKeyDown}
+                                                className="bg-gray-900 border border-cyan-500 rounded px-2 py-1 w-full text-white"
+                                            />
+                                        ) : pedido.vendedora}
+                                    </td>
+
+                                    {/* Estado (Select) */}
                                     <td className="py-3 px-4">
                                         <span className={`px-2 py-1 rounded-full text-xs ${getEstadoColor(pedido.estado)}`}>
                                             {pedido.estado}
                                         </span>
                                     </td>
+
                                     <td className="py-3 px-4 text-gray-400">
-                                        {new Date(pedido.created_at).toLocaleDateString('es-PE')}
+                                        {pedido.created_at ? new Date(pedido.created_at).toLocaleDateString('es-PE') : '-'}
                                     </td>
                                 </tr>
                             ))
