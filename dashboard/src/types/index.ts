@@ -84,4 +84,8 @@ export interface KPIs {
     montoProduccion: number;
     alertas: number;
     movilidadHoy: number;
+    // New KPIs
+    valorPipeline: number;      // Sum of prices of active orders
+    tasaConversion: number;     // % of closed orders vs total
+    saldoPendiente: number;     // Total price - total paid
 }

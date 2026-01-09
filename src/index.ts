@@ -59,7 +59,9 @@ async function main() {
     console.log('[Init] Starting WhatsApp client...');
     await initializeWhatsApp();
 
-    // Set up end-of-day reminder
+    // DESHABILITADO: Resumen del día (end-of-day reminder)
+    // Para reactivar: descomentar el bloque siguiente
+    /*
     if (FLACO_NUMERO) {
       console.log(`[Init] Scheduling end-of-day reminder: ${REMINDER_CRON}`);
 
@@ -83,6 +85,7 @@ async function main() {
 
       console.log('[Init] Reminder scheduled\n');
     }
+    */
 
     // Set up periodic Drive sync (every 30 minutes)
     if (isDriveAvailable()) {

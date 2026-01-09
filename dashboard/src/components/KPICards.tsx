@@ -23,7 +23,25 @@ export function KPICards({ onCardClick }: Props) {
             color: 'from-cyan-500 to-blue-500',
         },
         {
-            title: 'Gastos de Producción',
+            title: 'Valor Pipeline',
+            value: `S/. ${kpis.valorPipeline.toLocaleString()}`,
+            icon: '💰',
+            color: 'from-emerald-500 to-teal-600',
+        },
+        {
+            title: 'Saldo Pendiente',
+            value: `S/. ${kpis.saldoPendiente.toLocaleString()}`,
+            icon: '📊',
+            color: kpis.saldoPendiente > 0 ? 'from-red-500 to-rose-600' : 'from-green-500 to-emerald-600',
+        },
+        {
+            title: 'Tasa Conversión',
+            value: `${kpis.tasaConversion.toFixed(1)}%`,
+            icon: '📈',
+            color: kpis.tasaConversion >= 50 ? 'from-green-500 to-emerald-600' : 'from-amber-500 to-orange-600',
+        },
+        {
+            title: 'Inversión Producción',
             value: `S/. ${kpis.montoProduccion.toLocaleString()}`,
             icon: '🏭',
             color: 'from-amber-500 to-orange-600',
@@ -35,16 +53,10 @@ export function KPICards({ onCardClick }: Props) {
             color: kpis.alertas > 0 ? 'from-red-500 to-pink-600' : 'from-green-500 to-emerald-600',
             action: true
         },
-        {
-            title: 'Movilidad Hoy',
-            value: `S/. ${kpis.movilidadHoy.toFixed(2)}`,
-            icon: '🚌',
-            color: 'from-purple-500 to-violet-600',
-        },
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
             {cards.map((card) => (
                 <div
                     key={card.title}

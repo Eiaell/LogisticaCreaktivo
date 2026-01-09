@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface Props {
     nombre: string;
@@ -8,7 +9,7 @@ interface Props {
 }
 
 export function ProveedorModal({ nombre, isOpen, onClose }: Props) {
-    const { proveedores, updateProveedor, uploadLogo } = useDatabase();
+    const { proveedores, updateProveedor, uploadLogo, deleteProveedor } = useDatabase();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Load existing data or default
@@ -29,6 +30,7 @@ export function ProveedorModal({ nombre, isOpen, onClose }: Props) {
     });
     const [isUploading, setIsUploading] = useState(false);
     const [error, setLocalError] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -45,6 +47,12 @@ export function ProveedorModal({ nombre, isOpen, onClose }: Props) {
 
     const handleSave = () => {
         updateProveedor(nombre, formData);
+        onClose();
+    };
+
+    const handleDelete = async () => {
+        await deleteProveedor(nombre);
+        setShowDeleteConfirm(false);
         onClose();
     };
 
@@ -161,21 +169,42 @@ export function ProveedorModal({ nombre, isOpen, onClose }: Props) {
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-gray-800 bg-gray-800/30 flex justify-end gap-3">
+                <div className="p-4 border-t border-gray-800 bg-gray-800/30 flex justify-between">
                     <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-gray-400 hover:text-white text-sm"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="px-4 py-2 bg-red-600/20 hover:bg-red-600 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white rounded text-sm transition-colors flex items-center gap-2"
                     >
-                        Cancelar
+                        <span>🗑️</span>
+                        Eliminar
                     </button>
-                    <button
-                        onClick={handleSave}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium text-sm shadow-lg shadow-purple-900/20"
-                    >
-                        Guardar Información
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-gray-400 hover:text-white text-sm"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium text-sm shadow-lg shadow-purple-900/20"
+                        >
+                            Guardar Información
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation */}
+            <ConfirmDialog
+                isOpen={showDeleteConfirm}
+                title="Eliminar Proveedor"
+                message={`¿Estás seguro de eliminar el proveedor "${nombre}"? Esta acción no se puede deshacer.`}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="danger"
+                onConfirm={handleDelete}
+                onCancel={() => setShowDeleteConfirm(false)}
+            />
         </div>
     );
 }

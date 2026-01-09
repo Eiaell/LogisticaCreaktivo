@@ -51,6 +51,7 @@ client.on('ready', () => {
 });
 
 // Message event (message_create captures both sent and received messages)
+// Message event (message_create captures both sent and received messages)
 client.on('message_create', async (msg: Message) => {
   try {
     // Only process messages sent by the user (fromMe = true)
@@ -71,20 +72,18 @@ client.on('message_create', async (msg: Message) => {
 
     // Get chat info to check if it's allowed
     const chat = await msg.getChat();
-    const chatName = chat.name || '';
+    // const chatName = chat.name || ''; // Removed unused var
     const isGroup = chat.isGroup;
 
     // Only allow: personal chat (sending to yourself) OR group named "Logibot prueba"
     const isSelfChat = msg.to === msg.from; // Sending message to yourself
-    const isLogibotGroup = isGroup && chatName.toLowerCase().includes('logibot');
+    // const isLogibotGroup = isGroup && chatName.toLowerCase().includes('logibot'); // Removed hardcoded check per plan
 
-    if (!isSelfChat && !isLogibotGroup) {
+    // For now, we are strict: ONLY Self Chat is allowed for the bot to read unless configured otherwise
+    if (!isSelfChat) {
       // Silently ignore messages to other chats
       return;
     }
-
-    // Log message info
-    console.log(`[WhatsApp] Message: ${msg.type} in ${isGroup ? 'group' : 'private'}: ${chatName || 'self'}`);
 
     // Process the message
     const response = await handleMessage(msg);
@@ -92,17 +91,10 @@ client.on('message_create', async (msg: Message) => {
     // Only send response if there's something meaningful to report
     if (response) {
       await msg.reply(response);
-      console.log('[WhatsApp] Response sent');
     }
 
   } catch (error) {
     console.error('[WhatsApp] Error handling message:', error);
-
-    try {
-      await msg.reply('Ocurrió un error. Intenta de nuevo o reporta el problema.');
-    } catch {
-      console.error('[WhatsApp] Could not send error response');
-    }
   }
 });
 

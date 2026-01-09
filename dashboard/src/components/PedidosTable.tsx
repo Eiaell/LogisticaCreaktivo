@@ -3,11 +3,13 @@ import React from 'react';
 import { usePedidos } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
 import { ClienteModal } from './ClienteModal';
+import { NuevoPedidoModal } from './NuevoPedidoModal';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export function PedidosTable() {
     // Get shared state
     const pedidos = usePedidos();
-    const { updatePedido, addPayment, payments, selectedStateFilter, clientes, updateCliente, uploadLogo } = useDatabase();
+    const { updatePedido, addPayment, payments, selectedStateFilter, clientes, updateCliente, uploadLogo, deletePedido, deletePedidos } = useDatabase();
 
     // Refs
     const heroFileInputRef = useRef<HTMLInputElement>(null);
@@ -23,7 +25,11 @@ export function PedidosTable() {
     const [editValue, setEditValue] = useState('');
     const [newAdelantoMonto, setNewAdelantoMonto] = useState('');
     const [newAdelantoNota, setNewAdelantoNota] = useState('');
-    const [visibleAdelantosCount, setVisibleAdelantosCount] = useState(0);
+    const [showNuevoPedidoModal, setShowNuevoPedidoModal] = useState(false);
+
+    // Selection state
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [confirmDelete, setConfirmDelete] = useState<{ type: 'single' | 'batch', ids: string[] } | null>(null);
 
     // Helpers
     const currentCliente = filterCliente ? clientes[filterCliente] : null;
@@ -76,6 +82,38 @@ export function PedidosTable() {
             setNewAdelantoMonto('');
             setNewAdelantoNota('');
         }
+    };
+
+    // Selection handlers
+    const toggleSelection = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredPedidos.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredPedidos.map(p => p.id)));
+        }
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!confirmDelete) return;
+        if (confirmDelete.type === 'single') {
+            await deletePedido(confirmDelete.ids[0]);
+        } else {
+            await deletePedidos(confirmDelete.ids);
+        }
+        setSelectedIds(new Set());
+        setConfirmDelete(null);
     };
 
     // Derived lists
@@ -149,6 +187,26 @@ export function PedidosTable() {
 
             {/* Filters Bar */}
             <div className="flex flex-wrap gap-4 mb-4 items-center bg-gray-900/40 p-3 rounded-lg border border-gray-800">
+                {/* Nuevo Pedido Button */}
+                <button
+                    onClick={() => setShowNuevoPedidoModal(true)}
+                    className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 shadow-lg shadow-cyan-900/30"
+                >
+                    <span className="text-lg">+</span>
+                    Nuevo Pedido
+                </button>
+
+                {/* Batch Delete Button */}
+                {selectedIds.size > 0 && (
+                    <button
+                        onClick={() => setConfirmDelete({ type: 'batch', ids: Array.from(selectedIds) })}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 shadow-lg shadow-red-900/30 animate-in fade-in duration-200"
+                    >
+                        <span>🗑️</span>
+                        Eliminar ({selectedIds.size})
+                    </button>
+                )}
+
                 <div className="flex-1 min-w-[200px]">
                     <input
                         type="text"
@@ -165,7 +223,7 @@ export function PedidosTable() {
                     onChange={(e) => setFilterCliente(e.target.value)}
                     className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm min-w-[200px] ${filterCliente ? 'bg-blue-900/20 border-blue-500 text-blue-200' : 'bg-gray-950 border-gray-700 text-gray-300'}`}
                 >
-                    <option value="" className="bg-gray-950 text-gray-300">👤 Todos los Clientes</option>
+                    <option value="" className="bg-gray-950 text-gray-300">Todos los Clientes</option>
                     {clientesList.map(c => (
                         <option key={c} value={c} className="bg-gray-950 text-gray-300">{c}</option>
                     ))}
@@ -176,7 +234,7 @@ export function PedidosTable() {
                     onChange={(e) => setFilterEstado(e.target.value)}
                     className="px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm text-gray-300"
                 >
-                    <option value="" className="bg-gray-950 text-gray-300">⚡ Todos los Estados</option>
+                    <option value="" className="bg-gray-950 text-gray-300">Todos los Estados</option>
                     {estados.map(estado => (
                         <option key={estado} value={estado} className="bg-gray-950 text-gray-300">{estado}</option>
                     ))}
@@ -188,6 +246,15 @@ export function PedidosTable() {
                 <table className="w-full text-sm border-collapse">
                     <thead>
                         <tr className="border-b border-gray-700 text-gray-400">
+                            {/* Checkbox column */}
+                            <th className="p-4 w-10">
+                                <input
+                                    type="checkbox"
+                                    checked={filteredPedidos.length > 0 && selectedIds.size === filteredPedidos.length}
+                                    onChange={toggleSelectAll}
+                                    className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
+                                />
+                            </th>
                             {[
                                 { label: 'Cliente', w: 'w-48' },
                                 { label: 'Descripción', w: 'w-64' },
@@ -199,14 +266,7 @@ export function PedidosTable() {
                                 { label: 'Saldo', w: 'w-32' },
                                 { label: '', w: 'w-10' }
                             ].map((col, idx) => (
-                                <React.Fragment key={idx}>
-                                    <th className={`p-4 text-left font-medium ${col.w}`}>{col.label}</th>
-                                    {col.label === 'Precio' && Array.from({ length: visibleAdelantosCount }).map((_, i) => (
-                                        <th key={`adelanto-head-${i}`} className="p-4 text-left font-medium w-32 border-l border-gray-800 bg-gray-900/40 text-emerald-500/80">
-                                            Adelanto {i + 1}
-                                        </th>
-                                    ))}
-                                </React.Fragment>
+                                <th key={idx} className={`p-4 text-left font-medium ${col.w}`}>{col.label}</th>
                             ))}
                         </tr>
                     </thead>
@@ -214,8 +274,17 @@ export function PedidosTable() {
                         {filteredPedidos.map((pedido) => (
                             <React.Fragment key={pedido.id}>
                                 <tr
-                                    className={`border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group ${expandedRowId === pedido.id ? 'bg-blue-950/20' : ''}`}
+                                    className={`border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group ${expandedRowId === pedido.id ? 'bg-blue-950/20' : ''} ${selectedIds.has(pedido.id) ? 'bg-cyan-950/20' : ''}`}
                                 >
+                                    {/* Row Checkbox */}
+                                    <td className="p-4 align-middle">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(pedido.id)}
+                                            onChange={() => toggleSelection(pedido.id)}
+                                            className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
+                                        />
+                                    </td>
                                     <td className="p-4 align-middle">
                                         <div
                                             className="flex items-center gap-3 font-bold text-gray-100 hover:text-cyan-400 cursor-pointer transition-colors group/client"
@@ -306,9 +375,15 @@ export function PedidosTable() {
                                         ) : (
                                             <span
                                                 onClick={() => handleEditStart(pedido.id, 'estado', pedido.estado)}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:ring-1 hover:ring-cyan-500 transition-all
-                                                ${pedido.estado === 'cancelado' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                                                        'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}>
+                                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:ring-1 hover:ring-white/30 transition-all
+                                                ${pedido.estado === 'cotizacion' ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30' :
+                                                        pedido.estado === 'aprobado' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                                                            pedido.estado === 'en_produccion' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
+                                                                pedido.estado === 'listo_recoger' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
+                                                                    pedido.estado === 'entregado' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                                                        pedido.estado === 'cerrado' ? 'bg-green-900/30 text-green-600 border border-green-900/50' :
+                                                                            pedido.estado === 'cancelado' ? 'bg-red-500/20 text-red-500 border border-red-500/30' :
+                                                                                'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
                                                 {pedido.estado.replace('_', ' ')}
                                             </span>
                                         )}
@@ -336,32 +411,8 @@ export function PedidosTable() {
                                                     {(pedido.precio || 0).toFixed(2)}
                                                 </div>
                                             )}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setVisibleAdelantosCount(prev => prev + 1);
-                                                }}
-                                                className="opacity-0 group-hover/price:opacity-100 w-5 h-5 bg-emerald-600 hover:bg-emerald-500 rounded text-white flex items-center justify-center text-xs transition-all shadow-lg shadow-emerald-900/20"
-                                                title="Mostrar Adelanto"
-                                            >
-                                                +
-                                            </button>
                                         </div>
                                     </td>
-                                    {Array.from({ length: visibleAdelantosCount }).map((_, i) => {
-                                        const pedidoPayments = payments.filter(pay => pay.pedidoId === pedido.id).sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-                                        const payment = pedidoPayments[i];
-                                        return (
-                                            <td key={`adelanto-cell-${pedido.id}-${i}`} className="p-4 align-middle font-mono text-gray-400 border-l border-gray-800/50 bg-gray-900/10">
-                                                {payment ? (
-                                                    <span className="flex flex-col">
-                                                        <span>S/. {payment.monto.toFixed(2)}</span>
-                                                        <span className="text-[9px] text-gray-600 truncate max-w-[80px]">{payment.nota}</span>
-                                                    </span>
-                                                ) : '-'}
-                                            </td>
-                                        );
-                                    })}
                                     <td className="p-4 align-middle font-mono text-emerald-400">
                                         <span className="flex items-center gap-1">
                                             <span className="text-emerald-900">S/.</span>
@@ -387,7 +438,7 @@ export function PedidosTable() {
                                 {/* Expanded Row: Payments Detail */}
                                 {expandedRowId === pedido.id && (
                                     <tr className="bg-gray-900/30">
-                                        <td colSpan={9 + visibleAdelantosCount} className="p-0 border-b border-gray-800">
+                                        <td colSpan={10} className="p-0 border-b border-gray-800">
                                             <div className="p-6 flex flex-col md:flex-row gap-8 animate-in slide-in-from-top-2 duration-200">
                                                 {/* Left: Payment List */}
                                                 <div className="flex-1 space-y-4">
@@ -442,6 +493,19 @@ export function PedidosTable() {
                                                         Confirmar Pago ↵
                                                     </button>
                                                 </div>
+
+                                                {/* Actions Panel */}
+                                                <div className="w-full md:w-48 bg-red-950/20 p-4 rounded-xl border border-red-900/30 space-y-3">
+                                                    <h4 className="text-xs uppercase font-bold text-red-400/60 tracking-widest">Acciones</h4>
+                                                    <button
+                                                        onClick={() => setConfirmDelete({ type: 'single', ids: [pedido.id] })}
+                                                        className="w-full py-2 bg-red-600/20 hover:bg-red-600 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white rounded font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        <span>🗑️</span>
+                                                        Eliminar Pedido
+                                                    </button>
+                                                    <p className="text-[10px] text-red-400/40 text-center">Esta acción no se puede deshacer</p>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -468,6 +532,28 @@ export function PedidosTable() {
                     onClose={() => setShowClienteModal(false)}
                 />
             )}
+
+            {/* Modal Nuevo Pedido */}
+            <NuevoPedidoModal
+                isOpen={showNuevoPedidoModal}
+                onClose={() => setShowNuevoPedidoModal(false)}
+            />
+
+            {/* Confirm Delete Dialog */}
+            <ConfirmDialog
+                isOpen={confirmDelete !== null}
+                title={confirmDelete?.type === 'batch' ? 'Eliminar Pedidos' : 'Eliminar Pedido'}
+                message={
+                    confirmDelete?.type === 'batch'
+                        ? `¿Estás seguro de eliminar ${confirmDelete.ids.length} pedido(s)? Esta acción no se puede deshacer.`
+                        : '¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.'
+                }
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="danger"
+                onConfirm={handleDeleteConfirm}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }

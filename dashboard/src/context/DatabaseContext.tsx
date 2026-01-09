@@ -2,30 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import initSqlJs, { type Database } from 'sql.js';
 import type { Pedido, Payment, Proveedor, Cliente } from '../types';
 import { supabase } from '../supabaseClient';
-
-// Event from JSONL trace files
-export interface TraceEvent {
-    timestamp: string;
-    action: string;
-    actor: string;
-    context: {
-        tipo?: string;
-        proveedor?: string;
-        producto?: string;
-        cantidad?: number;
-        cliente?: string;
-        costoTotal?: number;
-        adelanto?: number;
-        costo?: number;
-        origen?: string;
-        destino?: string;
-        nuevoEstado?: string;
-        precio?: number;
-        [key: string]: unknown;
-    };
-    artifacts: string[];
-    caseId?: string;
-}
+import { type TraceEvent, parseEventsToPedidos } from '../utils/parsers';
 
 interface DatabaseContextType {
     db: Database | null;
@@ -35,10 +12,21 @@ interface DatabaseContextType {
     proveedores: Record<string, Proveedor>;
     clientes: Record<string, Cliente>;
     setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
+
+    // CRUD Pedidos
+    createPedido: (data: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>) => Promise<Pedido>;
     updatePedido: (id: string, changes: Partial<Pedido>) => Promise<void>;
+    deletePedido: (id: string) => Promise<void>;
+    deletePedidos: (ids: string[]) => Promise<void>;
+
+    // Pagos
     addPayment: (pedidoId: string, monto: number, nota?: string) => Promise<void>;
+
+    // CRUD Proveedores/Clientes
     updateProveedor: (nombre: string, data: Partial<Proveedor>) => Promise<void>;
     updateCliente: (nombre: string, data: Partial<Cliente>) => Promise<void>;
+    deleteCliente: (nombre: string) => Promise<void>;
+    deleteProveedor: (nombre: string) => Promise<void>;
 
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
@@ -54,77 +42,7 @@ interface DatabaseContextType {
 
 const DatabaseContext = createContext<DatabaseContextType | null>(null);
 
-function normalizeText(text: string): string {
-    if (!text) return '';
-    return text.trim().replace(/^\w/, c => c.toUpperCase());
-}
-
-function parseEventsToPedidos(events: TraceEvent[]): { pedidos: Pedido[], payments: Payment[] } {
-    const casesMap = new Map<string, Pedido>();
-    const initialPayments: Payment[] = [];
-
-    for (const event of events) {
-        const ctx = event.context || {};
-        if (ctx.tipo === 'otro') continue;
-
-        const caseId = event.caseId || `CASE-${event.actor?.slice(0, 3).toUpperCase() || 'SYS'}-${event.timestamp?.slice(2, 10).replace(/-/g, '') || Date.now()}`;
-
-        if (!casesMap.has(caseId)) {
-            casesMap.set(caseId, {
-                id: caseId,
-                cliente: '',
-                vendedora: event.actor || '',
-                descripcion: '',
-                estado: 'en_produccion',
-                created_at: event.timestamp || new Date().toISOString(),
-                updated_at: event.timestamp || new Date().toISOString(),
-                precio: 0,
-                pagado: 0
-            });
-        }
-
-        const pedido = casesMap.get(caseId)!;
-
-        if (ctx.cliente) pedido.cliente = normalizeText(ctx.cliente as string);
-        if (ctx.producto) pedido.descripcion = ctx.producto as string;
-        if (ctx.nuevoEstado) pedido.estado = ctx.nuevoEstado as string;
-        if (ctx.costoTotal) pedido.precio = Number(ctx.costoTotal);
-        if (ctx.precio) pedido.precio = Number(ctx.precio);
-        if (ctx.proveedor) pedido.vendedora = normalizeText(ctx.proveedor as string);
-
-        if (ctx.adelanto) {
-            initialPayments.push({
-                id: `PAY-${Date.now()}-${Math.random()}`,
-                pedidoId: caseId,
-                monto: Number(ctx.adelanto),
-                fecha: event.timestamp || new Date().toISOString(),
-                nota: 'Adelanto inicial'
-            });
-        }
-
-        for (const art of event.artifacts || []) {
-            const artLower = art.toLowerCase();
-            if (artLower.startsWith('cliente:')) pedido.cliente = normalizeText(art.split(':')[1]);
-            if (artLower.startsWith('producto:')) pedido.descripcion = art.split(':')[1];
-            if (artLower.startsWith('proveedor:')) pedido.vendedora = normalizeText(art.split(':')[1]);
-            if (artLower.startsWith('vendedora:')) pedido.vendedora = normalizeText(art.split(':')[1]);
-            if (artLower.startsWith('rq:')) pedido.rq_numero = art.split(':')[1].trim();
-            if (artLower.startsWith('costototal:') || artLower.startsWith('precio:')) {
-                const val = art.split(':')[1].replace(/[^\d.]/g, '');
-                pedido.precio = Number(val);
-            }
-        }
-        pedido.updated_at = event.timestamp || pedido.updated_at;
-    }
-
-    const pedidos = Array.from(casesMap.values());
-    pedidos.forEach(p => {
-        const pPayments = initialPayments.filter(pay => pay.pedidoId === p.id);
-        p.pagado = pPayments.reduce((sum, pay) => sum + pay.monto, 0);
-    });
-
-    return { pedidos, payments: initialPayments };
-}
+// Functions moved to utils/parsers.ts
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [db, setDb] = useState<Database | null>(null);
@@ -158,6 +76,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
                 const { data: ordersData } = await supabase.from('pedidos').select('*');
                 if (ordersData) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const mappedOrders = (ordersData as any[]).map(p => ({
                         ...p,
                         cliente: p.cliente_nombre,
@@ -204,8 +123,43 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         setSelectedStateFilter(null);
     };
 
+    const createPedido = async (data: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>): Promise<Pedido> => {
+        const now = new Date().toISOString();
+        const newPedido: Pedido = {
+            ...data,
+            id: `PED-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+            created_at: now,
+            updated_at: now,
+        };
+
+        setPedidos(prev => [newPedido, ...prev]);
+
+        try {
+            const { error } = await supabase.from('pedidos').insert({
+                id: newPedido.id,
+                cliente_nombre: newPedido.cliente,
+                vendedora: newPedido.vendedora,
+                descripcion: newPedido.descripcion,
+                estado: newPedido.estado,
+                precio: newPedido.precio || 0,
+                pagado: newPedido.pagado || 0,
+                rq_numero: newPedido.rq_numero,
+                fecha_compromiso: newPedido.fecha_compromiso,
+                created_at: newPedido.created_at,
+                updated_at: newPedido.updated_at,
+            });
+            if (error) throw error;
+            console.log("Pedido creado en Supabase:", newPedido.id);
+        } catch (err) {
+            console.error("Error creating pedido:", err);
+        }
+
+        return newPedido;
+    };
+
     const updatePedido = async (id: string, changes: Partial<Pedido>) => {
-        setPedidos(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p));
+        const now = new Date().toISOString();
+        setPedidos(prev => prev.map(p => p.id === id ? { ...p, ...changes, updated_at: now } : p));
         try {
             const dbChanges: any = { ...changes };
             if (dbChanges.cliente !== undefined) {
@@ -221,6 +175,38 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             console.log("Pedido actualizado en Supabase:", id, dbChanges);
         } catch (err) {
             console.error("Error updating pedido:", err);
+        }
+    };
+
+    const deletePedido = async (id: string) => {
+        setPedidos(prev => prev.filter(p => p.id !== id));
+        setPayments(prev => prev.filter(p => p.pedidoId !== id));
+
+        try {
+            // Primero eliminar pagos relacionados
+            await supabase.from('pagos').delete().eq('pedido_id', id);
+            // Luego eliminar el pedido
+            const { error } = await supabase.from('pedidos').delete().eq('id', id);
+            if (error) throw error;
+            console.log("Pedido eliminado de Supabase:", id);
+        } catch (err) {
+            console.error("Error deleting pedido:", err);
+        }
+    };
+
+    const deletePedidos = async (ids: string[]) => {
+        setPedidos(prev => prev.filter(p => !ids.includes(p.id)));
+        setPayments(prev => prev.filter(p => !ids.includes(p.pedidoId)));
+
+        try {
+            // Eliminar pagos relacionados
+            await supabase.from('pagos').delete().in('pedido_id', ids);
+            // Eliminar pedidos
+            const { error } = await supabase.from('pedidos').delete().in('id', ids);
+            if (error) throw error;
+            console.log("Pedidos eliminados de Supabase:", ids.length);
+        } catch (err) {
+            console.error("Error deleting pedidos:", err);
         }
     };
 
@@ -259,6 +245,38 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             }, { onConflict: 'nombre' });
         } catch (err) {
             console.error("Error updating cliente:", err);
+        }
+    };
+
+    const deleteCliente = async (nombre: string) => {
+        setClientes(prev => {
+            const newClientes = { ...prev };
+            delete newClientes[nombre];
+            return newClientes;
+        });
+
+        try {
+            const { error } = await supabase.from('clientes').delete().eq('nombre', nombre);
+            if (error) throw error;
+            console.log("Cliente eliminado de Supabase:", nombre);
+        } catch (err) {
+            console.error("Error deleting cliente:", err);
+        }
+    };
+
+    const deleteProveedor = async (nombre: string) => {
+        setProveedores(prev => {
+            const newProveedores = { ...prev };
+            delete newProveedores[nombre];
+            return newProveedores;
+        });
+
+        try {
+            const { error } = await supabase.from('proveedores').delete().eq('nombre', nombre);
+            if (error) throw error;
+            console.log("Proveedor eliminado de Supabase:", nombre);
+        } catch (err) {
+            console.error("Error deleting proveedor:", err);
         }
     };
 
@@ -354,26 +372,46 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 const allEvents: TraceEvent[] = text.split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
                 allEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
                 setEvents(allEvents);
+                console.log('[DEBUG] Total events parsed from file:', allEvents.length);
 
                 const { pedidos: parsed, payments: pays } = parseEventsToPedidos(allEvents);
+                console.log('[DEBUG] Pedidos parsed from file:', parsed.map(p => ({ id: p.id, cliente: p.cliente, descripcion: p.descripcion?.slice(0, 50), vendedora: p.vendedora, updated_at: p.updated_at })));
 
-                // SMART MERGE: Preservar ediciones previas o datos de backup
+                // SMART MERGE: Timestamp Wins - El más reciente gana
                 setPedidos(prev => {
                     if (prev.length === 0) return parsed;
                     const existingMap = new Map(prev.map(p => [p.id, p]));
-                    return parsed.map(p => {
+                    const merged: Pedido[] = [];
+                    const seenIds = new Set<string>();
+
+                    // Process parsed (from file)
+                    for (const p of parsed) {
+                        seenIds.add(p.id);
                         const existing = existingMap.get(p.id);
                         if (existing) {
-                            return {
-                                ...p,
-                                vendedora: existing.vendedora || p.vendedora,
-                                cliente: existing.cliente || p.cliente,
-                                precio: existing.precio !== 0 ? existing.precio : p.precio,
-                                descripcion: existing.descripcion || p.descripcion
-                            };
+                            const fileTime = new Date(p.updated_at || 0).getTime();
+                            const existingTime = new Date(existing.updated_at || 0).getTime();
+                            // File is strictly newer -> use file data
+                            if (fileTime > existingTime) {
+                                merged.push(p);
+                            } else {
+                                // Existing is newer or equal -> keep existing
+                                merged.push(existing);
+                            }
+                        } else {
+                            // New order from file
+                            merged.push(p);
                         }
-                        return p;
-                    });
+                    }
+
+                    // Keep any existing orders not in the file
+                    for (const existing of prev) {
+                        if (!seenIds.has(existing.id)) {
+                            merged.push(existing);
+                        }
+                    }
+
+                    return merged;
                 });
 
                 setPayments(prev => {
@@ -410,7 +448,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     return (
         <DatabaseContext.Provider value={{
             db, events, pedidos, payments, proveedores, clientes,
-            setPedidos, updatePedido, addPayment, updateProveedor, updateCliente,
+            setPedidos,
+            // CRUD Pedidos
+            createPedido, updatePedido, deletePedido, deletePedidos,
+            // Pagos
+            addPayment,
+            // CRUD Clientes/Proveedores
+            updateProveedor, updateCliente, deleteCliente, deleteProveedor,
+            // Filtros y estado
             selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
             loadDatabase, resetDatabase, exportBackup, uploadLogo
         }}>

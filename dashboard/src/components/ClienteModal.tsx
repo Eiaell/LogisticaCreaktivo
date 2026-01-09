@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface Props {
     nombre: string;
@@ -8,7 +9,7 @@ interface Props {
 }
 
 export function ClienteModal({ nombre, isOpen, onClose }: Props) {
-    const { clientes, updateCliente, uploadLogo } = useDatabase();
+    const { clientes, updateCliente, uploadLogo, deleteCliente } = useDatabase();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Load existing data or default
@@ -28,6 +29,7 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
     });
     const [isUploading, setIsUploading] = useState(false);
     const [error, setLocalError] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -41,11 +43,16 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                 logo: currentData.logo || ''
             });
         }
-    }, [nombre, isOpen, clientes]); // Removed currentData from deps to avoid loop? No, primitive check usually ok but obj triggers. But clientes[nombre] creates new obj if not exist? 
-    // Actually currentData is derived from clientes.
+    }, [isOpen, currentData]); // Fixed deps
 
     const handleSave = () => {
         updateCliente(nombre, formData);
+        onClose();
+    };
+
+    const handleDelete = async () => {
+        await deleteCliente(nombre);
+        setShowDeleteConfirm(false);
         onClose();
     };
 
@@ -61,8 +68,9 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                 } else {
                     setLocalError("No se pudo obtener la URL de la imagen.");
                 }
-            } catch (err: any) {
-                setLocalError(err.message || "Error al subir la imagen");
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Error al subir la imagen";
+                setLocalError(message);
             } finally {
                 setIsUploading(false);
             }
@@ -170,21 +178,42 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-gray-800 bg-gray-800/30 flex justify-end gap-3">
+                <div className="p-4 border-t border-gray-800 bg-gray-800/30 flex justify-between">
                     <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-gray-400 hover:text-white text-sm"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="px-4 py-2 bg-red-600/20 hover:bg-red-600 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white rounded text-sm transition-colors flex items-center gap-2"
                     >
-                        Cancelar
+                        <span>🗑️</span>
+                        Eliminar
                     </button>
-                    <button
-                        onClick={handleSave}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium text-sm shadow-lg shadow-blue-900/20"
-                    >
-                        Guardar Cliente
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-gray-400 hover:text-white text-sm"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium text-sm shadow-lg shadow-blue-900/20"
+                        >
+                            Guardar Cliente
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation */}
+            <ConfirmDialog
+                isOpen={showDeleteConfirm}
+                title="Eliminar Cliente"
+                message={`¿Estás seguro de eliminar el cliente "${nombre}"? Esta acción no se puede deshacer.`}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="danger"
+                onConfirm={handleDelete}
+                onCancel={() => setShowDeleteConfirm(false)}
+            />
         </div>
     );
 }

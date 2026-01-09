@@ -61,8 +61,8 @@ const path = require('path');
     const headers = await page.evaluate(() => Array.from(document.querySelectorAll('th')).map(th => th.innerText));
     console.log('Found Headers:', headers);
 
-    if (headers.includes('Proveedor')) {
-        console.log('✅ Proveedor column FOUND.');
+    if (headers.includes('Proveedor') || headers.includes('Vendedor/a')) {
+        console.log('✅ Proveedor/Vendedor column FOUND.');
     } else {
         console.error('❌ Proveedor column NOT FOUND.');
     }
@@ -73,33 +73,32 @@ const path = require('path');
         console.error('❌ Adelanto column STILL PRESENT.');
     }
 
-    console.log('4. Opening Payments Modal...');
-    // Click on the Pagado cell (should be 2nd to last column mostly) or find by text "S/.0.00"
-    // We look for the cell containing 'S/.0'
-    const cellClicked = await page.evaluate(() => {
-        const cells = Array.from(document.querySelectorAll('td'));
-        const payCell = cells.find(td => td.innerText.includes('S/.0') && td.querySelector('span.text-gray-500')); // Assuming grey for 0 paid
-        if (payCell) {
-            payCell.click();
+    console.log('4. Expanding Row for Payments...');
+    // Find the expand button (contains '▼')
+    const expandBtn = await page.evaluate(() => {
+        const btns = Array.from(document.querySelectorAll('button'));
+        const btn = btns.find(b => b.innerText.includes('▼'));
+        if (btn) {
+            btn.click();
             return true;
         }
         return false;
     });
 
-    if (cellClicked) {
-        console.log('   Clicked on a payment cell.');
+    if (expandBtn) {
+        console.log('   Clicked expand button.');
         await new Promise(r => setTimeout(r, 500)); // Wait for animation
-        await page.screenshot({ path: 'scripts/step3_modal_open.png' });
+        await page.screenshot({ path: 'scripts/step3_row_expanded.png' });
 
-        // Check for modal text
-        const modalText = await page.evaluate(() => document.body.innerText.includes('Gestionar Pagos'));
-        if (modalText) {
-            console.log('✅ Payments Modal OPENED successfully.');
+        // Check for "Registrar Pago" section (case insensitive)
+        const bodyText = await page.evaluate(() => document.body.innerText.toUpperCase());
+        if (bodyText.includes('REGISTRAR PAGO')) {
+            console.log('✅ Payment Form VISIBLE successfully.');
         } else {
-            console.error('❌ Payments Modal DID NOT open.');
+            console.error('❌ Payment Form NOT FOUND.');
         }
     } else {
-        console.error('❌ Could not find a suitable payment cell to click.');
+        console.error('❌ Could not find expand button.');
     }
 
     await browser.close();

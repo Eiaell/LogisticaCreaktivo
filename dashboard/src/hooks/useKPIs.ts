@@ -16,14 +16,14 @@ export function useKPIs(): KPIs | null {
             const montoProduccion = db.exec("SELECT COALESCE(SUM(costo_total), 0) FROM acuerdos WHERE estado = 'pendiente'")[0]?.values[0]?.[0] as number || 0;
             const alertas = db.exec("SELECT COUNT(*) FROM acuerdos WHERE estado = 'problema' OR (estado = 'pendiente' AND fecha_prometida < date('now'))")[0]?.values[0]?.[0] as number || 0;
             const movilidadHoy = db.exec("SELECT COALESCE(SUM(costo), 0) FROM movilidad WHERE date(fecha) = date('now')")[0]?.values[0]?.[0] as number || 0;
-            return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy };
+            return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy, valorPipeline: 0, tasaConversion: 0, saldoPendiente: 0 };
         } catch { return null; }
     }
 
     if (dataSource === 'jsonl' || dataSource === 'supabase') {
         // Calculate from the shared 'pedidos' state
         const totalPedidos = pedidos.length;
-        const pedidosActivos = pedidos.filter(p => !['entregado', 'cerrado', 'liquidado'].includes(p.estado)).length;
+        const pedidosActivos = pedidos.filter(p => !['entregado', 'cerrado', 'liquidado', 'cancelado'].includes(p.estado)).length;
 
         // Sum prices of active orders for 'Monto en Producción'
         const montoProduccion = pedidos
@@ -33,7 +33,20 @@ export function useKPIs(): KPIs | null {
         const alertas = 0;
         const movilidadHoy = 0;
 
-        return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy };
+        // New KPIs
+        // Valor Pipeline: Sum of prices of active orders
+        const valorPipeline = pedidos
+            .filter(p => !['cerrado', 'cancelado', 'liquidado'].includes(p.estado))
+            .reduce((sum, p) => sum + (p.precio || 0), 0);
+
+        // Tasa de Conversión: % of closed/delivered orders vs total
+        const pedidosCerrados = pedidos.filter(p => ['cerrado', 'entregado'].includes(p.estado)).length;
+        const tasaConversion = totalPedidos > 0 ? (pedidosCerrados / totalPedidos) * 100 : 0;
+
+        // Saldo Pendiente: Total price - total paid
+        const saldoPendiente = pedidos.reduce((sum, p) => sum + ((p.precio || 0) - (p.pagado || 0)), 0);
+
+        return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy, valorPipeline, tasaConversion, saldoPendiente };
     }
 
     return null;
@@ -71,15 +84,15 @@ export function useProcessFlow() {
 
     const getFlowData = useCallback(() => {
         const nodeDefinitions = [
-            { id: 'cotizacion', label: 'Cotización', color: '#6366f1' },
-            { id: 'aprobado', label: 'Aprobado', color: '#8b5cf6' },
-            { id: 'en_produccion', label: 'En Producción', color: '#f59e0b' },
-            { id: 'listo_recoger', label: 'Listo Recoger', color: '#10b981' },
-            { id: 'entregado', label: 'Entregado', color: '#22c55e' },
-            { id: 'cerrado', label: 'Cerrado', color: '#64748b' },
+            { id: 'cotizacion', label: 'Cotización', color: '#94a3b8' }, // Gray
+            { id: 'aprobado', label: 'Aprobado', color: '#3b82f6' }, // Blue
+            { id: 'en_produccion', label: 'En Producción', color: '#eab308' }, // Yellow
+            { id: 'listo_recoger', label: 'Listo Recoger', color: '#f97316' }, // Orange
+            { id: 'entregado', label: 'Entregado', color: '#22c55e' }, // Green
+            { id: 'cerrado', label: 'Cerrado', color: '#166534' }, // Dark Green
         ];
 
-        let estadoCounts: Record<string, number> = {};
+        const estadoCounts: Record<string, number> = {};
 
         if (dataSource === 'db' && db) {
             // ... Legacy DB execution ...

@@ -17,146 +17,184 @@ const deepseek = new OpenAI({
   baseURL: DEEPSEEK_BASE_URL,
 });
 
-const EXTRACTION_PROMPT = `Eres un asistente de logística. Extrae SOLO la información que está EXPLÍCITAMENTE mencionada en el texto.
+const EXTRACTION_PROMPT = `Eres un bot de apoyo al área de Logística.
+Recibirás mensajes o audios transcritos desde WhatsApp en lenguaje natural.
+
+Tu tarea es:
+1. Identificar el tipo de solicitud
+2. Extraer toda la información relevante
+3. Devolver exclusivamente un JSON válido, sin texto adicional.
+
+Si algún dato no está explícito, devuelve null.
+No inventes información.
+Usa siempre la estructura definida según el tipo de solicitud.
 
 FECHA ACTUAL: {fecha_actual}
 
-REGLA CRÍTICA: NO INVENTES DATOS. Si algo no se menciona, usa null. NUNCA asumas fechas, cantidades o valores no dichos.
-- Para fechas: usa el año actual (2026) a menos que se diga otro año explícitamente.
-- Si dicen "lunes 15 de enero", la fecha es 2026-01-15 (no 2024).
+CONTEXTO:
+- Usuario: Coordinador logístico en Lima, Perú
+- Trabaja con proveedores de materiales promocionales (polos, bolsas, impresiones, telas, vinilos)
+- Clientes frecuentes: TYC, DHL, Grupo LAR, etc.
+- Vendedoras: Angélica, Johana, Natalia, Patricia
 
-El usuario es un coordinador logístico en Lima, Perú. Trabaja con proveedores de materiales promocionales (polos, impresiones, telas, etc.).
+TIPOS DE SOLICITUD:
 
-VOCABULARIO COMÚN:
-- "Mandé a producción" = se hizo un pedido a proveedor
-- "Adelanto" = pago parcial inicial (usualmente 50%)
-- "Hugo", "Carmen", etc. = nombres de proveedores frecuentes
-- "DHL", "Inmobiliaria X" = nombres de clientes
-- "combi", "metro", "taxi" = tipos de transporte
-- "La Victoria", "San Isidro", "Centro Lima" = zonas de Lima
+1. solicitud_cotizacion
+   CUÁNDO APLICA: Cuando el mensaje indica que se está pidiendo cotizar algo a un proveedor.
+   Palabras clave: "cotización", "cotizar", "mandando a cotizar", "pide cotización"
 
-TIPOS DE MENSAJE QUE PUEDE ENVIAR:
-1. acuerdo_produccion - Cuando informa sobre un pedido a proveedor
-2. consulta - Cuando pregunta sobre historial, precios, tiempos
-3. movimiento_movilidad - Cuando reporta un viaje/traslado
-4. cambio_estado - Cuando actualiza el estado de algo
-5. registro_gasto - Cuando reporta un gasto extraordinario
-6. pendientes - Cuando pregunta qué tiene pendiente
-7. reporte - Cuando pide un reporte
-8. otro - Cualquier otra cosa (mensajes de prueba, saludos, etc.)
+2. recepcion_cotizacion
+   CUÁNDO APLICA: Cuando informas los precios recibidos de proveedores.
+   Palabras clave: "me cotizaron", "el precio es", "cuesta", "sale a"
 
-TEXTO A PROCESAR:
+3. orden_produccion
+   CUÁNDO APLICA: Cuando indicas que ya se mandó a hacer, se aprobó proveedor, se acordaron pagos.
+   Palabras clave: "mandé a producción", "se aprobó", "ya se mandó a hacer", "acordamos"
+
+4. registro_movilidad
+   CUÁNDO APLICA: Cuando describes trayectos, pasajes, rutas, gastos de transporte.
+   Palabras clave: "fui a", "gasté en pasaje", "de X a Y", "metropolitano", "combi", "taxi"
+
+ESTRUCTURAS JSON POR TIPO:
+
+1. solicitud_cotizacion:
+{
+  "tipo_solicitud": "solicitud_cotizacion",
+  "cliente": null,
+  "solicitado_por": null,
+  "productos": [
+    {
+      "descripcion": null,
+      "cantidad": null,
+      "dimensiones": null,
+      "observaciones": null
+    }
+  ],
+  "fecha_solicitud": null
+}
+
+EJEMPLO:
+Input: "Angélica está mandando a cotizar 300 bolsas de yute de 50 por 70 para el cliente TYC"
+Output:
+{
+  "tipo_solicitud": "solicitud_cotizacion",
+  "cliente": "TYC",
+  "solicitado_por": "Angélica",
+  "productos": [
+    {
+      "descripcion": "bolsas de yute",
+      "cantidad": 300,
+      "dimensiones": "50x70",
+      "observaciones": null
+    }
+  ],
+  "fecha_solicitud": null
+}
+
+2. recepcion_cotizacion:
+{
+  "tipo_solicitud": "recepcion_cotizacion",
+  "cliente": null,
+  "proveedor": null,
+  "producto": null,
+  "precio_unitario": null,
+  "precio_total": null,
+  "incluye_igv": null,
+  "validez_cotizacion": null,
+  "fecha_recepcion": null
+}
+
+3. orden_produccion:
+{
+  "tipo_solicitud": "orden_produccion",
+  "cliente": null,
+  "proveedor": null,
+  "producto": null,
+  "precio_total": null,
+  "incluye_igv": null,
+  "condiciones_pago": {
+    "adelanto": null,
+    "porcentaje_adelanto": null,
+    "saldo": null,
+    "forma_pago": null
+  },
+  "fecha_orden": null
+}
+
+EJEMPLO:
+Input: "Ya se mandó a producción con el proveedor Hugo, el precio es 2500 soles, no incluye IGV, se paga 50% de adelanto y el resto al final"
+Output:
+{
+  "tipo_solicitud": "orden_produccion",
+  "cliente": null,
+  "proveedor": "Hugo",
+  "producto": null,
+  "precio_total": 2500,
+  "incluye_igv": false,
+  "condiciones_pago": {
+    "adelanto": 1250,
+    "porcentaje_adelanto": 50,
+    "saldo": 1250,
+    "forma_pago": "al final"
+  },
+  "fecha_orden": null
+}
+
+4. registro_movilidad:
+{
+  "tipo_solicitud": "registro_movilidad",
+  "fecha": null,
+  "motivo": null,
+  "cliente": null,
+  "tramos": [
+    {
+      "origen": null,
+      "destino": null,
+      "medio_transporte": null,
+      "costo": null
+    }
+  ],
+  "costo_total": null
+}
+
+EJEMPLO:
+Input: "Hoy viernes 5 de enero salí de oficina a Angamos, se gastó un sol. De Angamos a Estación Central en Metropolitano, 3.20. En Central recogí el pedido y lo llevé al cliente TYC."
+Output:
+{
+  "tipo_solicitud": "registro_movilidad",
+  "fecha": "2026-01-05",
+  "motivo": "Recoger y entregar pedido",
+  "cliente": "TYC",
+  "tramos": [
+    {
+      "origen": "Oficina",
+      "destino": "Estación Angamos",
+      "medio_transporte": null,
+      "costo": 1.00
+    },
+    {
+      "origen": "Estación Angamos",
+      "destino": "Estación Central",
+      "medio_transporte": "Metropolitano",
+      "costo": 3.20
+    }
+  ],
+  "costo_total": 4.20
+}
+
+5. Si NO encaja en ninguno de los 4 tipos anteriores:
+{
+  "tipo_solicitud": "otro",
+  "mensaje": "transcripción original del mensaje"
+}
+
+MENSAJE A PROCESAR:
 {transcripcion}
 
-RESPONDE ÚNICAMENTE CON JSON VÁLIDO (sin markdown, sin explicaciones):
-{
-  "tipo": "uno_de_los_tipos_mencionados",
-  "datos": {
-    // SOLO campos mencionados explícitamente. Usa null para lo no mencionado.
-  },
-  "confianza": 0-100,
-  "campos_faltantes": ["lista de campos importantes no mencionados"]
-}
-
-EJEMPLOS DE ESTRUCTURA DE DATOS SEGÚN TIPO:
-
-Para acuerdo_produccion:
-{
-  "tipo": "acuerdo_produccion",
-  "datos": {
-    "proveedor": "nombre",
-    "producto": "descripción del producto",
-    "cantidad": 24,
-    "especificaciones": "bordado full color, tallas S M L",
-    "adelanto": 250,
-    "porcentajeAdelanto": 50,
-    "costoTotal": 500,
-    "fechaEntrega": "2026-01-03",
-    "cliente": "DHL"
-  }
-}
-
-Para consulta:
-{
-  "tipo": "consulta",
-  "datos": {
-    "subtipo": "historial_precios|historial_tiempos|proveedor|pedido|general",
-    "proveedor": "nombre si aplica",
-    "producto": "producto si aplica",
-    "cliente": "cliente si aplica",
-    "pregunta": "la pregunta original"
-  }
-}
-
-Para movimiento_movilidad:
-{
-  "tipo": "movimiento_movilidad",
-  "datos": {
-    "origen": "lugar de origen (puede ser null si no se menciona)",
-    "destino": "lugar de destino",
-    "costo": 3.20,
-    "tipoTransporte": "metro|combi|taxi|carro_propio",
-    "proposito": "motivo del viaje",
-    "pedidoRelacionado": "cliente o descripción si aplica"
-  }
-}
-
-Para registro_gasto:
-{
-  "tipo": "registro_gasto",
-  "datos": {
-    "tipoGasto": "motorizado|taxi|material|otro",
-    "monto": 15.00,
-    "descripcion": "descripción del gasto",
-    "aprobadoPor": "nombre de quien aprobó si se menciona",
-    "pedidoRelacionado": "cliente o descripción si aplica"
-  }
-}
-
-Para pendientes:
-{
-  "tipo": "pendientes",
-  "datos": {
-    "fecha": "hoy|mañana|fecha específica si se menciona"
-  }
-}
-
-Para reporte:
-{
-  "tipo": "reporte",
-  "datos": {
-    "tipoReporte": "movilidad|gastos|produccion",
-    "fechaInicio": "fecha si se menciona",
-    "fechaFin": "fecha si se menciona"
-  }
-}
-
-Para cambio_estado:
-{
-  "tipo": "cambio_estado",
-  "datos": {
-    "entidad": "pedido|acuerdo",
-    "identificador": "descripción para identificar",
-    "nuevoEstado": "el nuevo estado",
-    "notas": "notas adicionales"
-  }
-}
-
-Para otro (SIEMPRE extrae todos los datos estructurados):
-{
-  "tipo": "otro",
-  "datos": {
-    "mensaje": "el mensaje original",
-    "items": [{"nombre": "producto", "cantidad": 5, "unidad": "unidades"}],
-    "personas": [{"nombre": "Hugo", "rol": "proveedor"}],
-    "montos": [{"valor": 150, "concepto": "adelanto"}],
-    "lugares": [],
-    "fechas": []
-  }
-}`;
+RESPONDE ÚNICAMENTE CON EL JSON CORRESPONDIENTE (sin markdown, sin explicaciones):`;
 
 /**
- * Extract entities from transcribed text using Claude
+ * Extract entities from transcribed text using DeepSeek
  */
 export async function extractEntities(
   transcription: string
@@ -207,31 +245,13 @@ export async function extractEntities(
 
     const parsed = JSON.parse(jsonStr);
 
-    // Special handling for tipo "otro" to include extracted entities
-    if (parsed.tipo === 'otro') {
-      return {
-        resultado: {
-          tipo: 'otro',
-          mensaje: parsed.datos?.mensaje || transcription,
-          items: parsed.datos?.items || [],
-          personas: parsed.datos?.personas || [],
-          montos: parsed.datos?.montos || [],
-          lugares: parsed.datos?.lugares || [],
-          fechas: parsed.datos?.fechas || [],
-        },
-        confianza: parsed.confianza || 80,
-        camposFaltantes: parsed.campos_faltantes || [],
-        transcripcionOriginal: transcription,
-      };
-    }
-
-    // Convert to our type structure
-    const resultado = convertToResultado(parsed.tipo, parsed.datos);
+    // Convert to our type structure using the new format
+    const resultado = convertToResultado(parsed);
 
     return {
       resultado,
-      confianza: parsed.confianza || 80,
-      camposFaltantes: parsed.campos_faltantes || [],
+      confianza: 85, // Default confidence for new system
+      camposFaltantes: [],
       transcripcionOriginal: transcription,
     };
   } catch (error) {
@@ -241,12 +261,8 @@ export async function extractEntities(
     return {
       resultado: {
         tipo: 'otro',
+        tipo_solicitud: 'otro',
         mensaje: transcription,
-        items: [],
-        personas: [],
-        montos: [],
-        lugares: [],
-        fechas: [],
       },
       confianza: 0,
       camposFaltantes: ['error_parsing'],
@@ -256,85 +272,87 @@ export async function extractEntities(
 }
 
 /**
- * Convert parsed data to typed ResultadoExtraccion
+ * Convert parsed data to typed ResultadoExtraccion (Nuevo Sistema)
  */
 function convertToResultado(
-  tipo: TipoExtraccion,
-  datos: Record<string, unknown>
+  parsed: Record<string, unknown>
 ): ResultadoExtraccion {
-  switch (tipo) {
-    case 'acuerdo_produccion':
+  const tipoSolicitud = parsed.tipo_solicitud as string;
+
+  switch (tipoSolicitud) {
+    case 'solicitud_cotizacion':
       return {
-        tipo: 'acuerdo_produccion',
-        proveedor: datos.proveedor as string || '',
-        producto: datos.producto as string || '',
-        cantidad: datos.cantidad as number || 0,
-        especificaciones: datos.especificaciones as string,
-        adelanto: datos.adelanto as number,
-        porcentajeAdelanto: datos.porcentajeAdelanto as number,
-        costoTotal: datos.costoTotal as number,
-        fechaEntrega: datos.fechaEntrega as string,
-        cliente: datos.cliente as string,
+        tipo: 'solicitud_cotizacion',
+        tipo_solicitud: 'solicitud_cotizacion',
+        cliente: parsed.cliente as string | null,
+        solicitado_por: parsed.solicitado_por as string | null,
+        productos: (parsed.productos as Array<{
+          descripcion: string | null;
+          cantidad: number | null;
+          dimensiones: string | null;
+          observaciones: string | null;
+        }>) || [],
+        fecha_solicitud: parsed.fecha_solicitud as string | null,
       };
 
-    case 'consulta':
+    case 'recepcion_cotizacion':
       return {
-        tipo: 'consulta',
-        subtipo: (datos.subtipo as string) as 'historial_precios' | 'historial_tiempos' | 'proveedor' | 'pedido' | 'general' || 'general',
-        proveedor: datos.proveedor as string,
-        producto: datos.producto as string,
-        cliente: datos.cliente as string,
-        pregunta: datos.pregunta as string || '',
+        tipo: 'recepcion_cotizacion',
+        tipo_solicitud: 'recepcion_cotizacion',
+        cliente: parsed.cliente as string | null,
+        proveedor: parsed.proveedor as string | null,
+        producto: parsed.producto as string | null,
+        precio_unitario: parsed.precio_unitario as number | null,
+        precio_total: parsed.precio_total as number | null,
+        incluye_igv: parsed.incluye_igv as boolean | null,
+        validez_cotizacion: parsed.validez_cotizacion as string | null,
+        fecha_recepcion: parsed.fecha_recepcion as string | null,
       };
 
-    case 'movimiento_movilidad':
+    case 'orden_produccion':
       return {
-        tipo: 'movimiento_movilidad',
-        origen: datos.origen as string,
-        destino: datos.destino as string || '',
-        costo: datos.costo as number || 0,
-        tipoTransporte: (datos.tipoTransporte as 'metro' | 'combi' | 'taxi' | 'carro_propio') || 'combi',
-        proposito: datos.proposito as string || '',
-        pedidoRelacionado: datos.pedidoRelacionado as string,
+        tipo: 'orden_produccion',
+        tipo_solicitud: 'orden_produccion',
+        cliente: parsed.cliente as string | null,
+        proveedor: parsed.proveedor as string | null,
+        producto: parsed.producto as string | null,
+        precio_total: parsed.precio_total as number | null,
+        incluye_igv: parsed.incluye_igv as boolean | null,
+        condiciones_pago: (parsed.condiciones_pago as {
+          adelanto: number | null;
+          porcentaje_adelanto: number | null;
+          saldo: number | null;
+          forma_pago: string | null;
+        }) || {
+          adelanto: null,
+          porcentaje_adelanto: null,
+          saldo: null,
+          forma_pago: null,
+        },
+        fecha_orden: parsed.fecha_orden as string | null,
       };
 
-    case 'cambio_estado':
+    case 'registro_movilidad':
       return {
-        tipo: 'cambio_estado',
-        entidad: (datos.entidad as 'pedido' | 'acuerdo') || 'pedido',
-        identificador: datos.identificador as string || '',
-        nuevoEstado: datos.nuevoEstado as string || '',
-        notas: datos.notas as string,
-      };
-
-    case 'registro_gasto':
-      return {
-        tipo: 'registro_gasto',
-        tipoGasto: (datos.tipoGasto as 'motorizado' | 'taxi' | 'material' | 'otro') || 'otro',
-        monto: datos.monto as number || 0,
-        descripcion: datos.descripcion as string || '',
-        aprobadoPor: datos.aprobadoPor as string,
-        pedidoRelacionado: datos.pedidoRelacionado as string,
-      };
-
-    case 'pendientes':
-      return {
-        tipo: 'pendientes',
-        fecha: datos.fecha as string,
-      };
-
-    case 'reporte':
-      return {
-        tipo: 'reporte',
-        tipoReporte: (datos.tipoReporte as 'movilidad' | 'gastos' | 'produccion') || 'movilidad',
-        fechaInicio: datos.fechaInicio as string,
-        fechaFin: datos.fechaFin as string,
+        tipo: 'registro_movilidad',
+        tipo_solicitud: 'registro_movilidad',
+        fecha: parsed.fecha as string | null,
+        motivo: parsed.motivo as string | null,
+        cliente: parsed.cliente as string | null,
+        tramos: (parsed.tramos as Array<{
+          origen: string | null;
+          destino: string | null;
+          medio_transporte: string | null;
+          costo: number | null;
+        }>) || [],
+        costo_total: parsed.costo_total as number | null,
       };
 
     default:
       return {
         tipo: 'otro',
-        mensaje: datos.mensaje as string || '',
+        tipo_solicitud: 'otro',
+        mensaje: parsed.mensaje as string || '',
       };
   }
 }

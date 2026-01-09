@@ -140,18 +140,105 @@ export interface MatrizCostos {
 }
 
 // ============================================
-// TIPOS PARA EXTRACCIÓN DE ENTIDADES (Claude)
+// TIPOS PARA EXTRACCIÓN DE ENTIDADES (Nuevo Sistema)
 // ============================================
 export type TipoExtraccion =
-  | 'acuerdo_produccion'
-  | 'consulta'
-  | 'movimiento_movilidad'
-  | 'cambio_estado'
-  | 'registro_gasto'
-  | 'pendientes'
-  | 'reporte'
+  | 'solicitud_cotizacion'
+  | 'recepcion_cotizacion'
+  | 'orden_produccion'
+  | 'registro_movilidad'
   | 'otro';
 
+// Producto en solicitud de cotización
+export interface ProductoCotizacion {
+  descripcion: string | null;
+  cantidad: number | null;
+  dimensiones: string | null;
+  observaciones: string | null;
+}
+
+// Tramo de movilidad
+export interface TramoMovilidad {
+  origen: string | null;
+  destino: string | null;
+  medio_transporte: string | null;
+  costo: number | null;
+}
+
+// Condiciones de pago
+export interface CondicionesPago {
+  adelanto: number | null;
+  porcentaje_adelanto: number | null;
+  saldo: number | null;
+  forma_pago: string | null;
+}
+
+// 1. SOLICITUD DE COTIZACIÓN
+export interface ExtraccionSolicitudCotizacion {
+  tipo: 'solicitud_cotizacion';
+  tipo_solicitud: 'solicitud_cotizacion';
+  cliente: string | null;
+  solicitado_por: string | null;
+  productos: ProductoCotizacion[];
+  fecha_solicitud: string | null;
+}
+
+// 2. RECEPCIÓN DE COTIZACIÓN
+export interface ExtraccionRecepcionCotizacion {
+  tipo: 'recepcion_cotizacion';
+  tipo_solicitud: 'recepcion_cotizacion';
+  cliente: string | null;
+  proveedor: string | null;
+  producto: string | null;
+  precio_unitario: number | null;
+  precio_total: number | null;
+  incluye_igv: boolean | null;
+  validez_cotizacion: string | null;
+  fecha_recepcion: string | null;
+}
+
+// 3. ORDEN DE PRODUCCIÓN
+export interface ExtraccionOrdenProduccion {
+  tipo: 'orden_produccion';
+  tipo_solicitud: 'orden_produccion';
+  cliente: string | null;
+  proveedor: string | null;
+  producto: string | null;
+  precio_total: number | null;
+  incluye_igv: boolean | null;
+  condiciones_pago: CondicionesPago;
+  fecha_orden: string | null;
+}
+
+// 4. REGISTRO DE MOVILIDAD
+export interface ExtraccionRegistroMovilidad {
+  tipo: 'registro_movilidad';
+  tipo_solicitud: 'registro_movilidad';
+  fecha: string | null;
+  motivo: string | null;
+  cliente: string | null;
+  tramos: TramoMovilidad[];
+  costo_total: number | null;
+}
+
+// 5. OTRO (no clasificado)
+export interface ExtraccionOtro {
+  tipo: 'otro';
+  tipo_solicitud: 'otro';
+  mensaje: string;
+  transcripcion_original?: string;
+}
+
+export type ResultadoExtraccion =
+  | ExtraccionSolicitudCotizacion
+  | ExtraccionRecepcionCotizacion
+  | ExtraccionOrdenProduccion
+  | ExtraccionRegistroMovilidad
+  | ExtraccionOtro;
+
+// ============================================
+// TIPOS LEGACY (mantenidos para compatibilidad)
+// ============================================
 export interface ExtraccionAcuerdo {
   tipo: 'acuerdo_produccion';
   proveedor: string;
@@ -228,26 +315,6 @@ export interface MontoExtraido {
   valor: number;
   concepto: string;
 }
-
-export interface ExtraccionOtro {
-  tipo: 'otro';
-  mensaje: string;
-  items?: ItemExtraido[];
-  personas?: PersonaExtraida[];
-  montos?: MontoExtraido[];
-  lugares?: string[];
-  fechas?: string[];
-}
-
-export type ResultadoExtraccion =
-  | ExtraccionAcuerdo
-  | ExtraccionConsulta
-  | ExtraccionMovilidad
-  | ExtraccionCambioEstado
-  | ExtraccionGasto
-  | ExtraccionPendientes
-  | ExtraccionReporte
-  | ExtraccionOtro;
 
 export interface ExtraccionCompleta {
   resultado: ResultadoExtraccion;

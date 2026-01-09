@@ -1,20 +1,11 @@
 // ============================================
 // CREAACTIVO LOGISTICS INTELLIGENCE SYSTEM
-// Message Handlers
+// Message Handlers (Nuevo Sistema)
 // ============================================
 
 import { Message } from 'whatsapp-web.js';
 import { transcribeAudio, aplicarCorrecciones } from '../services/transcription';
-import { extractEntities, generateResponse } from '../services/extraction';
-import { processQuery } from '../services/queries';
-import {
-  agregarAcuerdo,
-  agregarMovimiento,
-  agregarGasto,
-  getUltimoMovimiento,
-  getRegistroDia,
-  exportarDiaComoTexto,
-} from '../services/daily-storage';
+import { extractEntities } from '../services/extraction';
 import { saveAudio } from '../services/storage';
 import {
   guardarEnHistorial,
@@ -24,14 +15,25 @@ import {
   obtenerEstadisticas,
 } from '../services/memoria';
 import {
-  ExtraccionAcuerdo,
-  ExtraccionMovilidad,
-  ExtraccionGasto,
-  ExtraccionReporte,
-  ExtraccionCambioEstado,
   ExtraccionCompleta,
+  ExtraccionSolicitudCotizacion,
+  ExtraccionRecepcionCotizacion,
+  ExtraccionOrdenProduccion,
+  ExtraccionRegistroMovilidad,
+  ExtraccionOtro,
 } from '../models/types';
+import {
+  guardarSolicitudCotizacion,
+  guardarRecepcionCotizacion,
+  guardarOrdenProduccion,
+  guardarRegistroMovilidad,
+  guardarMensajeOtro,
+  initializeLogisticsStorage,
+} from '../services/logistics-storage';
 import { logEvent } from '../services/eventLogger';
+
+// Inicializar storage al cargar el módulo
+initializeLogisticsStorage().catch(console.error);
 
 /**
  * Main message handler - routes to appropriate handler based on message type
@@ -89,7 +91,7 @@ export async function handleMessage(msg: Message): Promise<string> {
     guardarEnHistorial(textToProcess, extraction.resultado);
 
     // Log event to Event Clock
-    const artifacts = extractArtifacts(extraction.resultado);
+    const artifacts = extractArtifactsNew(extraction.resultado);
     await logEvent(
       'Usuario',
       `mensaje_${extraction.resultado.tipo}`,
@@ -102,11 +104,10 @@ export async function handleMessage(msg: Message): Promise<string> {
       extraction.resultado.tipo === 'otro' ? 'Mensaje no clasificado' : undefined
     );
 
-    // Route to appropriate handler (still needed for storage)
-    await routeExtraction(extraction);
+    // Route to appropriate handler and get response
+    const response = await routeExtraction(extraction, textToProcess);
 
-    // Format compact response
-    return formatCompactResponse(extraction.resultado, textToProcess);
+    return response;
 
   } catch (error) {
     console.error('[Handler] Error:', error);
@@ -167,351 +168,154 @@ function handleEstadisticas(): string {
 }
 
 /**
- * Route extraction result to appropriate handler
+ * Route extraction result to appropriate handler (Nuevo Sistema)
  */
-async function routeExtraction(extraction: ExtraccionCompleta): Promise<string> {
-  const { resultado, transcripcionOriginal } = extraction;
+async function routeExtraction(extraction: ExtraccionCompleta, transcripcion: string): Promise<string> {
+  const { resultado } = extraction;
 
   switch (resultado.tipo) {
-    case 'acuerdo_produccion':
-      return await handleAcuerdoProduccion(resultado, transcripcionOriginal);
+    case 'solicitud_cotizacion':
+      return await handleSolicitudCotizacion(resultado as ExtraccionSolicitudCotizacion, transcripcion);
 
-    case 'consulta':
-      return await processQuery(resultado);
+    case 'recepcion_cotizacion':
+      return await handleRecepcionCotizacion(resultado as ExtraccionRecepcionCotizacion, transcripcion);
 
-    case 'movimiento_movilidad':
-      return await handleMovimiento(resultado, transcripcionOriginal);
+    case 'orden_produccion':
+      return await handleOrdenProduccion(resultado as ExtraccionOrdenProduccion, transcripcion);
 
-    case 'registro_gasto':
-      return await handleGasto(resultado, transcripcionOriginal);
-
-    case 'pendientes':
-      return await handlePendientes();
-
-    case 'reporte':
-      return await handleReporte(resultado);
-
-    case 'cambio_estado':
-      return await handleCambioEstado(resultado);
+    case 'registro_movilidad':
+      return await handleRegistroMovilidad(resultado as ExtraccionRegistroMovilidad, transcripcion);
 
     case 'otro':
     default:
-      // Don't respond to unrecognized messages - stay silent
-      console.log('[Handler] Mensaje no reconocido, ignorando:', resultado.mensaje || transcripcionOriginal);
+      // Guardar como 'otro' sin responder
+      await handleMensajeOtro(resultado as ExtraccionOtro, transcripcion);
       return '';
   }
 }
 
+// ============================================
+// NUEVOS HANDLERS
+// ============================================
+
 /**
- * Handle production agreement registration
+ * Handle solicitud de cotización
  */
-async function handleAcuerdoProduccion(data: ExtraccionAcuerdo, transcripcion: string): Promise<string> {
-  // Validate required fields
-  if (!data.proveedor || !data.producto) {
-    return 'Necesito al menos el nombre del proveedor y qué producto. ¿Puedes repetir?';
-  }
-
-  // Parse delivery date (only if explicitly mentioned)
-  let fechaTexto = 'pendiente de confirmar';
-  if (data.fechaEntrega) {
-    const fechaPrometida = parseFechaFlexible(data.fechaEntrega);
-    fechaTexto = formatFecha(fechaPrometida);
-  }
-
-  // Save to daily file
-  await agregarAcuerdo({
-    proveedor: data.proveedor,
-    producto: data.producto,
-    cantidad: data.cantidad || 0,
-    especificaciones: data.especificaciones || undefined,
-    adelanto: data.adelanto || undefined,
-    costoTotal: data.costoTotal || undefined,
-    fechaEntrega: fechaTexto,
-    cliente: data.cliente || undefined,
-    transcripcion,
-  });
-
-  // Build response
-  let respuesta = '✅ Registrado\n';
-  respuesta += `• ${data.cantidad || '?'} ${data.producto} con ${data.proveedor}\n`;
-
-  if (data.especificaciones) {
-    respuesta += `• Especificaciones: ${data.especificaciones}\n`;
-  }
-
-  if (data.adelanto) {
-    respuesta += `• Adelanto: S/. ${data.adelanto}`;
-    if (data.porcentajeAdelanto) {
-      respuesta += ` (${data.porcentajeAdelanto}%)`;
-    }
-    respuesta += '\n';
-  }
-
-  if (data.costoTotal) {
-    respuesta += `• Costo total: S/. ${data.costoTotal}\n`;
-  }
-
-  respuesta += `• Entrega: ${fechaTexto}\n`;
-
-  if (data.cliente) {
-    respuesta += `• Cliente: ${data.cliente}\n`;
-  }
-
-  return respuesta;
+async function handleSolicitudCotizacion(
+  data: ExtraccionSolicitudCotizacion,
+  transcripcion: string
+): Promise<string> {
+  await guardarSolicitudCotizacion(data, transcripcion);
+  return JSON.stringify(data, null, 2);
 }
 
 /**
- * Handle mobility movement registration
+ * Handle recepción de cotización
  */
-async function handleMovimiento(data: ExtraccionMovilidad, transcripcion: string): Promise<string> {
-  // Get origin from last movement if not specified
-  let origen = data.origen;
-  if (!origen) {
-    const ultimo = await getUltimoMovimiento();
-    origen = ultimo?.destino || 'Oficina Miraflores';
-  }
-
-  // Validate transport type
-  const tipoTransporte = data.tipoTransporte || 'combi';
-  const requiereAprobacion = tipoTransporte === 'taxi';
-
-  // Save to daily file
-  await agregarMovimiento({
-    origen,
-    destino: data.destino,
-    costo: data.costo,
-    tipoTransporte,
-    proposito: data.proposito,
-    transcripcion,
-  });
-
-  let respuesta = `📍 Registrado: ${origen} → ${data.destino}\n`;
-  respuesta += `💰 S/. ${data.costo.toFixed(2)} (${tipoTransporte})\n`;
-  respuesta += `📦 ${data.proposito}`;
-
-  if (requiereAprobacion) {
-    respuesta += '\n\n⚠️ Este gasto requiere aprobación de vendedora.';
-  }
-
-  return respuesta;
+async function handleRecepcionCotizacion(
+  data: ExtraccionRecepcionCotizacion,
+  transcripcion: string
+): Promise<string> {
+  await guardarRecepcionCotizacion(data, transcripcion);
+  return JSON.stringify(data, null, 2);
 }
 
 /**
- * Handle extraordinary expense registration
+ * Handle orden de producción
  */
-async function handleGasto(data: ExtraccionGasto, transcripcion: string): Promise<string> {
-  // Save to daily file
-  await agregarGasto({
-    tipo: data.tipoGasto,
-    monto: data.monto,
-    descripcion: data.descripcion,
-    aprobadoPor: data.aprobadoPor || undefined,
-    transcripcion,
-  });
-
-  let respuesta = `💸 Gasto registrado\n`;
-  respuesta += `• Tipo: ${data.tipoGasto}\n`;
-  respuesta += `• Monto: S/. ${data.monto.toFixed(2)}\n`;
-  respuesta += `• ${data.descripcion}\n`;
-
-  if (data.aprobadoPor) {
-    respuesta += `• Aprobado por: ${data.aprobadoPor}\n`;
-  } else {
-    respuesta += '\n⚠️ Recuerda reportar este gasto a Natalia para reembolso.';
-  }
-
-  return respuesta;
+async function handleOrdenProduccion(
+  data: ExtraccionOrdenProduccion,
+  transcripcion: string
+): Promise<string> {
+  await guardarOrdenProduccion(data, transcripcion);
+  return JSON.stringify(data, null, 2);
 }
 
 /**
- * Handle pending items request - show today's summary
+ * Handle registro de movilidad
  */
-async function handlePendientes(): Promise<string> {
-  const registro = await getRegistroDia();
-
-  let respuesta = `📋 Registro de hoy (${registro.fecha}):\n\n`;
-
-  if (registro.acuerdos.length > 0) {
-    respuesta += `ACUERDOS (${registro.acuerdos.length}):\n`;
-    for (const a of registro.acuerdos) {
-      respuesta += `• [${a.hora}] ${a.cantidad} ${a.producto} - ${a.proveedor}\n`;
-    }
-    respuesta += '\n';
-  }
-
-  if (registro.movilidad.length > 0) {
-    respuesta += `MOVILIDAD (${registro.movilidad.length}):\n`;
-    for (const m of registro.movilidad) {
-      respuesta += `• [${m.hora}] ${m.origen} → ${m.destino} S/.${m.costo}\n`;
-    }
-    respuesta += '\n';
-  }
-
-  if (registro.gastos.length > 0) {
-    respuesta += `GASTOS (${registro.gastos.length}):\n`;
-    for (const g of registro.gastos) {
-      respuesta += `• [${g.hora}] ${g.tipo}: S/.${g.monto}\n`;
-    }
-  }
-
-  if (registro.acuerdos.length === 0 && registro.movilidad.length === 0 && registro.gastos.length === 0) {
-    respuesta += 'No hay registros todavía.';
-  }
-
-  return respuesta;
+async function handleRegistroMovilidad(
+  data: ExtraccionRegistroMovilidad,
+  transcripcion: string
+): Promise<string> {
+  await guardarRegistroMovilidad(data, transcripcion);
+  return JSON.stringify(data, null, 2);
 }
 
 /**
- * Handle report requests
+ * Handle mensaje no clasificado
  */
-async function handleReporte(data: ExtraccionReporte): Promise<string> {
-  // For now, just return today's text export
-  return await exportarDiaComoTexto();
+async function handleMensajeOtro(
+  data: ExtraccionOtro,
+  transcripcion: string
+): Promise<void> {
+  await guardarMensajeOtro(data, transcripcion);
+  console.log('[Handler] Mensaje guardado como "otro":', transcripcion.substring(0, 50));
 }
 
-/**
- * Handle status change requests
- */
-async function handleCambioEstado(data: ExtraccionCambioEstado): Promise<string> {
-  // With daily storage, status changes are less relevant
-  // Just acknowledge and note it
-  return `📝 Nota: ${data.nuevoEstado} para ${data.identificador}`;
-}
+// ============================================
+// FUNCIONES AUXILIARES
+// ============================================
 
 /**
- * Map natural language status to enum value
+ * Extract artifacts from extraction result for Event Clock logging (Nuevo Sistema)
  */
-function mapEstadoAcuerdo(estado: string): 'pendiente' | 'listo' | 'recogido' | 'problema' {
-  const lower = estado.toLowerCase();
+function extractArtifactsNew(resultado: any): string[] {
+  const artifacts: string[] = [];
 
-  if (lower.includes('listo') || lower.includes('terminado') || lower.includes('acabado')) {
-    return 'listo';
+  // Common fields
+  if (resultado.cliente) {
+    artifacts.push(`Cliente:${resultado.cliente}`);
   }
-  if (lower.includes('recogido') || lower.includes('recogí') || lower.includes('tengo')) {
-    return 'recogido';
+  if (resultado.proveedor) {
+    artifacts.push(`Proveedor:${resultado.proveedor}`);
   }
-  if (lower.includes('problema') || lower.includes('demora') || lower.includes('retraso')) {
-    return 'problema';
+  if (resultado.producto) {
+    artifacts.push(`Producto:${resultado.producto}`);
   }
-
-  return 'pendiente';
-}
-
-/**
- * Parse flexible date strings
- */
-function parseFechaFlexible(fechaStr: string): Date {
-  const hoy = new Date();
-  const lower = fechaStr.toLowerCase();
-
-  // Handle relative dates
-  if (lower.includes('hoy')) {
-    return hoy;
-  }
-  if (lower.includes('mañana')) {
-    hoy.setDate(hoy.getDate() + 1);
-    return hoy;
-  }
-  if (lower.includes('pasado')) {
-    hoy.setDate(hoy.getDate() + 2);
-    return hoy;
+  if (resultado.solicitado_por) {
+    artifacts.push(`Solicitante:${resultado.solicitado_por}`);
   }
 
-  // Handle day names
-  const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-  for (let i = 0; i < dias.length; i++) {
-    if (lower.includes(dias[i])) {
-      const diaActual = hoy.getDay();
-      let diasHasta = i - diaActual;
-      if (diasHasta <= 0) diasHasta += 7;
-      hoy.setDate(hoy.getDate() + diasHasta);
-      return hoy;
-    }
-  }
-
-  // Try to parse as ISO date (YYYY-MM-DD) - add noon to avoid timezone issues
-  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
-    const [year, month, day] = fechaStr.split('-').map(Number);
-    return new Date(year, month - 1, day, 12, 0, 0); // Noon local time
-  }
-
-  // Try to parse as date
-  const parsed = new Date(fechaStr + 'T12:00:00');
-  if (!isNaN(parsed.getTime())) {
-    return parsed;
-  }
-
-  // Extract numbers that might be day of month
-  const numMatch = fechaStr.match(/\d+/);
-  if (numMatch) {
-    const dia = parseInt(numMatch[0], 10);
-    if (dia >= 1 && dia <= 31) {
-      hoy.setDate(dia);
-      // If the day has passed, assume next month
-      if (hoy < new Date()) {
-        hoy.setMonth(hoy.getMonth() + 1);
+  // Productos (solicitud_cotizacion)
+  if (resultado.productos?.length > 0) {
+    for (const prod of resultado.productos) {
+      if (prod.descripcion) {
+        artifacts.push(`Producto:${prod.cantidad || '?'} ${prod.descripcion}`);
       }
-      return hoy;
     }
   }
 
-  // Default: 3 days from now
-  hoy.setDate(hoy.getDate() + 3);
-  return hoy;
-}
-
-/**
- * Format date for display
- */
-function formatFecha(fecha: Date): string {
-  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
-  return `${dias[fecha.getDay()]} ${fecha.getDate()} ${meses[fecha.getMonth()]}`;
-}
-
-/**
- * Format response as compact JSON for LLM consumption
- */
-function formatCompactResponse(resultado: any, transcripcion: string): string {
-  let resp = `📝 "${transcripcion}"\n\n`;
-
-  if (resultado.tipo === 'otro') {
-    // Build compact JSON object
-    const compact: any = { tipo: 'otro' };
-
-    if (resultado.items?.length > 0) {
-      compact.items = resultado.items.map((i: any) => `${i.cantidad} ${i.nombre}`);
-    }
-
-    if (resultado.personas?.length > 0) {
-      compact.personas = resultado.personas.map((p: any) => ({ [p.nombre]: p.rol }));
-    }
-
-    if (resultado.montos?.length > 0) {
-      compact.montos = resultado.montos.map((m: any) => m.valor);
-    }
-
-    if (resultado.lugares?.length > 0) {
-      compact.lugares = resultado.lugares;
-    }
-
-    if (resultado.fechas?.length > 0) {
-      compact.fechas = resultado.fechas;
-    }
-
-    resp += JSON.stringify(compact);
-  } else {
-    // For other types, compact JSON (no indentation)
-    resp += JSON.stringify(resultado);
+  // Precios
+  if (resultado.precio_total) {
+    artifacts.push(`PrecioTotal:S/.${resultado.precio_total}`);
+  }
+  if (resultado.precio_unitario) {
+    artifacts.push(`PrecioUnitario:S/.${resultado.precio_unitario}`);
   }
 
-  return resp;
+  // Condiciones de pago
+  if (resultado.condiciones_pago?.adelanto) {
+    artifacts.push(`Adelanto:S/.${resultado.condiciones_pago.adelanto}`);
+  }
+
+  // Tramos de movilidad
+  if (resultado.tramos?.length > 0) {
+    for (const tramo of resultado.tramos) {
+      if (tramo.destino) {
+        artifacts.push(`Tramo:${tramo.origen || '?'}->${tramo.destino}`);
+      }
+    }
+  }
+  if (resultado.costo_total) {
+    artifacts.push(`CostoTotal:S/.${resultado.costo_total}`);
+  }
+
+  return artifacts;
 }
 
 /**
- * Extract artifacts from extraction result for Event Clock logging
+ * Extract artifacts from extraction result for Event Clock logging (Legacy)
  */
 function extractArtifacts(resultado: any): string[] {
   const artifacts: string[] = [];
