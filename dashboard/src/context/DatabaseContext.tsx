@@ -568,6 +568,39 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     if (json.pedidos) setPedidos(json.pedidos);
                     if (json.payments) setPayments(json.payments);
                     setDataSource('supabase');
+
+                    // Sync loaded clientes to Supabase
+                    if (json.clientes) {
+                        for (const [, cliente] of Object.entries(json.clientes)) {
+                            const c = cliente as any;
+                            try {
+                                const { error } = await supabase.from('clientes').upsert({
+                                    razon_social: c.razon_social,
+                                    nombre_comercial: c.nombre_comercial,
+                                    grupo_empresarial: c.grupo_empresarial,
+                                    grupo_empresarial_ruc: c.grupo_empresarial_ruc,
+                                    proyecto: c.proyecto,
+                                    proyecto_codigo: c.proyecto_codigo,
+                                    ruc: c.ruc,
+                                    direccion: c.direccion,
+                                    contacto: c.contacto,
+                                    telefono: c.telefono,
+                                    email: c.email,
+                                    estado: c.estado,
+                                    prioridad: c.prioridad,
+                                    tipo_cliente: c.tipo_cliente,
+                                    notas: c.notas,
+                                    logo_url: c.logo,
+                                    created_at: c.created_at,
+                                    updated_at: c.updated_at,
+                                });
+                                if (error) console.error(`Error syncing cliente ${c.razon_social}:`, error);
+                            } catch (err) {
+                                console.error(`Error syncing cliente ${c.razon_social}:`, err);
+                            }
+                        }
+                        console.log('✅ Clientes sincronizados con Supabase');
+                    }
                 }
             }
 
