@@ -260,20 +260,32 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     const createCliente = async (data: Omit<Cliente, 'id'>): Promise<Cliente> => {
         const now = new Date().toISOString();
+
+        // VALIDACIÓN CRÍTICA: razon_social es OBLIGATORIO
+        if (!data.razon_social || data.razon_social.trim() === '') {
+            throw new Error('razon_social es obligatorio para crear un cliente');
+        }
+
+        const razonSocialKey = data.razon_social.trim();
+
         const newCliente: Cliente = {
             ...data,
-            id: data.razon_social,
+            id: razonSocialKey,
+            razon_social: razonSocialKey,
             estado: data.estado || 'activo',
             prioridad: data.prioridad || 'medio',
             tipo_cliente: data.tipo_cliente || 'corporativo',
             created_at: now,
             updated_at: now,
         };
-        setClientes(prev => ({ ...prev, [data.razon_social]: newCliente }));
+
+        // PRIMERO: Actualizar estado local
+        setClientes(prev => ({ ...prev, [razonSocialKey]: newCliente }));
 
         try {
-            const { error } = await supabase.from('clientes').insert({
-                razon_social: newCliente.razon_social,
+            // SEGUNDO: Guardar en Supabase con upsert para evitar conflictos
+            const { error } = await supabase.from('clientes').upsert({
+                razon_social: razonSocialKey,
                 nombre_comercial: newCliente.nombre_comercial,
                 grupo_empresarial: newCliente.grupo_empresarial,
                 grupo_empresarial_ruc: newCliente.grupo_empresarial_ruc,
@@ -293,11 +305,16 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 logo_url: newCliente.logo,
                 created_at: now,
                 updated_at: now,
-            });
-            if (error) throw error;
-            console.log("Cliente creado en Supabase:", newCliente.razon_social);
+            }, { onConflict: 'razon_social' });
+
+            if (error) {
+                console.error("❌ Error saving to Supabase:", error);
+                throw error;
+            }
+            console.log("✅ Cliente creado en Supabase:", razonSocialKey);
         } catch (err) {
-            console.error("Error creating cliente:", err);
+            console.error("❌ Error creating cliente:", err);
+            // NO REMOVER DEL ESTADO LOCAL - dejar que el usuario intente de nuevo
         }
 
         return newCliente;
@@ -376,14 +393,31 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     const updateCliente = async (razonSocial: string, data: Partial<Cliente>) => {
         const now = new Date().toISOString();
+
+        // VALIDACIÓN: razonSocial debe existir
+        if (!razonSocial || razonSocial.trim() === '') {
+            console.error("❌ updateCliente: razonSocial es requerido");
+            return;
+        }
+
+        const currentCliente = clientes[razonSocial];
+        if (!currentCliente) {
+            console.error(`❌ updateCliente: Cliente ${razonSocial} no existe en estado local`);
+            return;
+        }
+
         const fullData = {
-            ...(clientes[razonSocial] || { razon_social: razonSocial }),
+            ...currentCliente,
             ...data,
+            razon_social: razonSocial, // SIEMPRE mantener la clave primaria
             updated_at: now
         };
+
+        console.log(`📝 Actualizando cliente ${razonSocial}:`, data);
         setClientes(prev => ({ ...prev, [razonSocial]: fullData }));
+
         try {
-            await supabase.from('clientes').upsert({
+            const { error } = await supabase.from('clientes').upsert({
                 razon_social: fullData.razon_social,
                 nombre_comercial: fullData.nombre_comercial,
                 grupo_empresarial: fullData.grupo_empresarial,
@@ -404,8 +438,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 logo_url: fullData.logo,
                 updated_at: now
             }, { onConflict: 'razon_social' });
+
+            if (error) {
+                console.error("❌ Error updating cliente in Supabase:", error);
+            } else {
+                console.log(`✅ Cliente ${razonSocial} actualizado en Supabase`);
+            }
         } catch (err) {
-            console.error("Error updating cliente:", err);
+            console.error("❌ Error updating cliente:", err);
         }
     };
 
