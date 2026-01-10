@@ -70,8 +70,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const fetchInitialData = async () => {
             setIsLoading(true);
             try {
-                const { data: clientsData } = await supabase.from('clientes').select('*');
-                if (clientsData) {
+                const { data: clientsData, error: clientsError } = await supabase.from('clientes').select('*');
+                if (clientsError) {
+                    console.error("❌ Error fetching clientes:", clientsError);
+                } else if (clientsData) {
                     const clientsMap: Record<string, Cliente> = {};
                     clientsData.forEach(c => {
                         // Migration: if razon_social doesn't exist, use nombre (old field)
@@ -102,7 +104,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                         };
                     });
                     setClientes(clientsMap);
-                    console.log("📊 Clientes cargados de Supabase:", clientsMap);
+                    console.log(`📊 Clientes cargados de Supabase (${Object.keys(clientsMap).length}):`, Object.keys(clientsMap));
+                } else {
+                    console.log("ℹ️ No clientes found in Supabase on initial load");
                 }
 
                 const { data: provData } = await supabase.from('proveedores').select('*');
@@ -563,15 +567,26 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 const text = await backupFile.text();
                 const json = JSON.parse(text);
                 if (json.meta?.type === 'backup') {
-                    setClientes(prev => ({ ...prev, ...json.clientes }));
+                    // Prepare clientes data with proper keys
+                    const clientesMap: Record<string, any> = {};
+                    if (json.clientes) {
+                        for (const [, cliente] of Object.entries(json.clientes)) {
+                            const c = cliente as any;
+                            const key = c.razon_social || c.id || 'Sin Nombre';
+                            clientesMap[key] = c;
+                        }
+                    }
+
+                    setClientes(prev => ({ ...prev, ...clientesMap }));
                     setProveedores(prev => ({ ...prev, ...json.proveedores }));
                     if (json.pedidos) setPedidos(json.pedidos);
                     if (json.payments) setPayments(json.payments);
-                    setDataSource('supabase');
 
                     // Sync loaded clientes to Supabase
-                    if (json.clientes) {
-                        for (const [, cliente] of Object.entries(json.clientes)) {
+                    if (clientesMap && Object.keys(clientesMap).length > 0) {
+                        console.log(`📤 Sincronizando ${Object.keys(clientesMap).length} clientes a Supabase...`);
+
+                        for (const [, cliente] of Object.entries(clientesMap)) {
                             const c = cliente as any;
                             try {
                                 const { error } = await supabase.from('clientes').upsert({
@@ -586,6 +601,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                                     contacto: c.contacto,
                                     telefono: c.telefono,
                                     email: c.email,
+                                    terminos_comerciales: c.terminos_comerciales,
+                                    vendedor_asignado: c.vendedor_asignado,
                                     estado: c.estado,
                                     prioridad: c.prioridad,
                                     tipo_cliente: c.tipo_cliente,
@@ -593,14 +610,58 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                                     logo_url: c.logo,
                                     created_at: c.created_at,
                                     updated_at: c.updated_at,
-                                });
-                                if (error) console.error(`Error syncing cliente ${c.razon_social}:`, error);
+                                }, { onConflict: 'razon_social' });
+                                if (error) console.error(`❌ Error syncing cliente ${c.razon_social}:`, error);
+                                else console.log(`✅ Cliente ${c.razon_social} sincronizado`);
                             } catch (err) {
-                                console.error(`Error syncing cliente ${c.razon_social}:`, err);
+                                console.error(`❌ Error syncing cliente ${c.razon_social}:`, err);
                             }
                         }
-                        console.log('✅ Clientes sincronizados con Supabase');
+                        console.log(`✅ Todos los clientes fueron sincronizados con Supabase`);
+
+                        // Refetch from Supabase to verify persistence
+                        console.log('🔄 Verificando datos en Supabase...');
+                        const { data: verifyData, error: verifyError } = await supabase.from('clientes').select('*');
+                        if (verifyError) {
+                            console.error('❌ Error verificando clientes:', verifyError);
+                        } else {
+                            console.log(`✅ Verificación: ${verifyData?.length || 0} clientes en Supabase`);
+                            // Update state with verified data from Supabase
+                            if (verifyData) {
+                                const verifiedMap: Record<string, Cliente> = {};
+                                verifyData.forEach(c => {
+                                    const razonSocial = c.razon_social || c.id || 'Sin Nombre';
+                                    verifiedMap[razonSocial] = {
+                                        id: razonSocial,
+                                        razon_social: c.razon_social,
+                                        nombre_comercial: c.nombre_comercial,
+                                        grupo_empresarial: c.grupo_empresarial,
+                                        grupo_empresarial_ruc: c.grupo_empresarial_ruc,
+                                        proyecto: c.proyecto,
+                                        proyecto_codigo: c.proyecto_codigo,
+                                        ruc: c.ruc,
+                                        direccion: c.direccion,
+                                        contacto: c.contacto,
+                                        telefono: c.telefono,
+                                        email: c.email,
+                                        terminos_comerciales: c.terminos_comerciales,
+                                        vendedor_asignado: c.vendedor_asignado,
+                                        estado: c.estado || 'activo',
+                                        prioridad: c.prioridad || 'medio',
+                                        tipo_cliente: c.tipo_cliente || 'corporativo',
+                                        notas: c.notas,
+                                        logo: c.logo_url,
+                                        created_at: c.created_at,
+                                        updated_at: c.updated_at
+                                    };
+                                });
+                                setClientes(verifiedMap);
+                                console.log('✅ Estado actualizado con datos verificados de Supabase');
+                            }
+                        }
                     }
+
+                    setDataSource('supabase');
                 }
             }
 
