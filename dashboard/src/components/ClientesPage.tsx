@@ -83,17 +83,19 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
     };
 
     const getHoldingData = (grupoKey: string, clientesInGrupo: Cliente[]) => {
-        // Obtener el primer cliente para sacar datos del holding
-        const firstCliente = clientesInGrupo[0];
+        // Preferir cliente sin proyecto (es el holding principal)
+        // Si no existe, usar el primero
+        const holdingCliente = clientesInGrupo.find(c => !c.proyecto) || clientesInGrupo[0];
         return {
+            id: holdingCliente?.id,
             nombre_comercial: grupoKey,
-            razon_social: firstCliente?.razon_social || grupoKey,
-            ruc: firstCliente?.ruc,
-            direccion: firstCliente?.direccion,
-            contacto: firstCliente?.contacto,
-            telefono: firstCliente?.telefono,
-            email: firstCliente?.email,
-            logo: firstCliente?.logo
+            razon_social: holdingCliente?.razon_social || grupoKey,
+            ruc: holdingCliente?.ruc,
+            direccion: holdingCliente?.direccion,
+            contacto: holdingCliente?.contacto,
+            telefono: holdingCliente?.telefono,
+            email: holdingCliente?.email,
+            logo: holdingCliente?.logo
         };
     };
 
@@ -288,21 +290,23 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
 
             {/* Hierarchical View */}
             {viewMode === 'hierarchical' && hierarchyData.filtered.length > 0 && (
-                <div className="space-y-4">
-                    {Object.entries(hierarchyData.grouped).map(([grupoKey, razonSocialMap]) => {
-                        const allClientesInGrupo = Object.values(razonSocialMap).flat();
-                        const isExpanded = expandedGroups.has(grupoKey);
-                        const isHolding = grupoKey !== 'Sin Grupo';
-                        const holdingInfo = isHolding ? getHoldingData(grupoKey, allClientesInGrupo) : null;
+                <div>
+                    {/* Holdings Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
+                        {Object.entries(hierarchyData.grouped).map(([grupoKey, razonSocialMap]) => {
+                            if (grupoKey === 'Sin Grupo') return null; // Skip independent clients for now
 
-                        if (isHolding) {
+                            const allClientesInGrupo = Object.values(razonSocialMap).flat();
+                            const isExpanded = expandedGroups.has(grupoKey);
+                            const holdingInfo = getHoldingData(grupoKey, allClientesInGrupo);
+
                             // HOLDING CARD VIEW
                             return (
                                 <div key={grupoKey} className="bg-gradient-to-br from-gray-900 to-gray-900/50 border border-purple-500/20 rounded-xl p-5 transition-all group">
                                     {/* Holding Header - Expandible */}
                                     <div
                                         onClick={() => toggleGroupExpand(grupoKey)}
-                                        className="flex items-start gap-4 mb-4 cursor-pointer hover:bg-gray-800/30 p-3 rounded-lg transition-colors -mx-3"
+                                        className="flex items-start gap-4 mb-4 cursor-pointer hover:bg-gray-800/30 p-2 rounded-lg transition-colors"
                                     >
                                         {/* Logo */}
                                         <div
@@ -426,22 +430,22 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                                     )}
                                 </div>
                             );
-                        } else {
-                            // INDEPENDENT CLIENTS VIEW
-                            return (
-                                <div key={grupoKey} className="space-y-4">
-                                    <h2 className="text-lg font-bold text-blue-300 flex items-center gap-2">
-                                        <span>📋</span> Clientes Independientes
-                                    </h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                        {allClientesInGrupo.map(cliente => (
-                                            <ClientCard key={cliente.id} cliente={cliente} />
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        }
-                    })}
+                        })}
+                    </div>
+
+                    {/* Independent Clients Section */}
+                    {hierarchyData.grouped['Sin Grupo'] && (
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-bold text-blue-300 flex items-center gap-2">
+                                <span>📋</span> Clientes Independientes
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {Object.values(hierarchyData.grouped['Sin Grupo']).flat().map(cliente => (
+                                    <ClientCard key={cliente.id} cliente={cliente} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
