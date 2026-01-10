@@ -15,6 +15,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
     const [showNuevoModal, setShowNuevoModal] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'hierarchical' | 'flat'>('hierarchical');
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     // Build hierarchical structure
@@ -67,6 +68,33 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
             await deleteCliente(confirmDelete);
             setConfirmDelete(null);
         }
+    };
+
+    const toggleGroupExpand = (grupoKey: string) => {
+        setExpandedGroups(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(grupoKey)) {
+                newSet.delete(grupoKey);
+            } else {
+                newSet.add(grupoKey);
+            }
+            return newSet;
+        });
+    };
+
+    const getHoldingData = (grupoKey: string, clientesInGrupo: Cliente[]) => {
+        // Obtener el primer cliente para sacar datos del holding
+        const firstCliente = clientesInGrupo[0];
+        return {
+            nombre_comercial: grupoKey,
+            razon_social: firstCliente?.razon_social || grupoKey,
+            ruc: firstCliente?.ruc,
+            direccion: firstCliente?.direccion,
+            contacto: firstCliente?.contacto,
+            telefono: firstCliente?.telefono,
+            email: firstCliente?.email,
+            logo: firstCliente?.logo
+        };
     };
 
     // Client Card Component
@@ -260,68 +288,160 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
 
             {/* Hierarchical View */}
             {viewMode === 'hierarchical' && hierarchyData.filtered.length > 0 && (
-                <div className="space-y-6">
-                    {Object.entries(hierarchyData.grouped).map(([grupoKey, razonSocialMap]) => (
-                        <div
-                            key={grupoKey}
-                            className="bg-gradient-to-br from-gray-950 to-gray-900/50 border border-blue-500/10 rounded-2xl overflow-hidden"
-                        >
-                            {/* Grupo Header */}
-                            <div className="bg-gradient-to-r from-blue-600/20 via-transparent to-cyan-600/20 border-b border-blue-500/10 px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-2xl">📁</span>
-                                    <div className="flex-1">
-                                        <h2 className="text-lg font-bold text-blue-300">
-                                            {grupoKey === 'Sin Grupo' ? '📋 Clientes Independientes' : grupoKey}
-                                        </h2>
-                                        <p className="text-xs text-gray-500">
-                                            {Object.values(razonSocialMap).flat().length} razón{
-                                                Object.values(razonSocialMap).flat().length !== 1 ? 'es' : ''
-                                            } social
-                                            {Object.values(razonSocialMap).flat().some(c => c.proyecto)
-                                                ? ` • ${Object.values(razonSocialMap)
-                                                      .flat()
-                                                      .filter(c => c.proyecto).length} proyecto(s)`
-                                                : ''}
-                                        </p>
+                <div className="space-y-4">
+                    {Object.entries(hierarchyData.grouped).map(([grupoKey, razonSocialMap]) => {
+                        const allClientesInGrupo = Object.values(razonSocialMap).flat();
+                        const isExpanded = expandedGroups.has(grupoKey);
+                        const isHolding = grupoKey !== 'Sin Grupo';
+                        const holdingInfo = isHolding ? getHoldingData(grupoKey, allClientesInGrupo) : null;
+
+                        if (isHolding) {
+                            // HOLDING CARD VIEW
+                            return (
+                                <div key={grupoKey} className="bg-gradient-to-br from-gray-900 to-gray-900/50 border border-purple-500/20 rounded-xl p-5 transition-all group">
+                                    {/* Holding Header - Expandible */}
+                                    <div
+                                        onClick={() => toggleGroupExpand(grupoKey)}
+                                        className="flex items-start gap-4 mb-4 cursor-pointer hover:bg-gray-800/30 p-3 rounded-lg transition-colors -mx-3"
+                                    >
+                                        {/* Logo */}
+                                        <div
+                                            className="relative w-14 h-14 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center overflow-hidden cursor-pointer group/logo"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                fileInputRefs.current[`holding-${grupoKey}`]?.click();
+                                            }}
+                                        >
+                                            {holdingInfo?.logo ? (
+                                                <img src={holdingInfo.logo} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-2xl">🏗️</span>
+                                            )}
+                                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity">
+                                                <span className="text-[8px] text-white font-bold">LOGO</span>
+                                            </div>
+                                            <input
+                                                ref={el => {
+                                                    fileInputRefs.current[`holding-${grupoKey}`] = el;
+                                                }}
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    e.target.files?.[0] && handleLogoUpload(holdingInfo?.razon_social || grupoKey, e.target.files[0]);
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-white truncate text-sm">{grupoKey}</h3>
+                                                <span className={`text-lg transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                                            </div>
+                                            {holdingInfo?.razon_social && (
+                                                <p className="text-xs text-purple-400/70 truncate">{holdingInfo.razon_social}</p>
+                                            )}
+                                            {holdingInfo?.ruc && (
+                                                <p className="text-xs text-gray-500 font-mono">RUC: {holdingInfo.ruc}</p>
+                                            )}
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {allClientesInGrupo.length} razón{allClientesInGrupo.length !== 1 ? 'es' : ''} social{allClientesInGrupo.length !== 1 ? 'es' : ''}
+                                                {allClientesInGrupo.some(c => c.proyecto) ? ` • ${allClientesInGrupo.filter(c => c.proyecto).length} proyecto(s)` : ''}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Holding Details - Expanded */}
+                                    {isExpanded && (
+                                        <div className="space-y-4 border-t border-gray-800 pt-4">
+                                            {/* Contact Info */}
+                                            <div className="bg-purple-950/20 rounded-lg p-3 space-y-2">
+                                                <h4 className="text-xs font-semibold text-purple-300 uppercase">Información del Grupo</h4>
+                                                {holdingInfo?.contacto && (
+                                                    <div className="flex items-center gap-2 text-gray-400">
+                                                        <span className="text-xs">👤</span>
+                                                        <span className="text-xs">{holdingInfo.contacto}</span>
+                                                    </div>
+                                                )}
+                                                {holdingInfo?.telefono && (
+                                                    <div className="flex items-center gap-2 text-gray-400">
+                                                        <span className="text-xs">📞</span>
+                                                        <span className="text-xs">{holdingInfo.telefono}</span>
+                                                    </div>
+                                                )}
+                                                {holdingInfo?.email && (
+                                                    <div className="flex items-center gap-2 text-gray-400">
+                                                        <span className="text-xs">✉️</span>
+                                                        <span className="text-xs truncate">{holdingInfo.email}</span>
+                                                    </div>
+                                                )}
+                                                {holdingInfo?.direccion && (
+                                                    <div className="flex items-center gap-2 text-gray-400">
+                                                        <span className="text-xs">📍</span>
+                                                        <span className="text-xs">{holdingInfo.direccion}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Projects/Razones Sociales */}
+                                            <div>
+                                                <h4 className="text-xs font-semibold text-cyan-300 uppercase mb-3">Proyectos y Razones Sociales</h4>
+                                                <div className="space-y-2">
+                                                    {Object.entries(razonSocialMap).map(([razonKey, clientesOfRazon]) => (
+                                                        <div key={razonKey} className="bg-gray-950/50 rounded-lg p-2">
+                                                            <p className="text-xs font-semibold text-cyan-400 mb-2">🏛️ {razonKey}</p>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                                {clientesOfRazon.map(cliente => (
+                                                                    <div
+                                                                        key={cliente.id}
+                                                                        onClick={() => onSelectCliente?.(cliente.razon_social)}
+                                                                        className="bg-gray-900/60 border border-gray-700 rounded p-2 cursor-pointer hover:border-blue-500/50 transition-colors text-xs"
+                                                                    >
+                                                                        <div className="font-semibold text-white mb-1 flex items-center gap-2">
+                                                                            {cliente.proyecto && <span className="text-purple-400">🎯</span>}
+                                                                            {cliente.proyecto || 'Proyecto General'}
+                                                                        </div>
+                                                                        {cliente.proyecto_codigo && (
+                                                                            <p className="text-gray-500 text-[10px]">{cliente.proyecto_codigo}</p>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex gap-2 pt-2 border-t border-gray-800">
+                                                <button
+                                                    onClick={() => onSelectCliente?.(holdingInfo?.razon_social || grupoKey)}
+                                                    className="flex-1 px-3 py-1.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                >
+                                                    Ver Ficha
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        } else {
+                            // INDEPENDENT CLIENTS VIEW
+                            return (
+                                <div key={grupoKey} className="space-y-4">
+                                    <h2 className="text-lg font-bold text-blue-300 flex items-center gap-2">
+                                        <span>📋</span> Clientes Independientes
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        {allClientesInGrupo.map(cliente => (
+                                            <ClientCard key={cliente.id} cliente={cliente} />
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Razones Sociales bajo este Grupo */}
-                            <div className="p-6 space-y-4">
-                                {Object.entries(razonSocialMap).map(([razonKey, clientesOfRazon]) => (
-                                    <div key={razonKey} className="space-y-3">
-                                        {/* Razón Social Header */}
-                                        <div className="pl-4 border-l-2 border-cyan-500/30">
-                                            <h3 className="text-sm font-semibold text-cyan-300 flex items-center gap-2">
-                                                <span>🏛️</span>
-                                                {razonKey}
-                                            </h3>
-                                        </div>
-
-                                        {/* Projects/Clients Grid */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pl-4">
-                                            {clientesOfRazon.map(cliente => (
-                                                <div key={cliente.id}>
-                                                    {cliente.proyecto ? (
-                                                        <div className="relative">
-                                                            <div className="absolute -top-3 -left-4 text-xs font-bold text-purple-400 bg-purple-950/80 px-2 py-1 rounded">
-                                                                🎯 {cliente.proyecto_codigo || 'PRY'}
-                                                            </div>
-                                                            <ClientCard cliente={cliente} />
-                                                        </div>
-                                                    ) : (
-                                                        <ClientCard cliente={cliente} />
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                            );
+                        }
+                    })}
                 </div>
             )}
 
