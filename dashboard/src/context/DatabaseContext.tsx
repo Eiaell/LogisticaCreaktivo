@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import initSqlJs, { type Database } from 'sql.js';
-import type { Pedido, Payment, Proveedor, Cliente } from '../types';
+import type { Pedido, Payment, Proveedor, Cliente, Cotizacion } from '../types';
 import { supabase } from '../supabaseClient';
 import { type TraceEvent, parseEventsToPedidos } from '../utils/parsers';
 
@@ -11,6 +11,7 @@ interface DatabaseContextType {
     payments: Payment[];
     proveedores: Record<string, Proveedor>;
     clientes: Record<string, Cliente>;
+    cotizaciones: Cotizacion[];
     setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
 
     // CRUD Pedidos
@@ -29,6 +30,12 @@ interface DatabaseContextType {
     updateCliente: (nombre: string, data: Partial<Cliente>) => Promise<void>;
     deleteCliente: (nombre: string) => Promise<void>;
     deleteProveedor: (nombre: string) => Promise<void>;
+
+    // CRUD Cotizaciones
+    createCotizacion: (data: Omit<Cotizacion, 'id' | 'created_at' | 'updated_at'>) => Promise<Cotizacion>;
+    updateCotizacion: (id: string, data: Partial<Cotizacion>) => Promise<void>;
+    deleteCotizacion: (id: string) => Promise<void>;
+    getCotizacionesByProveedor: (proveedorId: string) => Cotizacion[];
 
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
@@ -53,6 +60,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [proveedores, setProveedores] = useState<Record<string, Proveedor>>({});
     const [clientes, setClientes] = useState<Record<string, Cliente>>({});
+    const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
     const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -99,6 +107,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                         fecha: p.fecha,
                         nota: p.nota
                     })));
+                }
+
+                // Cargar cotizaciones
+                const { data: cotizacionesData } = await supabase.from('cotizaciones').select('*');
+                if (cotizacionesData) {
+                    setCotizaciones(cotizacionesData as Cotizacion[]);
                 }
 
                 // Sincronizar dataSource SOLO si logramos leer algo o terminar el proceso
@@ -222,6 +236,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         try {
             const { error } = await supabase.from('clientes').insert({
                 nombre: newCliente.nombre,
+                nombre_comercial: newCliente.nombre_comercial,
                 ruc: newCliente.ruc,
                 direccion: newCliente.direccion,
                 contacto: newCliente.contacto,
@@ -316,6 +331,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         try {
             await supabase.from('clientes').upsert({
                 nombre: fullData.nombre,
+                nombre_comercial: fullData.nombre_comercial,
                 ruc: fullData.ruc,
                 direccion: fullData.direccion,
                 contacto: fullData.contacto,
@@ -359,6 +375,58 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             console.error("Error deleting proveedor:", err);
         }
+    };
+
+    // CRUD Cotizaciones
+    const createCotizacion = async (data: Omit<Cotizacion, 'id' | 'created_at' | 'updated_at'>): Promise<Cotizacion> => {
+        const now = new Date().toISOString();
+        const newCotizacion: Cotizacion = {
+            ...data,
+            id: `COT-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+            created_at: now,
+            updated_at: now,
+        };
+
+        setCotizaciones(prev => [newCotizacion, ...prev]);
+
+        try {
+            const { error } = await supabase.from('cotizaciones').insert(newCotizacion);
+            if (error) throw error;
+            console.log("Cotización creada en Supabase:", newCotizacion.id);
+        } catch (err) {
+            console.error("Error creating cotizacion:", err);
+        }
+
+        return newCotizacion;
+    };
+
+    const updateCotizacion = async (id: string, data: Partial<Cotizacion>) => {
+        const now = new Date().toISOString();
+        setCotizaciones(prev => prev.map(c => c.id === id ? { ...c, ...data, updated_at: now } : c));
+
+        try {
+            const { error } = await supabase.from('cotizaciones').update({ ...data, updated_at: now }).eq('id', id);
+            if (error) throw error;
+            console.log("Cotización actualizada en Supabase:", id);
+        } catch (err) {
+            console.error("Error updating cotizacion:", err);
+        }
+    };
+
+    const deleteCotizacion = async (id: string) => {
+        setCotizaciones(prev => prev.filter(c => c.id !== id));
+
+        try {
+            const { error } = await supabase.from('cotizaciones').delete().eq('id', id);
+            if (error) throw error;
+            console.log("Cotización eliminada de Supabase:", id);
+        } catch (err) {
+            console.error("Error deleting cotizacion:", err);
+        }
+    };
+
+    const getCotizacionesByProveedor = (proveedorId: string): Cotizacion[] => {
+        return cotizaciones.filter(c => c.proveedor_id === proveedorId);
     };
 
     const addPayment = async (pedidoId: string, monto: number, nota: string = 'Pago registrado') => {
@@ -528,7 +596,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     return (
         <DatabaseContext.Provider value={{
-            db, events, pedidos, payments, proveedores, clientes,
+            db, events, pedidos, payments, proveedores, clientes, cotizaciones,
             setPedidos,
             // CRUD Pedidos
             createPedido, updatePedido, deletePedido, deletePedidos,
@@ -536,6 +604,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             addPayment,
             // CRUD Clientes/Proveedores
             createCliente, createProveedor, updateProveedor, updateCliente, deleteCliente, deleteProveedor,
+            // CRUD Cotizaciones
+            createCotizacion, updateCotizacion, deleteCotizacion, getCotizacionesByProveedor,
             // Filtros y estado
             selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
             loadDatabase, resetDatabase, exportBackup, uploadLogo

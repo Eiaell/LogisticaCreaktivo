@@ -5,6 +5,7 @@
 export interface Cliente {
     id: string;
     nombre: string;
+    nombre_comercial?: string;
     ruc?: string;
     direccion?: string;
     contacto?: string;
@@ -108,6 +109,48 @@ export interface AcuerdoProduccion {
     fecha_acuerdo: string;
     fecha_prometida: string;
     estado: string;
+}
+
+// Cotización de proveedor
+export interface Cotizacion {
+    id: string;
+    proveedor_id: string;           // ID del proveedor (nombre)
+    fecha: string;                   // Fecha de la cotización
+    descripcion: string;             // Descripción del producto/servicio
+    cantidad?: number;               // Cantidad cotizada
+    precio_unitario?: number;        // Precio por unidad
+    precio_total: number;            // Precio total
+    incluye_igv: boolean;            // Si el precio incluye IGV
+    moneda: 'PEN' | 'USD';           // Moneda
+
+    // Condiciones de pago
+    forma_pago: 'contado' | 'adelanto_50' | 'adelanto_70' | 'contra_entrega' | 'credito' | 'otro';
+    condiciones_pago_detalle?: string;  // Detalle adicional de condiciones
+
+    // Datos bancarios
+    cuenta_bancaria?: string;        // Número de cuenta
+    banco?: string;                  // Nombre del banco
+    cci?: string;                    // Código interbancario
+    yape_plin?: string;              // Número de Yape/Plin
+
+    // Producción
+    tiempo_produccion?: number;      // Días de producción
+    tiempo_entrega?: number;         // Días de entrega después de producción
+
+    // Extras
+    prueba_color?: boolean;          // Si ofrece prueba de color
+    muestra_fisica?: boolean;        // Si ofrece muestra física
+
+    // Estado y seguimiento
+    estado: 'pendiente' | 'aprobada' | 'rechazada' | 'vencida';
+    vigencia_dias?: number;          // Días de vigencia de la cotización
+
+    // Notas
+    notas?: string;
+
+    // Metadata
+    created_at: string;
+    updated_at: string;
 }
 
 export interface MovimientoMovilidad {

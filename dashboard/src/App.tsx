@@ -6,10 +6,19 @@ import { PedidosTable } from './components/PedidosTable';
 import { NuevoClienteModal } from './components/NuevoClienteModal';
 import { NuevoProveedorModal } from './components/NuevoProveedorModal';
 import { Sidebar } from './components/Sidebar';
+import { ClientesPage } from './components/ClientesPage';
+import { ProveedoresPage } from './components/ProveedoresPage';
+import { ProveedorFichaPage } from './components/ProveedorFichaPage';
 import { useDatabase, DatabaseProvider } from './context/DatabaseContext';
 
-function Dashboard() {
-  const { pedidos, clientes, exportBackup, loadDatabase } = useDatabase();
+type PageView = 'dashboard' | 'clientes' | 'proveedores' | 'proveedor_ficha';
+
+interface DashboardProps {
+  onNavigate: (page: PageView) => void;
+}
+
+function Dashboard({ onNavigate }: DashboardProps) {
+  const { pedidos, clientes, proveedores, exportBackup, loadDatabase } = useDatabase();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
   const [modalType, setModalType] = useState<'cliente' | 'proveedor' | 'nuevo_cliente' | 'nuevo_proveedor' | null>(null);
 
@@ -57,6 +66,26 @@ function Dashboard() {
             onChange={(e) => e.target.files && loadDatabase(e.target.files)}
             accept=".json,.jsonl,.db"
           />
+
+          {/* Botones de navegación elegantes */}
+          <button
+            onClick={() => onNavigate('clientes')}
+            className="group px-4 py-2 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-xl text-blue-300 hover:from-blue-600/40 hover:to-cyan-600/40 hover:border-blue-400/50 hover:text-white transition-all flex items-center gap-2"
+          >
+            <span className="text-lg group-hover:scale-110 transition-transform">👥</span>
+            <span className="font-medium">Clientes</span>
+            <span className="text-xs bg-blue-500/30 px-2 py-0.5 rounded-full">{Object.keys(clientes).length}</span>
+          </button>
+          <button
+            onClick={() => onNavigate('proveedores')}
+            className="group px-4 py-2 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border border-emerald-500/30 rounded-xl text-emerald-300 hover:from-emerald-600/40 hover:to-teal-600/40 hover:border-emerald-400/50 hover:text-white transition-all flex items-center gap-2"
+          >
+            <span className="text-lg group-hover:scale-110 transition-transform">🏭</span>
+            <span className="font-medium">Proveedores</span>
+            <span className="text-xs bg-emerald-500/30 px-2 py-0.5 rounded-full">{Object.keys(proveedores).length}</span>
+          </button>
+
+          <div className="w-px bg-gray-700 mx-1"></div>
 
           <button
             onClick={exportBackup}
@@ -107,6 +136,8 @@ function Dashboard() {
 
 function AppContent() {
   const { db, events, isLoading, clientes, pedidos, dataSource } = useDatabase();
+  const [currentPage, setCurrentPage] = useState<PageView>('dashboard');
+  const [selectedProveedorId, setSelectedProveedorId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -119,12 +150,39 @@ function AppContent() {
     );
   }
 
-  if (dataSource === 'supabase') return <Dashboard />;
-
-  const hasData = db || events.length > 0 || Object.keys(clientes).length > 0 || pedidos.length > 0;
+  const hasData = dataSource === 'supabase' || db || events.length > 0 || Object.keys(clientes).length > 0 || pedidos.length > 0;
   if (!hasData) return <DataLoader />;
 
-  return <Dashboard />;
+  // Renderizar la página actual
+  switch (currentPage) {
+    case 'clientes':
+      return <ClientesPage onBack={() => setCurrentPage('dashboard')} />;
+    case 'proveedores':
+      return <ProveedoresPage
+        onBack={() => setCurrentPage('dashboard')}
+        onSelectProveedor={(proveedorId) => {
+          setSelectedProveedorId(proveedorId);
+          setCurrentPage('proveedor_ficha');
+        }}
+      />;
+    case 'proveedor_ficha':
+      return selectedProveedorId ? (
+        <ProveedorFichaPage
+          proveedorId={selectedProveedorId}
+          onBack={() => setCurrentPage('proveedores')}
+        />
+      ) : (
+        <ProveedoresPage
+          onBack={() => setCurrentPage('dashboard')}
+          onSelectProveedor={(proveedorId) => {
+            setSelectedProveedorId(proveedorId);
+            setCurrentPage('proveedor_ficha');
+          }}
+        />
+      );
+    default:
+      return <Dashboard onNavigate={setCurrentPage} />;
+  }
 }
 
 export default function App() {

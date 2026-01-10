@@ -12,6 +12,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
 
     const [formData, setFormData] = useState({
         nombre: '',
+        nombre_comercial: '',
         ruc: '',
         direccion: '',
         contacto: '',
@@ -75,6 +76,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
 
             await createCliente({
                 nombre: formData.nombre.trim(),
+                nombre_comercial: formData.nombre_comercial || undefined,
                 ruc: formData.ruc || undefined,
                 direccion: formData.direccion || undefined,
                 contacto: formData.contacto || undefined,
@@ -85,7 +87,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
             });
 
             // Reset form
-            setFormData({ nombre: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '', notas: '' });
+            setFormData({ nombre: '', nombre_comercial: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '', notas: '' });
             setLogoPreview(null);
             setLogoFile(null);
             onClose();
@@ -97,7 +99,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
     };
 
     const handleClose = () => {
-        setFormData({ nombre: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '', notas: '' });
+        setFormData({ nombre: '', nombre_comercial: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '', notas: '' });
         setLogoPreview(null);
         setLogoFile(null);
         setErrors({});
@@ -179,6 +181,21 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
                                 className={`w-full px-4 py-3 bg-gray-950/50 border ${errors.nombre ? 'border-red-500' : 'border-gray-700'} rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all`}
                             />
                             {errors.nombre && <p className="text-xs text-red-400">{errors.nombre}</p>}
+                        </div>
+
+                        {/* Nombre Comercial */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                Nombre Comercial
+                            </label>
+                            <input
+                                type="text"
+                                name="nombre_comercial"
+                                value={formData.nombre_comercial}
+                                onChange={handleChange}
+                                placeholder="Nombre comercial o marca (si es diferente)"
+                                className="w-full px-4 py-3 bg-gray-950/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all"
+                            />
                         </div>
 
                         {/* RUC y Teléfono - Row */}
