@@ -102,6 +102,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                         };
                     });
                     setClientes(clientsMap);
+                    console.log("📊 Clientes cargados de Supabase:", clientsMap);
                 }
 
                 const { data: provData } = await supabase.from('proveedores').select('*');
