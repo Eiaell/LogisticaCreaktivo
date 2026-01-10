@@ -261,7 +261,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
             <div className="relative w-full max-w-xl mx-4 animate-in zoom-in-95 fade-in duration-200 max-h-[90vh] overflow-y-auto">
                 <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-blue-950/30 border border-blue-500/20 rounded-2xl shadow-2xl shadow-blue-500/10 overflow-hidden">
