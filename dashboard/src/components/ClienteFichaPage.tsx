@@ -123,10 +123,10 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                     <div className="flex gap-6 flex-1">
                         <div
                             onClick={() => fileInputRef.current?.click()}
-                            className="relative w-32 h-32 rounded-2xl bg-blue-500/10 border-2 border-dashed border-blue-500/30 hover:border-blue-500/60 flex items-center justify-center cursor-pointer group flex-shrink-0"
+                            className="relative w-32 h-32 rounded-2xl bg-blue-500/10 border-2 border-dashed border-blue-500/30 hover:border-blue-500/60 flex items-center justify-center cursor-pointer group flex-shrink-0 overflow-hidden"
                         >
                             {cliente.logo ? (
-                                <img src={cliente.logo} alt="" className="w-full h-full object-cover rounded-2xl" />
+                                <img src={cliente.logo} alt="" className="w-full h-full object-cover object-center rounded-2xl" />
                             ) : (
                                 <span className="text-5xl">🏢</span>
                             )}

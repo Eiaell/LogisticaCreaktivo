@@ -317,7 +317,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                                             }}
                                         >
                                             {holdingInfo?.logo ? (
-                                                <img src={holdingInfo.logo} alt="" className="w-full h-full object-cover" />
+                                                <img src={holdingInfo.logo} alt="" className="w-full h-full object-cover object-center" />
                                             ) : (
                                                 <span className="text-2xl">🏗️</span>
                                             )}
