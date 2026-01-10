@@ -4,15 +4,56 @@
 // ...
 export interface Cliente {
     id: string;
-    nombre: string;
-    nombre_comercial?: string;
-    ruc?: string;
+
+    // Level 1: Corporate Holding/Group
+    grupo_empresarial?: string;           // E.g., "Grupo Lar"
+    grupo_empresarial_ruc?: string;       // RUC del grupo (para auditoría)
+
+    // Level 2: Legal Entity (Razón Social)
+    razon_social: string;                 // E.g., "Comercial Sendai S.A.C." - PRIMARY KEY
+    nombre_comercial?: string;            // E.g., "Sendai" - Marketing name
+
+    // Level 3: Project/Business Unit
+    proyecto?: string;                    // E.g., "Proyecto Cantúa"
+    proyecto_codigo?: string;             // Project code for internal reference
+
+    // Contact & Identification
+    ruc?: string;                         // RUC de la razón social
     direccion?: string;
     contacto?: string;
     telefono?: string;
     email?: string;
+
+    // Commercial Terms (can be inherited from group)
+    terminos_comerciales?: string;        // E.g., "Crédito 30 días"
+    vendedor_asignado?: string;           // Sales person assignment
+
+    // Status & Classification
+    estado: 'activo' | 'inactivo' | 'suspendido';  // Client status
+    prioridad: 'alto' | 'medio' | 'bajo';          // Commercial priority
+    tipo_cliente: 'corporativo' | 'pyme' | 'individual';
+
+    // Notes & Metadata
     notas?: string;
-    logo?: string; // Base64 image
+    logo?: string;                        // Logo URL
+
+    // Documents & Attachments
+    documentos?: Documento[];
+
+    // Timestamps
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Documento/Factura vinculado a un cliente
+export interface Documento {
+    id: string;
+    nombre: string;                    // E.g., "Factura #001"
+    tipo: 'factura' | 'contrato' | 'cotizacion' | 'otro';
+    url: string;                       // URL del documento en storage
+    fecha_subida: string;              // ISO timestamp
+    descripcion?: string;
+    monto?: number;                    // Monto de la factura (si aplica)
 }
 
 // Categorías de proveedor disponibles

@@ -73,7 +73,34 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 const { data: clientsData } = await supabase.from('clientes').select('*');
                 if (clientsData) {
                     const clientsMap: Record<string, Cliente> = {};
-                    clientsData.forEach(c => clientsMap[c.nombre] = { ...c, id: c.nombre, logo: c.logo_url });
+                    clientsData.forEach(c => {
+                        // Migration: if razon_social doesn't exist, use nombre (old field)
+                        const razonSocial = c.razon_social || c.nombre || c.id || 'Sin Nombre';
+
+                        clientsMap[razonSocial] = {
+                            id: razonSocial,
+                            razon_social: razonSocial,
+                            nombre_comercial: c.nombre_comercial,
+                            grupo_empresarial: c.grupo_empresarial,
+                            grupo_empresarial_ruc: c.grupo_empresarial_ruc,
+                            proyecto: c.proyecto,
+                            proyecto_codigo: c.proyecto_codigo,
+                            ruc: c.ruc,
+                            direccion: c.direccion,
+                            contacto: c.contacto,
+                            telefono: c.telefono,
+                            email: c.email,
+                            terminos_comerciales: c.terminos_comerciales,
+                            vendedor_asignado: c.vendedor_asignado,
+                            estado: c.estado || 'activo',
+                            prioridad: c.prioridad || 'medio',
+                            tipo_cliente: c.tipo_cliente || 'corporativo',
+                            notas: c.notas,
+                            logo: c.logo_url,
+                            created_at: c.created_at,
+                            updated_at: c.updated_at
+                        };
+                    });
                     setClientes(clientsMap);
                 }
 
@@ -227,26 +254,43 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     };
 
     const createCliente = async (data: Omit<Cliente, 'id'>): Promise<Cliente> => {
+        const now = new Date().toISOString();
         const newCliente: Cliente = {
             ...data,
-            id: data.nombre,
+            id: data.razon_social,
+            estado: data.estado || 'activo',
+            prioridad: data.prioridad || 'medio',
+            tipo_cliente: data.tipo_cliente || 'corporativo',
+            created_at: now,
+            updated_at: now,
         };
-        setClientes(prev => ({ ...prev, [data.nombre]: newCliente }));
+        setClientes(prev => ({ ...prev, [data.razon_social]: newCliente }));
 
         try {
             const { error } = await supabase.from('clientes').insert({
-                nombre: newCliente.nombre,
+                razon_social: newCliente.razon_social,
                 nombre_comercial: newCliente.nombre_comercial,
+                grupo_empresarial: newCliente.grupo_empresarial,
+                grupo_empresarial_ruc: newCliente.grupo_empresarial_ruc,
+                proyecto: newCliente.proyecto,
+                proyecto_codigo: newCliente.proyecto_codigo,
                 ruc: newCliente.ruc,
                 direccion: newCliente.direccion,
                 contacto: newCliente.contacto,
                 telefono: newCliente.telefono,
                 email: newCliente.email,
+                terminos_comerciales: newCliente.terminos_comerciales,
+                vendedor_asignado: newCliente.vendedor_asignado,
+                estado: newCliente.estado,
+                prioridad: newCliente.prioridad,
+                tipo_cliente: newCliente.tipo_cliente,
                 notas: newCliente.notas,
-                logo_url: newCliente.logo
+                logo_url: newCliente.logo,
+                created_at: now,
+                updated_at: now,
             });
             if (error) throw error;
-            console.log("Cliente creado en Supabase:", newCliente.nombre);
+            console.log("Cliente creado en Supabase:", newCliente.razon_social);
         } catch (err) {
             console.error("Error creating cliente:", err);
         }
@@ -325,37 +369,52 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const updateCliente = async (nombre: string, data: Partial<Cliente>) => {
-        const fullData = { ...(clientes[nombre] || { nombre }), ...data };
-        setClientes(prev => ({ ...prev, [nombre]: fullData }));
+    const updateCliente = async (razonSocial: string, data: Partial<Cliente>) => {
+        const now = new Date().toISOString();
+        const fullData = {
+            ...(clientes[razonSocial] || { razon_social: razonSocial }),
+            ...data,
+            updated_at: now
+        };
+        setClientes(prev => ({ ...prev, [razonSocial]: fullData }));
         try {
             await supabase.from('clientes').upsert({
-                nombre: fullData.nombre,
+                razon_social: fullData.razon_social,
                 nombre_comercial: fullData.nombre_comercial,
+                grupo_empresarial: fullData.grupo_empresarial,
+                grupo_empresarial_ruc: fullData.grupo_empresarial_ruc,
+                proyecto: fullData.proyecto,
+                proyecto_codigo: fullData.proyecto_codigo,
                 ruc: fullData.ruc,
                 direccion: fullData.direccion,
                 contacto: fullData.contacto,
                 telefono: fullData.telefono,
                 email: fullData.email,
+                terminos_comerciales: fullData.terminos_comerciales,
+                vendedor_asignado: fullData.vendedor_asignado,
+                estado: fullData.estado,
+                prioridad: fullData.prioridad,
+                tipo_cliente: fullData.tipo_cliente,
                 notas: fullData.notas,
-                logo_url: fullData.logo
-            }, { onConflict: 'nombre' });
+                logo_url: fullData.logo,
+                updated_at: now
+            }, { onConflict: 'razon_social' });
         } catch (err) {
             console.error("Error updating cliente:", err);
         }
     };
 
-    const deleteCliente = async (nombre: string) => {
+    const deleteCliente = async (razonSocial: string) => {
         setClientes(prev => {
             const newClientes = { ...prev };
-            delete newClientes[nombre];
+            delete newClientes[razonSocial];
             return newClientes;
         });
 
         try {
-            const { error } = await supabase.from('clientes').delete().eq('nombre', nombre);
+            const { error } = await supabase.from('clientes').delete().eq('razon_social', razonSocial);
             if (error) throw error;
-            console.log("Cliente eliminado de Supabase:", nombre);
+            console.log("Cliente eliminado de Supabase:", razonSocial);
         } catch (err) {
             console.error("Error deleting cliente:", err);
         }

@@ -7,11 +7,12 @@ import { NuevoClienteModal } from './components/NuevoClienteModal';
 import { NuevoProveedorModal } from './components/NuevoProveedorModal';
 import { Sidebar } from './components/Sidebar';
 import { ClientesPage } from './components/ClientesPage';
+import { ClienteFichaPage } from './components/ClienteFichaPage';
 import { ProveedoresPage } from './components/ProveedoresPage';
 import { ProveedorFichaPage } from './components/ProveedorFichaPage';
 import { useDatabase, DatabaseProvider } from './context/DatabaseContext';
 
-type PageView = 'dashboard' | 'clientes' | 'proveedores' | 'proveedor_ficha';
+type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'proveedor_ficha';
 
 interface DashboardProps {
   onNavigate: (page: PageView) => void;
@@ -128,7 +129,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
-            {modalType === 'nuevo_cliente' && <NuevoClienteModal isOpen={true} onClose={() => setModalType(null)} />}
+      {modalType === 'nuevo_cliente' && <NuevoClienteModal isOpen={true} onClose={() => setModalType(null)} />}
       {modalType === 'nuevo_proveedor' && <NuevoProveedorModal isOpen={true} onClose={() => setModalType(null)} />}
     </div>
   );
@@ -137,6 +138,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
 function AppContent() {
   const { db, events, isLoading, clientes, pedidos, dataSource } = useDatabase();
   const [currentPage, setCurrentPage] = useState<PageView>('dashboard');
+  const [selectedClienteRazonSocial, setSelectedClienteRazonSocial] = useState<string | null>(null);
   const [selectedProveedorId, setSelectedProveedorId] = useState<string | null>(null);
 
   if (isLoading) {
@@ -156,7 +158,30 @@ function AppContent() {
   // Renderizar la página actual
   switch (currentPage) {
     case 'clientes':
-      return <ClientesPage onBack={() => setCurrentPage('dashboard')} />;
+      return (
+        <ClientesPage
+          onBack={() => setCurrentPage('dashboard')}
+          onSelectCliente={(razonSocial) => {
+            setSelectedClienteRazonSocial(razonSocial);
+            setCurrentPage('cliente_ficha');
+          }}
+        />
+      );
+    case 'cliente_ficha':
+      return selectedClienteRazonSocial ? (
+        <ClienteFichaPage
+          razonSocial={selectedClienteRazonSocial}
+          onBack={() => setCurrentPage('clientes')}
+        />
+      ) : (
+        <ClientesPage
+          onBack={() => setCurrentPage('dashboard')}
+          onSelectCliente={(razonSocial) => {
+            setSelectedClienteRazonSocial(razonSocial);
+            setCurrentPage('cliente_ficha');
+          }}
+        />
+      );
     case 'proveedores':
       return <ProveedoresPage
         onBack={() => setCurrentPage('dashboard')}
