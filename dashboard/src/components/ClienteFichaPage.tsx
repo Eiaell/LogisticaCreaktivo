@@ -9,6 +9,7 @@ interface ClienteFichaPageProps {
 
 export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps) {
     const { clientes, updateCliente, uploadLogo } = useDatabase();
+    // Get the latest cliente data from context - this will update when clientes changes
     const cliente = clientes[razonSocial];
     const fileInputRef = useRef<HTMLInputElement>(null);
     const docInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +44,8 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
         setIsSaving(true);
         try {
             await updateCliente(razonSocial, editData);
+            // Wait a moment for state update, then exit edit mode
+            await new Promise(resolve => setTimeout(resolve, 100));
             setIsEditMode(false);
             setEditData({});
         } catch (err) {
