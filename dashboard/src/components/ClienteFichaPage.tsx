@@ -195,7 +195,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                             </div>
 
                             {/* Quick Info - Editable */}
-                            <div className="space-y-1 text-sm">
+                            <div className="space-y-1 text-sm max-w-md">
                                 {isEditMode ? (
                                     <>
                                         <div className="flex items-center gap-2">
@@ -204,7 +204,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 type="text"
                                                 value={editData.ruc ?? cliente.ruc ?? ''}
                                                 onChange={(e) => handleEditChange('ruc', e.target.value)}
-                                                className="flex-1 bg-gray-950/50 border border-gray-700 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
+                                                className="w-40 bg-gray-950/50 border border-gray-700 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
                                                 placeholder="RUC"
                                             />
                                         </div>
@@ -217,7 +217,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 type="text"
                                                 value={editData.proyecto ?? cliente.proyecto ?? ''}
                                                 onChange={(e) => handleEditChange('proyecto', e.target.value)}
-                                                className="flex-1 bg-gray-950/50 border border-gray-700 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
+                                                className="w-40 bg-gray-950/50 border border-gray-700 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
                                                 placeholder="Proyecto"
                                             />
                                         </div>
