@@ -149,10 +149,10 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                     type="text"
                                     value={editData.razon_social ?? cliente.razon_social ?? ''}
                                     onChange={(e) => handleEditChange('razon_social', e.target.value)}
-                                    className="w-full text-4xl font-bold bg-transparent border-b-2 border-blue-400 text-blue-400 focus:outline-none focus:border-cyan-400 mb-2"
+                                    className="w-fit text-4xl font-bold bg-transparent border-b-2 border-blue-400 text-blue-400 focus:outline-none focus:border-cyan-400 mb-2"
                                 />
                             ) : (
-                                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setIsEditMode(true)}>
+                                <h1 className="w-fit text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setIsEditMode(true)}>
                                     {cliente.razon_social}
                                 </h1>
                             )}
@@ -182,15 +182,6 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                           : 'bg-red-500/20 text-red-400'
                                 }`}>
                                     {cliente.estado.toUpperCase()}
-                                </span>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                    cliente.prioridad === 'alto'
-                                        ? 'bg-red-500/20 text-red-400'
-                                        : cliente.prioridad === 'medio'
-                                          ? 'bg-yellow-500/20 text-yellow-400'
-                                          : 'bg-blue-500/20 text-blue-400'
-                                }`}>
-                                    {cliente.prioridad.toUpperCase()}
                                 </span>
                             </div>
 
