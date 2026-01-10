@@ -5,13 +5,15 @@ import { ProcessGraph } from './components/ProcessGraph';
 import { PedidosTable } from './components/PedidosTable';
 import { ClienteModal } from './components/ClienteModal';
 import { ProveedorModal } from './components/ProveedorModal';
+import { NuevoClienteModal } from './components/NuevoClienteModal';
+import { NuevoProveedorModal } from './components/NuevoProveedorModal';
 import { Sidebar } from './components/Sidebar';
 import { useDatabase, DatabaseProvider } from './context/DatabaseContext';
 
 function Dashboard() {
   const { pedidos, clientes, exportBackup, loadDatabase } = useDatabase();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
-  const [modalType, setModalType] = useState<'cliente' | 'proveedor' | null>(null);
+  const [modalType, setModalType] = useState<'cliente' | 'proveedor' | 'nuevo_cliente' | 'nuevo_proveedor' | null>(null);
   const [newEntityName, setNewEntityName] = useState('');
 
   const handleCardClick = (title: string) => {
@@ -27,10 +29,10 @@ function Dashboard() {
   };
 
   const handleNewEntity = (type: 'cliente' | 'proveedor') => {
-    const name = window.prompt(`Ingrese el nombre del nuevo ${type}:`);
-    if (name) {
-      setNewEntityName(name);
-      setModalType(type);
+    if (type === 'cliente') {
+      setModalType('nuevo_cliente');
+    } else if (type === 'proveedor') {
+      setModalType('nuevo_proveedor');
     }
   };
 
@@ -102,6 +104,8 @@ function Dashboard() {
 
       {modalType === 'cliente' && <ClienteModal nombre={newEntityName} isOpen={true} onClose={() => setModalType(null)} />}
       {modalType === 'proveedor' && <ProveedorModal nombre={newEntityName} isOpen={true} onClose={() => setModalType(null)} />}
+      {modalType === 'nuevo_cliente' && <NuevoClienteModal isOpen={true} onClose={() => setModalType(null)} />}
+      {modalType === 'nuevo_proveedor' && <NuevoProveedorModal isOpen={true} onClose={() => setModalType(null)} />}
     </div>
   );
 }

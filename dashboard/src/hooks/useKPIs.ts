@@ -84,12 +84,12 @@ export function useProcessFlow() {
 
     const getFlowData = useCallback(() => {
         const nodeDefinitions = [
-            { id: 'cotizacion', label: 'Cotización', color: '#94a3b8' }, // Gray
-            { id: 'aprobado', label: 'Aprobado', color: '#3b82f6' }, // Blue
-            { id: 'en_produccion', label: 'En Producción', color: '#eab308' }, // Yellow
-            { id: 'listo_recoger', label: 'Listo Recoger', color: '#f97316' }, // Orange
-            { id: 'entregado', label: 'Entregado', color: '#22c55e' }, // Green
-            { id: 'cerrado', label: 'Cerrado', color: '#166534' }, // Dark Green
+            { id: 'cotizacion', label: 'Cotización', color: '#6366f1' },
+            { id: 'aprobado', label: 'Aprobado', color: '#8b5cf6' },
+            { id: 'en_produccion', label: 'En Producción', color: '#f59e0b' },
+            { id: 'listo_recoger', label: 'Listo Recoger', color: '#10b981' },
+            { id: 'entregado', label: 'Entregado', color: '#22c55e' },
+            { id: 'cerrado', label: 'Cerrado', color: '#64748b' },
         ];
 
         const estadoCounts: Record<string, number> = {};

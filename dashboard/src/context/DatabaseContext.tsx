@@ -23,6 +23,8 @@ interface DatabaseContextType {
     addPayment: (pedidoId: string, monto: number, nota?: string) => Promise<void>;
 
     // CRUD Proveedores/Clientes
+    createCliente: (data: Omit<Cliente, 'id'>) => Promise<Cliente>;
+    createProveedor: (data: Omit<Proveedor, 'id'>) => Promise<Proveedor>;
     updateProveedor: (nombre: string, data: Partial<Proveedor>) => Promise<void>;
     updateCliente: (nombre: string, data: Partial<Cliente>) => Promise<void>;
     deleteCliente: (nombre: string) => Promise<void>;
@@ -210,18 +212,97 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const createCliente = async (data: Omit<Cliente, 'id'>): Promise<Cliente> => {
+        const newCliente: Cliente = {
+            ...data,
+            id: data.nombre,
+        };
+        setClientes(prev => ({ ...prev, [data.nombre]: newCliente }));
+
+        try {
+            const { error } = await supabase.from('clientes').insert({
+                nombre: newCliente.nombre,
+                ruc: newCliente.ruc,
+                direccion: newCliente.direccion,
+                contacto: newCliente.contacto,
+                telefono: newCliente.telefono,
+                email: newCliente.email,
+                notas: newCliente.notas,
+                logo_url: newCliente.logo
+            });
+            if (error) throw error;
+            console.log("Cliente creado en Supabase:", newCliente.nombre);
+        } catch (err) {
+            console.error("Error creating cliente:", err);
+        }
+
+        return newCliente;
+    };
+
+    const createProveedor = async (data: Omit<Proveedor, 'id'>): Promise<Proveedor> => {
+        const now = new Date().toISOString();
+        const newProveedor: Proveedor = {
+            ...data,
+            id: data.nombre,
+            created_at: now,
+            updated_at: now,
+        };
+        setProveedores(prev => ({ ...prev, [data.nombre]: newProveedor }));
+
+        try {
+            const { error } = await supabase.from('proveedores').insert({
+                nombre: newProveedor.nombre,
+                razon_social: newProveedor.razon_social,
+                ruc: newProveedor.ruc,
+                contacto: newProveedor.contacto,
+                telefono: newProveedor.telefono,
+                email: newProveedor.email,
+                direccion: newProveedor.direccion,
+                categorias: newProveedor.categorias,
+                especialidad: newProveedor.especialidad,
+                emite_factura: newProveedor.emite_factura,
+                incluye_igv: newProveedor.incluye_igv,
+                forma_pago: newProveedor.forma_pago,
+                tiempo_produccion: newProveedor.tiempo_produccion,
+                tiempo_entrega: newProveedor.tiempo_entrega,
+                minimo_produccion: newProveedor.minimo_produccion,
+                factor_demora: newProveedor.factor_demora,
+                notas: newProveedor.notas,
+                logo_url: newProveedor.logo,
+                created_at: now,
+                updated_at: now
+            });
+            if (error) throw error;
+            console.log("Proveedor creado en Supabase:", newProveedor.nombre);
+        } catch (err) {
+            console.error("Error creating proveedor:", err);
+        }
+
+        return newProveedor;
+    };
+
     const updateProveedor = async (nombre: string, data: Partial<Proveedor>) => {
         const fullData = { ...(proveedores[nombre] || { nombre, especialidad: 'General', factor_demora: 0 }), ...data };
         setProveedores(prev => ({ ...prev, [nombre]: fullData }));
         try {
             await supabase.from('proveedores').upsert({
                 nombre: fullData.nombre,
+                razon_social: fullData.razon_social,
+                ruc: fullData.ruc,
                 contacto: fullData.contacto,
                 telefono: fullData.telefono,
+                email: fullData.email,
                 direccion: fullData.direccion,
-                notas: fullData.notas,
+                categorias: fullData.categorias,
                 especialidad: fullData.especialidad,
+                emite_factura: fullData.emite_factura,
+                incluye_igv: fullData.incluye_igv,
+                forma_pago: fullData.forma_pago,
+                tiempo_produccion: fullData.tiempo_produccion,
+                tiempo_entrega: fullData.tiempo_entrega,
+                minimo_produccion: fullData.minimo_produccion,
                 factor_demora: fullData.factor_demora,
+                notas: fullData.notas,
                 logo_url: fullData.logo
             }, { onConflict: 'nombre' });
         } catch (err) {
@@ -454,7 +535,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             // Pagos
             addPayment,
             // CRUD Clientes/Proveedores
-            updateProveedor, updateCliente, deleteCliente, deleteProveedor,
+            createCliente, createProveedor, updateProveedor, updateCliente, deleteCliente, deleteProveedor,
             // Filtros y estado
             selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
             loadDatabase, resetDatabase, exportBackup, uploadLogo

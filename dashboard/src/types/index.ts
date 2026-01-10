@@ -14,17 +14,59 @@ export interface Cliente {
     logo?: string; // Base64 image
 }
 
+// Categorías de proveedor disponibles
+export const CATEGORIAS_PROVEEDOR = [
+    'Logos',
+    'Importadores / Merchandising general',
+    'Textil',
+    'Merchandising pequeño (pines, lanyards, llaveros)',
+    'Papelería',
+    'Producción gráfica / gran formato',
+    'POP y activaciones BTL',
+    'Ecológico',
+    'Acrílico y loza',
+    'Decoración y ambientación',
+    'Globos y decoración promocional',
+    'Logística y montaje',
+    'Personal para eventos',
+    'Diseño y servicios creativos',
+    'Servicios especiales / ad-hoc'
+] as const;
+
+export type CategoriaProveedor = typeof CATEGORIAS_PROVEEDOR[number];
+
 export interface Proveedor {
     id: string;
-    nombre: string;
-    contacto?: string | null;
-    telefono?: string;
-    direccion?: string;
+    // Sección 1 - Identificación
+    nombre: string;                    // Nombre comercial (obligatorio)
+    razon_social?: string;
+    ruc?: string;
+    contacto?: string | null;          // Persona de contacto
+    telefono?: string;                 // Teléfono / WhatsApp
+    email?: string;
+    direccion?: string;                // Ubicación (distrito / ciudad)
+
+    // Sección 2 - Tipo y capacidades
+    categorias?: string[];             // Múltiples categorías seleccionables
+    especialidad: string;              // Legacy: mantener compatibilidad
+
+    // Sección 3 - Condiciones comerciales
+    emite_factura?: boolean;
+    incluye_igv?: 'si' | 'no' | 'depende';
+    forma_pago?: string;               // contado / adelanto / contra entrega / otro
+    tiempo_produccion?: number;        // días
+    tiempo_entrega?: number;           // días
+    minimo_produccion?: string;        // texto libre
+    condiciones_pago?: string | null;  // Legacy
+    factor_demora: number;             // Legacy
+
+    // Sección 4 - Observaciones
     notas?: string;
-    especialidad: string;
-    condiciones_pago?: string | null;
-    factor_demora: number;
-    logo?: string; // Base64 image
+
+    // Metadata
+    logo?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface Payment {

@@ -256,6 +256,7 @@ export function PedidosTable() {
                                 />
                             </th>
                             {[
+                                { label: 'Fecha', w: 'w-28' },
                                 { label: 'Cliente', w: 'w-48' },
                                 { label: 'Descripción', w: 'w-64' },
                                 { label: 'Vendedor/a', w: 'w-32' },
@@ -284,6 +285,27 @@ export function PedidosTable() {
                                             onChange={() => toggleSelection(pedido.id)}
                                             className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
                                         />
+                                    </td>
+                                    {/* Fecha */}
+                                    <td
+                                        className="p-4 align-middle cursor-pointer hover:text-cyan-400 transition-colors"
+                                        onClick={() => handleEditStart(pedido.id, 'created_at', pedido.created_at.split('T')[0])}
+                                    >
+                                        {editingCell?.id === pedido.id && editingCell?.field === 'created_at' ? (
+                                            <input
+                                                type="date"
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value)}
+                                                onBlur={handleEditSave}
+                                                onKeyDown={e => e.key === 'Enter' && handleEditSave()}
+                                                className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-sm"
+                                            />
+                                        ) : (
+                                            <span className="text-gray-400 text-sm">
+                                                {new Date(pedido.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="p-4 align-middle">
                                         <div
@@ -378,11 +400,11 @@ export function PedidosTable() {
                                                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:ring-1 hover:ring-white/30 transition-all
                                                 ${pedido.estado === 'cotizacion' ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30' :
                                                         pedido.estado === 'aprobado' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                                            pedido.estado === 'en_produccion' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
+                                                            pedido.estado === 'en_produccion' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
                                                                 pedido.estado === 'listo_recoger' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
                                                                     pedido.estado === 'entregado' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                                                        pedido.estado === 'cerrado' ? 'bg-green-900/30 text-green-600 border border-green-900/50' :
-                                                                            pedido.estado === 'cancelado' ? 'bg-red-500/20 text-red-500 border border-red-500/30' :
+                                                                        pedido.estado === 'cerrado' ? 'bg-emerald-600/20 text-emerald-500 border border-emerald-600/30' :
+                                                                            pedido.estado === 'cancelado' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                                                                                 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
                                                 {pedido.estado.replace('_', ' ')}
                                             </span>
@@ -438,7 +460,7 @@ export function PedidosTable() {
                                 {/* Expanded Row: Payments Detail */}
                                 {expandedRowId === pedido.id && (
                                     <tr className="bg-gray-900/30">
-                                        <td colSpan={10} className="p-0 border-b border-gray-800">
+                                        <td colSpan={11} className="p-0 border-b border-gray-800">
                                             <div className="p-6 flex flex-col md:flex-row gap-8 animate-in slide-in-from-top-2 duration-200">
                                                 {/* Left: Payment List */}
                                                 <div className="flex-1 space-y-4">
