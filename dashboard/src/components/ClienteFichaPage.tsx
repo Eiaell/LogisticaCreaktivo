@@ -20,11 +20,13 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
     const [isUploadingDoc, setIsUploadingDoc] = useState(false);
 
     if (!cliente) {
+        console.error(`Cliente no encontrado: razonSocial="${razonSocial}"`, { availableKeys: Object.keys(clientes).slice(0, 5) });
         return (
             <div className="min-h-screen p-6 flex items-center justify-center">
                 <div className="text-center">
                     <span className="text-6xl mb-4 block">❌</span>
                     <h2 className="text-xl font-bold text-white mb-2">Cliente no encontrado</h2>
+                    <p className="text-gray-400 text-sm mb-4">razon_social: {razonSocial}</p>
                     <button
                         onClick={onBack}
                         className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-colors"
@@ -37,19 +39,22 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
     }
 
     const handleEditChange = (field: string, value: any) => {
+        console.log(`[ClienteFicha] Edit field changed: ${field} = ${value}`);
         setEditData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleSaveEdit = async () => {
+        console.log(`[ClienteFicha] Guardando cambios para ${razonSocial}:`, editData);
         setIsSaving(true);
         try {
             await updateCliente(razonSocial, editData);
+            console.log(`[ClienteFicha] Cambios guardados exitosamente`);
             // Wait a moment for state update, then exit edit mode
             await new Promise(resolve => setTimeout(resolve, 100));
             setIsEditMode(false);
             setEditData({});
         } catch (err) {
-            console.error('Error updating cliente:', err);
+            console.error('[ClienteFicha] Error updating cliente:', err);
         } finally {
             setIsSaving(false);
         }
@@ -179,6 +184,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                     {/* Right: Edit Button */}
                     <button
                         onClick={() => {
+                            console.log(`[ClienteFicha] Edit button clicked, toggle from ${isEditMode} to ${!isEditMode}`);
                             if (isEditMode) {
                                 setEditData({});
                             }
