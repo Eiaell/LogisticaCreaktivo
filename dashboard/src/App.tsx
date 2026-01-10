@@ -3,8 +3,6 @@ import { DataLoader } from './components/DataLoader';
 import { KPICards } from './components/KPICards';
 import { ProcessGraph } from './components/ProcessGraph';
 import { PedidosTable } from './components/PedidosTable';
-import { ClienteModal } from './components/ClienteModal';
-import { ProveedorModal } from './components/ProveedorModal';
 import { NuevoClienteModal } from './components/NuevoClienteModal';
 import { NuevoProveedorModal } from './components/NuevoProveedorModal';
 import { Sidebar } from './components/Sidebar';
@@ -14,7 +12,6 @@ function Dashboard() {
   const { pedidos, clientes, exportBackup, loadDatabase } = useDatabase();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
   const [modalType, setModalType] = useState<'cliente' | 'proveedor' | 'nuevo_cliente' | 'nuevo_proveedor' | null>(null);
-  const [newEntityName, setNewEntityName] = useState('');
 
   const handleCardClick = (title: string) => {
     let nextState: typeof activeSidebar = 'shortcuts';
@@ -102,9 +99,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {modalType === 'cliente' && <ClienteModal nombre={newEntityName} isOpen={true} onClose={() => setModalType(null)} />}
-      {modalType === 'proveedor' && <ProveedorModal nombre={newEntityName} isOpen={true} onClose={() => setModalType(null)} />}
-      {modalType === 'nuevo_cliente' && <NuevoClienteModal isOpen={true} onClose={() => setModalType(null)} />}
+            {modalType === 'nuevo_cliente' && <NuevoClienteModal isOpen={true} onClose={() => setModalType(null)} />}
       {modalType === 'nuevo_proveedor' && <NuevoProveedorModal isOpen={true} onClose={() => setModalType(null)} />}
     </div>
   );
