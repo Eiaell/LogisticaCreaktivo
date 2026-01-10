@@ -143,12 +143,34 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                         </div>
 
                         <div className="flex-1">
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2">
-                                {cliente.razon_social}
-                            </h1>
-                            {cliente.nombre_comercial && (
-                                <p className="text-lg text-blue-300 mb-4">{cliente.nombre_comercial}</p>
+                            {/* Editable Title */}
+                            {isEditMode ? (
+                                <input
+                                    type="text"
+                                    value={editData.razon_social ?? cliente.razon_social ?? ''}
+                                    onChange={(e) => handleEditChange('razon_social', e.target.value)}
+                                    className="w-full text-4xl font-bold bg-transparent border-b-2 border-blue-400 text-blue-400 focus:outline-none focus:border-cyan-400 mb-2"
+                                />
+                            ) : (
+                                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setIsEditMode(true)}>
+                                    {cliente.razon_social}
+                                </h1>
                             )}
+
+                            {/* Editable Nombre Comercial */}
+                            {isEditMode ? (
+                                <input
+                                    type="text"
+                                    value={editData.nombre_comercial ?? cliente.nombre_comercial ?? ''}
+                                    onChange={(e) => handleEditChange('nombre_comercial', e.target.value)}
+                                    className="w-full text-lg bg-transparent border-b-2 border-blue-300 text-blue-300 focus:outline-none focus:border-cyan-400 mb-4"
+                                    placeholder="Nombre comercial"
+                                />
+                            ) : cliente.nombre_comercial ? (
+                                <p className="text-lg text-blue-300 mb-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setIsEditMode(true)}>
+                                    {cliente.nombre_comercial}
+                                </p>
+                            ) : null}
 
                             {/* Status Badges */}
                             <div className="flex gap-3 flex-wrap mb-4">
@@ -172,11 +194,41 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                 </span>
                             </div>
 
-                            {/* Quick Info */}
+                            {/* Quick Info - Editable */}
                             <div className="space-y-1 text-sm">
-                                {cliente.ruc && <p className="text-gray-400"><span className="text-blue-400">RUC:</span> {cliente.ruc}</p>}
-                                {cliente.grupo_empresarial && <p className="text-gray-400"><span className="text-blue-400">Grupo:</span> {cliente.grupo_empresarial}</p>}
-                                {cliente.proyecto && <p className="text-gray-400"><span className="text-blue-400">Proyecto:</span> {cliente.proyecto}</p>}
+                                {isEditMode ? (
+                                    <>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-blue-400 min-w-fit">RUC:</span>
+                                            <input
+                                                type="text"
+                                                value={editData.ruc ?? cliente.ruc ?? ''}
+                                                onChange={(e) => handleEditChange('ruc', e.target.value)}
+                                                className="flex-1 bg-gray-950/50 border border-gray-700 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
+                                                placeholder="RUC"
+                                            />
+                                        </div>
+                                        {cliente.grupo_empresarial && (
+                                            <p className="text-gray-400"><span className="text-blue-400">Grupo:</span> {cliente.grupo_empresarial}</p>
+                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-blue-400 min-w-fit">Proyecto:</span>
+                                            <input
+                                                type="text"
+                                                value={editData.proyecto ?? cliente.proyecto ?? ''}
+                                                onChange={(e) => handleEditChange('proyecto', e.target.value)}
+                                                className="flex-1 bg-gray-950/50 border border-gray-700 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
+                                                placeholder="Proyecto"
+                                            />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        {cliente.ruc && <p className="text-gray-400 cursor-pointer hover:bg-gray-900/50 p-1 rounded transition-colors" onClick={() => setIsEditMode(true)}><span className="text-blue-400">RUC:</span> {cliente.ruc}</p>}
+                                        {cliente.grupo_empresarial && <p className="text-gray-400"><span className="text-blue-400">Grupo:</span> {cliente.grupo_empresarial}</p>}
+                                        {cliente.proyecto && <p className="text-gray-400 cursor-pointer hover:bg-gray-900/50 p-1 rounded transition-colors" onClick={() => setIsEditMode(true)}><span className="text-blue-400">Proyecto:</span> {cliente.proyecto}</p>}
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
