@@ -142,17 +142,17 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                             />
                         </div>
 
-                        <div className="flex-1">
+                        <div className="flex-1 max-w-2xl">
                             {/* Editable Title */}
                             {isEditMode ? (
                                 <input
                                     type="text"
                                     value={editData.razon_social ?? cliente.razon_social ?? ''}
                                     onChange={(e) => handleEditChange('razon_social', e.target.value)}
-                                    className="w-fit text-4xl font-bold bg-transparent border-b-2 border-blue-400 text-blue-400 focus:outline-none focus:border-cyan-400 mb-2"
+                                    className="w-full text-4xl font-bold bg-transparent border-b-2 border-blue-400 text-blue-400 focus:outline-none focus:border-cyan-400 mb-2"
                                 />
                             ) : (
-                                <h1 className="w-fit text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setIsEditMode(true)}>
+                                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2 cursor-pointer hover:opacity-80 transition-opacity line-clamp-2" onClick={() => setIsEditMode(true)}>
                                     {cliente.razon_social}
                                 </h1>
                             )}
@@ -163,11 +163,11 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                     type="text"
                                     value={editData.nombre_comercial ?? cliente.nombre_comercial ?? ''}
                                     onChange={(e) => handleEditChange('nombre_comercial', e.target.value)}
-                                    className="w-full text-lg bg-transparent border-b-2 border-blue-300 text-blue-300 focus:outline-none focus:border-cyan-400 mb-4"
+                                    className="w-64 text-lg bg-transparent border-b-2 border-blue-300 text-blue-300 focus:outline-none focus:border-cyan-400 mb-4"
                                     placeholder="Nombre comercial"
                                 />
                             ) : cliente.nombre_comercial ? (
-                                <p className="text-lg text-blue-300 mb-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setIsEditMode(true)}>
+                                <p className="text-lg text-blue-300 mb-4 cursor-pointer hover:opacity-80 transition-opacity w-fit" onClick={() => setIsEditMode(true)}>
                                     {cliente.nombre_comercial}
                                 </p>
                             ) : null}
