@@ -205,6 +205,37 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                         <div className="space-y-4">
                             {isEditMode ? (
                                 <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-gray-400 uppercase">RUC</label>
+                                            <input
+                                                type="text"
+                                                value={editData.ruc ?? cliente.ruc ?? ''}
+                                                onChange={(e) => handleEditChange('ruc', e.target.value)}
+                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-gray-400 uppercase">Proyecto</label>
+                                            <input
+                                                type="text"
+                                                value={editData.proyecto ?? cliente.proyecto ?? ''}
+                                                onChange={(e) => handleEditChange('proyecto', e.target.value)}
+                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-gray-400 uppercase">Código Proyecto</label>
+                                            <input
+                                                type="text"
+                                                value={editData.proyecto_codigo ?? cliente.proyecto_codigo ?? ''}
+                                                onChange={(e) => handleEditChange('proyecto_codigo', e.target.value)}
+                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-gray-400 uppercase">Contacto</label>
                                         <input
