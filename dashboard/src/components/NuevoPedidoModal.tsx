@@ -16,6 +16,8 @@ const ESTADOS_INICIALES = [
 export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     const { clientes, createPedido } = useDatabase();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
     // Form state
     const [cliente, setCliente] = useState('');
@@ -27,7 +29,60 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     const [rqNumero, setRqNumero] = useState('');
     const [fechaCompromiso, setFechaCompromiso] = useState('');
 
-    const clientesList = Object.keys(clientes).sort();
+    // Build structure: main entities (groups + independent clients)
+    const mainEntities: Array<{
+        nombre: string;
+        displayName: string;
+        razonSocial?: string;
+        isGroup: boolean;
+        children?: Array<{ razonSocial: string; displayName: string; proyecto: string }>;
+    }> = [];
+
+    // First, collect groups and their clients
+    const groupMap: Record<string, Array<{ razonSocial: string; displayName: string; proyecto: string }>> = {};
+
+    Object.entries(clientes).forEach(([razonSocial, clienteData]) => {
+        const grupo = clienteData.grupo_empresarial;
+
+        if (grupo) {
+            // This client belongs to a group
+            if (!groupMap[grupo]) {
+                groupMap[grupo] = [];
+            }
+            groupMap[grupo].push({
+                razonSocial,
+                displayName: clienteData.nombre_comercial && clienteData.nombre_comercial.trim()
+                    ? clienteData.nombre_comercial
+                    : razonSocial,
+                proyecto: clienteData.proyecto || 'Oficina Principal'
+            });
+        } else {
+            // Independent client
+            mainEntities.push({
+                nombre: razonSocial,
+                displayName: clienteData.nombre_comercial && clienteData.nombre_comercial.trim()
+                    ? clienteData.nombre_comercial
+                    : razonSocial,
+                razonSocial,
+                isGroup: false
+            });
+        }
+    });
+
+    // Add groups to main entities
+    Object.entries(groupMap).forEach(([grupo, clients]) => {
+        clients.sort((a, b) => a.displayName.localeCompare(b.displayName));
+        mainEntities.push({
+            nombre: grupo,
+            displayName: grupo,
+            isGroup: true,
+            children: clients
+        });
+    });
+
+    // Sort main entities
+    mainEntities.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
     const clienteFinal = cliente === '__nuevo__' ? nuevoCliente : cliente;
 
     const resetForm = () => {
@@ -88,22 +143,114 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {/* Cliente */}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                         <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
                             Cliente *
                         </label>
-                        <select
-                            value={cliente}
-                            onChange={(e) => setCliente(e.target.value)}
-                            className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none"
-                            required
-                        >
-                            <option value="">Seleccionar cliente...</option>
-                            {clientesList.map(c => (
-                                <option key={c} value={c}>{c}</option>
-                            ))}
-                            <option value="__nuevo__">+ Nuevo Cliente</option>
-                        </select>
+
+                        <div className="relative">
+                            <button
+                                type="button"
+                                className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white text-left flex items-center justify-between hover:border-gray-600 transition-colors"
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            >
+                                <span>
+                                    {cliente
+                                        ? clientes[cliente]?.nombre_comercial || cliente
+                                        : 'Seleccionar cliente...'}
+                                </span>
+                                <span className={`transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>
+                                    ▼
+                                </span>
+                            </button>
+
+                            {/* Dropdown Content */}
+                            {isDropdownOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border border-gray-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                                    {mainEntities.map((entity) => {
+                                        if (!entity.isGroup) {
+                                            // Independent client
+                                            return (
+                                                <button
+                                                    key={entity.nombre}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCliente(entity.razonSocial!);
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-3 transition-colors border-b border-gray-800 last:border-b-0 ${
+                                                        cliente === entity.razonSocial
+                                                            ? 'bg-cyan-600/30 text-cyan-300'
+                                                            : 'hover:bg-gray-900 text-gray-300'
+                                                    }`}
+                                                >
+                                                    {entity.displayName}
+                                                </button>
+                                            );
+                                        }
+
+                                        // Group with submenu
+                                        const isGroupExpanded = expandedGroup === entity.nombre;
+                                        return (
+                                            <div key={entity.nombre} className="border-b border-gray-800 last:border-b-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setExpandedGroup(isGroupExpanded ? null : entity.nombre);
+                                                    }}
+                                                    className="w-full text-left px-4 py-3 bg-gray-900/50 hover:bg-gray-900 text-cyan-400 flex items-center justify-between transition-colors"
+                                                >
+                                                    <span className="font-semibold">{entity.displayName}</span>
+                                                    <span className={`text-xs transition-transform ${isGroupExpanded ? 'rotate-90' : ''}`}>
+                                                        ▶
+                                                    </span>
+                                                </button>
+
+                                                {/* Group Projects Submenu */}
+                                                {isGroupExpanded && entity.children && (
+                                                    <div className="bg-gray-950/50">
+                                                        {entity.children.map((child) => (
+                                                            <button
+                                                                key={child.razonSocial}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setCliente(child.razonSocial);
+                                                                    setIsDropdownOpen(false);
+                                                                    setExpandedGroup(null);
+                                                                }}
+                                                                className={`w-full text-left px-8 py-2 text-sm transition-colors border-b border-gray-800 last:border-b-0 ${
+                                                                    cliente === child.razonSocial
+                                                                        ? 'bg-cyan-600/30 text-cyan-300'
+                                                                        : 'hover:bg-gray-900/50 text-gray-400'
+                                                                }`}
+                                                            >
+                                                                <div>{child.displayName}</div>
+                                                                <div className="text-xs text-gray-500">{child.proyecto}</div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Nuevo Cliente option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setCliente('__nuevo__');
+                                            setIsDropdownOpen(false);
+                                            setNuevoCliente('');
+                                        }}
+                                        className="w-full text-left px-4 py-3 text-gray-400 hover:text-gray-300 hover:bg-gray-900 transition-colors border-t border-gray-800"
+                                    >
+                                        + Nuevo Cliente
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {cliente === '__nuevo__' && (
                             <input
                                 type="text"

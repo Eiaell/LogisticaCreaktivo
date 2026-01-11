@@ -143,32 +143,32 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                         </div>
 
                         <div className="flex-1 max-w-2xl">
-                            {/* Editable Title */}
-                            {isEditMode ? (
-                                <input
-                                    type="text"
-                                    value={editData.razon_social ?? cliente.razon_social ?? ''}
-                                    onChange={(e) => handleEditChange('razon_social', e.target.value)}
-                                    className="w-full text-4xl font-bold bg-transparent border-b-2 border-blue-400 text-blue-400 focus:outline-none focus:border-cyan-400 mb-2"
-                                />
-                            ) : (
-                                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2 cursor-pointer hover:opacity-80 transition-opacity line-clamp-2" onClick={() => setIsEditMode(true)}>
-                                    {cliente.razon_social}
-                                </h1>
-                            )}
-
-                            {/* Editable Nombre Comercial */}
+                            {/* Editable Nombre Comercial - PRINCIPAL */}
                             {isEditMode ? (
                                 <input
                                     type="text"
                                     value={editData.nombre_comercial ?? cliente.nombre_comercial ?? ''}
                                     onChange={(e) => handleEditChange('nombre_comercial', e.target.value)}
-                                    className="w-64 text-lg bg-transparent border-b-2 border-blue-300 text-blue-300 focus:outline-none focus:border-cyan-400 mb-4"
+                                    className="w-full text-4xl font-bold bg-transparent border-b-2 border-blue-400 text-blue-400 focus:outline-none focus:border-cyan-400 mb-2"
                                     placeholder="Nombre comercial"
                                 />
-                            ) : cliente.nombre_comercial ? (
-                                <p className="text-lg text-blue-300 mb-4 cursor-pointer hover:opacity-80 transition-opacity w-fit" onClick={() => setIsEditMode(true)}>
-                                    {cliente.nombre_comercial}
+                            ) : (
+                                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent mb-2 cursor-pointer hover:opacity-80 transition-opacity line-clamp-2" onClick={() => setIsEditMode(true)}>
+                                    {cliente.nombre_comercial || cliente.razon_social}
+                                </h1>
+                            )}
+
+                            {/* Editable Razón Social - SECUNDARIA */}
+                            {isEditMode ? (
+                                <input
+                                    type="text"
+                                    value={editData.razon_social ?? cliente.razon_social ?? ''}
+                                    onChange={(e) => handleEditChange('razon_social', e.target.value)}
+                                    className="w-full text-sm bg-transparent border-b-2 border-gray-500 text-gray-400 focus:outline-none focus:border-cyan-400 mb-4"
+                                />
+                            ) : cliente.nombre_comercial && cliente.razon_social !== cliente.nombre_comercial ? (
+                                <p className="text-sm text-gray-400 mb-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setIsEditMode(true)}>
+                                    {cliente.razon_social}
                                 </p>
                             ) : null}
 
@@ -199,9 +199,16 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 placeholder="RUC"
                                             />
                                         </div>
-                                        {cliente.grupo_empresarial && (
-                                            <p className="text-gray-400"><span className="text-blue-400">Grupo:</span> {cliente.grupo_empresarial}</p>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-blue-400 min-w-fit">Grupo:</span>
+                                            <input
+                                                type="text"
+                                                value={editData.grupo_empresarial ?? cliente.grupo_empresarial ?? ''}
+                                                onChange={(e) => handleEditChange('grupo_empresarial', e.target.value)}
+                                                className="w-40 bg-gray-950/50 border border-gray-700 rounded px-2 py-1 text-white focus:outline-none focus:border-blue-500 text-sm"
+                                                placeholder="Grupo empresarial"
+                                            />
+                                        </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-blue-400 min-w-fit">Proyecto:</span>
                                             <input
@@ -216,7 +223,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                 ) : (
                                     <>
                                         {cliente.ruc && <p className="text-gray-400 cursor-pointer hover:bg-gray-900/50 p-1 rounded transition-colors" onClick={() => setIsEditMode(true)}><span className="text-blue-400">RUC:</span> {cliente.ruc}</p>}
-                                        {cliente.grupo_empresarial && <p className="text-gray-400"><span className="text-blue-400">Grupo:</span> {cliente.grupo_empresarial}</p>}
+                                        {cliente.grupo_empresarial && <p className="text-gray-400 cursor-pointer hover:bg-gray-900/50 p-1 rounded transition-colors" onClick={() => setIsEditMode(true)}><span className="text-blue-400">Grupo:</span> {cliente.grupo_empresarial}</p>}
                                         {cliente.proyecto && <p className="text-gray-400 cursor-pointer hover:bg-gray-900/50 p-1 rounded transition-colors" onClick={() => setIsEditMode(true)}><span className="text-blue-400">Proyecto:</span> {cliente.proyecto}</p>}
                                     </>
                                 )}
@@ -268,6 +275,18 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                             />
                                         </div>
                                         <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-gray-400 uppercase">Grupo Empresarial</label>
+                                            <input
+                                                type="text"
+                                                value={editData.grupo_empresarial ?? cliente.grupo_empresarial ?? ''}
+                                                onChange={(e) => handleEditChange('grupo_empresarial', e.target.value)}
+                                                placeholder="Ej: Grupo Lar"
+                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
                                             <label className="text-xs font-semibold text-gray-400 uppercase">Proyecto</label>
                                             <input
                                                 type="text"
@@ -276,8 +295,6 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
                                             />
                                         </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold text-gray-400 uppercase">Código Proyecto</label>
                                             <input

@@ -85,6 +85,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                             nombre_comercial: c.nombre_comercial || '',
                             grupo_empresarial: c.grupo_empresarial || null,
                             grupo_empresarial_ruc: c.grupo_empresarial_ruc || null,
+                            grupo_logo_url: c.grupo_logo_url || null,
                             proyecto: c.proyecto || null,
                             proyecto_codigo: c.proyecto_codigo || null,
                             ruc: c.ruc || '',
@@ -432,6 +433,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             if (data.logo !== undefined) supabasePayload.logo_url = data.logo || null;
             if (data.grupo_empresarial !== undefined) supabasePayload.grupo_empresarial = data.grupo_empresarial || null;
             if (data.grupo_empresarial_ruc !== undefined) supabasePayload.grupo_empresarial_ruc = data.grupo_empresarial_ruc || null;
+            if (data.grupo_logo_url !== undefined) supabasePayload.grupo_logo_url = data.grupo_logo_url || null;
             if (data.proyecto !== undefined) supabasePayload.proyecto = data.proyecto || null;
             if (data.proyecto_codigo !== undefined) supabasePayload.proyecto_codigo = data.proyecto_codigo || null;
             if (data.tipo_cliente !== undefined) supabasePayload.tipo_cliente = data.tipo_cliente || 'corporativo';
@@ -652,9 +654,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                             const key = c.razon_social || c.id || 'Sin Nombre';
                             clientesMap[key] = c;
 
-                            // Preparar payload para Supabase - con TODOS los campos jerárquicos
+                            // Preparar payload para Supabase con todos los campos
                             supabseInserts.push({
                                 nombre: c.razon_social || c.nombre_comercial || 'Sin Nombre',
+                                nombre_comercial: c.nombre_comercial || '',
                                 ruc: c.ruc || '',
                                 direccion: c.direccion || '',
                                 contacto: c.contacto || '',
@@ -662,6 +665,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                                 email: c.email || '',
                                 notas: c.notas || '',
                                 logo_url: c.logo || null,
+                                grupo_logo_url: c.grupo_logo_url || null,
                                 grupo_empresarial: c.grupo_empresarial || null,
                                 grupo_empresarial_ruc: c.grupo_empresarial_ruc || null,
                                 proyecto: c.proyecto || null,
@@ -670,7 +674,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                                 estado: c.estado || 'activo',
                                 prioridad: c.prioridad || 'medio',
                             });
-                            console.log(`  └─ ${key}: ${c.nombre_comercial || 'Sin nombre comercial'}`);
+                            console.log(`  └─ ${key}: ${c.nombre_comercial || 'Sin nombre comercial'} (grupo: ${c.grupo_empresarial || 'Sin grupo'})`);
                         }
                     } else {
                         console.warn(`⚠️ No se encontró la clave 'clientes' en el backup`);
@@ -689,7 +693,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                         for (const payload of supabseInserts) {
                             try {
                                 console.log(`📤 Insertando: ${payload.nombre}`);
-                                const { data: insertedData, error } = await supabase.from('clientes').insert([payload]);
+                                const { error } = await supabase.from('clientes').insert([payload]);
                                 if (error) {
                                     console.error(`❌ Error inserting ${payload.nombre}:`, error.message);
                                 } else {

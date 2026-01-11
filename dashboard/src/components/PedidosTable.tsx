@@ -119,8 +119,20 @@ export function PedidosTable() {
     // Derived lists
     const clientesList = useMemo(() => {
         const set = new Set(pedidos.map(p => p.cliente).filter(Boolean));
-        return Array.from(set).sort();
-    }, [pedidos]);
+        const razonSociales = Array.from(set).sort();
+
+        // Map razon_sociales to objects with display names
+        return razonSociales.map(razonSocial => {
+            const cliente = clientes[razonSocial];
+            const displayName = cliente?.nombre_comercial && cliente.nombre_comercial.trim()
+                ? cliente.nombre_comercial
+                : razonSocial;
+            return {
+                razonSocial,
+                displayName
+            };
+        }).sort((a, b) => a.displayName.localeCompare(b.displayName));
+    }, [pedidos, clientes]);
 
     const estados = useMemo(() => {
         const set = new Set(pedidos.map(p => p.estado).filter(Boolean));
@@ -168,7 +180,12 @@ export function PedidosTable() {
                         <input type="file" ref={heroFileInputRef} className="hidden" accept="image/*" onChange={handleHeroImageUpload} />
 
                         <div>
-                            <h2 className="text-2xl font-bold text-white">{filterCliente}</h2>
+                            <h2 className="text-2xl font-bold text-white">
+                                {currentCliente?.nombre_comercial && currentCliente.nombre_comercial.trim()
+                                    ? currentCliente.nombre_comercial
+                                    : filterCliente}
+                            </h2>
+                            <p className="text-xs text-gray-400 mt-0.5">{filterCliente}</p>
                             <div className="flex gap-4 mt-1">
                                 <span className="text-xs text-blue-400">RUC: {currentCliente?.ruc || 'No reg.'}</span>
                                 <span className="text-xs text-blue-400">Dir: {currentCliente?.direccion?.slice(0, 20) || 'No reg.'}...</span>
@@ -225,7 +242,7 @@ export function PedidosTable() {
                 >
                     <option value="" className="bg-gray-950 text-gray-300">Todos los Clientes</option>
                     {clientesList.map(c => (
-                        <option key={c} value={c} className="bg-gray-950 text-gray-300">{c}</option>
+                        <option key={c.razonSocial} value={c.razonSocial} className="bg-gray-950 text-gray-300">{c.displayName}</option>
                     ))}
                 </select>
 

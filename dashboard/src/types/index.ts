@@ -8,6 +8,7 @@ export interface Cliente {
     // Level 1: Corporate Holding/Group
     grupo_empresarial?: string;           // E.g., "Grupo Lar"
     grupo_empresarial_ruc?: string;       // RUC del grupo (para auditoría)
+    grupo_logo_url?: string;              // Logo del grupo empresarial
 
     // Level 2: Legal Entity (Razón Social)
     razon_social: string;                 // E.g., "Comercial Sendai S.A.C." - PRIMARY KEY
