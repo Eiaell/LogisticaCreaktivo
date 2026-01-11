@@ -11,6 +11,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
     const { clientes, updateCliente, uploadLogo } = useDatabase();
     // Get the latest cliente data from context - this will update when clientes changes
     const cliente = clientes[razonSocial];
+    console.log('[ClienteFichaPage] Mounted with razonSocial:', razonSocial, 'Cliente found:', !!cliente);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const docInputRef = useRef<HTMLInputElement>(null);
 
