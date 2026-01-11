@@ -80,10 +80,15 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
 
     const handleClickLogoButton = (razonSocial: string) => {
         // Reset input ANTES de abrirlo
+        console.log('[ClientesPage] Logo button clicked for:', razonSocial);
+        console.log('[ClientesPage] fileInputRefs.current keys:', Object.keys(fileInputRefs.current));
+        console.log('[ClientesPage] Input exists?', !!fileInputRefs.current[razonSocial]);
         if (fileInputRefs.current[razonSocial]) {
             fileInputRefs.current[razonSocial].value = '';
+            console.log('[ClientesPage] Input reset');
         }
         fileInputRefs.current[razonSocial]?.click();
+        console.log('[ClientesPage] Click triggered');
     };
 
     const handleDelete = async () => {
@@ -492,6 +497,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                     accept="image/*"
                     className="hidden"
                     onChange={(e) => {
+                        console.log('[ClientesPage] Input onChange triggered for:', cliente?.razon_social, 'File:', e.target.files?.[0]?.name);
                         if (e.target.files?.[0] && cliente?.razon_social) {
                             handleLogoUpload(cliente.razon_social, e.target.files[0]);
                             e.target.value = '';
