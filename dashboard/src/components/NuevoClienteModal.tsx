@@ -264,6 +264,10 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
         setHoldingData({ nombre_comercial: '', razon_social: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '' });
         setRazonesSociales([]);
         setSimpleCliente({ razon_social: '', nombre_comercial: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '' });
+        // Reset file input para permitir seleccionar el mismo archivo nuevamente
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
         onClose();
     };
 

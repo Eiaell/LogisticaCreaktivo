@@ -67,6 +67,8 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
             if (url) {
                 await updateCliente(razonSocial, { logo: url });
             }
+            // Reset input para permitir seleccionar el mismo archivo nuevamente
+            e.target.value = '';
         }
     };
 
@@ -96,6 +98,8 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
             console.error('Error uploading document:', err);
         } finally {
             setIsUploadingDoc(false);
+            // Reset input para permitir seleccionar el mismo archivo nuevamente
+            e.target.value = '';
         }
     };
 
