@@ -124,9 +124,12 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) =>
-                            e.target.files?.[0] && handleLogoUpload(cliente.razon_social, e.target.files[0])
-                        }
+                        onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                                handleLogoUpload(cliente.razon_social, e.target.files[0]);
+                                e.target.value = '';
+                            }
+                        }}
                     />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -336,7 +339,10 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                                                 accept="image/*"
                                                 className="hidden"
                                                 onChange={(e) => {
-                                                    e.target.files?.[0] && handleGroupLogoUpload(grupoKey, e.target.files[0]);
+                                                    if (e.target.files?.[0]) {
+                                                        handleGroupLogoUpload(grupoKey, e.target.files[0]);
+                                                        e.target.value = '';
+                                                    }
                                                 }}
                                             />
                                         </div>
@@ -411,6 +417,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                                                                         onChange={(e) => {
                                                                             if (e.target.files?.[0] && clientesDeProyecto[0]) {
                                                                                 handleLogoUpload(clientesDeProyecto[0].razon_social, e.target.files[0]);
+                                                                                e.target.value = '';
                                                                             }
                                                                         }}
                                                                     />

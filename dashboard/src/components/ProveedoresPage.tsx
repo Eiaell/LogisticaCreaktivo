@@ -254,7 +254,12 @@ export function ProveedoresPage({ onBack, onSelectProveedor }: ProveedoresPagePr
                                     type="file"
                                     accept="image/*"
                                     className="hidden"
-                                    onChange={(e) => e.target.files?.[0] && handleLogoUpload(proveedor.nombre, e.target.files[0])}
+                                    onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                            handleLogoUpload(proveedor.nombre, e.target.files[0]);
+                                            e.target.value = '';
+                                        }
+                                    }}
                                 />
                             </div>
                             <div className="flex-1 min-w-0">
