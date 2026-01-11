@@ -72,6 +72,22 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
         }
     };
 
+    const handleClickLogoButton = () => {
+        // Reset el input ANTES de abrirlo para asegurar que onChange se dispare
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+        fileInputRef.current?.click();
+    };
+
+    const handleClickDocumentButton = () => {
+        // Reset el input ANTES de abrirlo para asegurar que onChange se dispare
+        if (docInputRef.current) {
+            docInputRef.current.value = '';
+        }
+        docInputRef.current?.click();
+    };
+
     const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -126,7 +142,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                     {/* Left: Logo y Info Básica */}
                     <div className="flex gap-6 flex-1">
                         <div
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={handleClickLogoButton}
                             className="relative w-32 h-32 rounded-2xl bg-blue-500/10 border-2 border-dashed border-blue-500/30 hover:border-blue-500/60 flex items-center justify-center cursor-pointer group flex-shrink-0 overflow-hidden"
                         >
                             {cliente.logo ? (
@@ -454,7 +470,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
 
                         {/* Upload Button */}
                         <button
-                            onClick={() => docInputRef.current?.click()}
+                            onClick={handleClickDocumentButton}
                             disabled={isUploadingDoc}
                             className="w-full px-4 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 disabled:from-gray-600 disabled:to-gray-600 rounded-xl text-white font-bold transition-all shadow-lg shadow-orange-500/25 disabled:shadow-none mb-4 flex items-center justify-center gap-2"
                         >
