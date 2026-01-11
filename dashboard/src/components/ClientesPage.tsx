@@ -294,11 +294,12 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                     {/* Holdings Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
                         {Object.entries(hierarchyData.grouped).map(([grupoKey, razonSocialMap]) => {
-                            if (grupoKey === 'Sin Grupo') return null; // Skip independent clients for now
-
                             const allClientesInGrupo = Object.values(razonSocialMap).flat();
                             const isExpanded = expandedGroups.has(grupoKey);
                             const holdingInfo = getHoldingData(grupoKey, allClientesInGrupo);
+
+                            // Skip independent clients for now
+                            if (grupoKey === 'Sin Grupo') return null;
 
                             // HOLDING CARD VIEW
                             return (

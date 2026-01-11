@@ -64,7 +64,17 @@ function Dashboard({ onNavigate }: DashboardProps) {
             id="header-file-upload"
             multiple
             className="hidden"
-            onChange={(e) => e.target.files && loadDatabase(e.target.files)}
+            onChange={(e) => {
+              if (e.target.files) {
+                console.log(`🔥 INPUT CHANGE: ${e.target.files.length} archivo(s) seleccionado(s)`);
+                for (let i = 0; i < e.target.files.length; i++) {
+                  console.log(`  ${i+1}. ${e.target.files[i].name} (${e.target.files[i].size} bytes)`);
+                }
+                loadDatabase(e.target.files);
+              } else {
+                console.warn('❌ No files selected');
+              }
+            }}
             accept=".json,.jsonl,.db"
           />
 
