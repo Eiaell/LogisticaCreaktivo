@@ -85,8 +85,10 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
 
     const handleClickLogoButton = () => {
         // Reset el input ANTES de abrirlo para asegurar que onChange se dispare
+        console.log('[ClienteFicha] Logo button clicked');
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
+            console.log('[ClienteFicha] Input reset, triggering click');
         }
         fileInputRef.current?.click();
     };
@@ -164,13 +166,6 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
                                 <span className="text-sm text-white font-bold">CAMBIAR LOGO</span>
                             </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleLogoChange}
-                            />
                         </div>
 
                         <div className="flex-1 max-w-2xl">
@@ -498,13 +493,6 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                             )}
                         </button>
 
-                        <input
-                            ref={docInputRef}
-                            type="file"
-                            className="hidden"
-                            onChange={handleDocumentUpload}
-                        />
-
                         {/* Documents List */}
                         <div className="space-y-2">
                             {documentos.length === 0 ? (
@@ -559,6 +547,22 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                     </div>
                 </div>
             </div>
+
+            {/* Hidden file inputs - positioned outside DOM flow */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoChange}
+            />
+            <input
+                ref={docInputRef}
+                type="file"
+                accept="*"
+                className="hidden"
+                onChange={handleDocumentUpload}
+            />
         </div>
     );
 }
