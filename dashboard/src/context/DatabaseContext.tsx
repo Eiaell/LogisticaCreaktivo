@@ -312,11 +312,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
             if (error) {
                 console.error("❌ Error saving to Supabase:", error);
+                console.error("❌ Detalles del error:", JSON.stringify(error, null, 2));
                 throw error;
             }
             console.log("✅ Cliente creado en Supabase:", razonSocialKey);
+            console.log("✅ Respuesta completa de Supabase - Sin datos porque es upsert", { error });
         } catch (err) {
             console.error("❌ Error creating cliente:", err);
+            console.error("❌ Detalles completos del error:", JSON.stringify(err, null, 2));
             // NO REMOVER DEL ESTADO LOCAL - dejar que el usuario intente de nuevo
         }
 
