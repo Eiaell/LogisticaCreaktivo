@@ -75,10 +75,21 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     // Add groups to main entities
     Object.entries(groupMap).forEach(([grupo, clients]) => {
         clients.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+        // Find grupo_logo_url from any client in the group
+        let groupLogo: string | undefined;
+        const firstClientKey = Object.keys(clientes).find(key =>
+            clientes[key]?.grupo_empresarial === grupo && clientes[key]?.grupo_logo_url
+        );
+        if (firstClientKey) {
+            groupLogo = clientes[firstClientKey]?.grupo_logo_url;
+        }
+
         mainEntities.push({
             nombre: grupo,
             displayName: grupo,
             isGroup: true,
+            logo: groupLogo,
             children: clients
         });
     });
