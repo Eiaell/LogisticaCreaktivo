@@ -426,11 +426,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             };
 
             // Actualizar solo los campos que existen en Supabase
+            if (data.razon_social !== undefined) supabasePayload.razon_social = data.razon_social || '';
+            if (data.nombre_comercial !== undefined) supabasePayload.nombre_comercial = data.nombre_comercial || '';
             if (data.ruc !== undefined) supabasePayload.ruc = data.ruc || '';
             if (data.direccion !== undefined) supabasePayload.direccion = data.direccion || '';
             if (data.contacto !== undefined) supabasePayload.contacto = data.contacto || '';
             if (data.telefono !== undefined) supabasePayload.telefono = data.telefono || '';
             if (data.email !== undefined) supabasePayload.email = data.email || '';
+            if (data.terminos_comerciales !== undefined) supabasePayload.terminos_comerciales = data.terminos_comerciales || '';
+            if (data.vendedor_asignado !== undefined) supabasePayload.vendedor_asignado = data.vendedor_asignado || '';
             if (data.notas !== undefined) supabasePayload.notas = data.notas || '';
             if (data.logo !== undefined) supabasePayload.logo_url = data.logo || null;
             if (data.grupo_empresarial !== undefined) supabasePayload.grupo_empresarial = data.grupo_empresarial || null;
