@@ -6,11 +6,13 @@ import { ProveedorModal } from './ProveedorModal';
 
 export function ProcessGraph() {
     const containerRef = useRef<HTMLDivElement>(null);
+    const networkRef = useRef<Network | null>(null);
     const getFlowData = useProcessFlow();
     const { pedidos, selectedStateFilter, setSelectedStateFilter, clientes } = useDatabase();
 
-    // New state for provider modal
+    // New state for provider modal and zoom
     const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(1);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -34,8 +36,8 @@ export function ProcessGraph() {
                     hierarchical: {
                         direction: 'LR',
                         sortMethod: 'directed',
-                        levelSeparation: 150,
-                        nodeSpacing: 100,
+                        levelSeparation: 200,
+                        nodeSpacing: 150,
                     },
                 },
                 physics: false,
@@ -45,14 +47,30 @@ export function ProcessGraph() {
                     font: { color: '#ffffff', size: 14 }
                 },
                 edges: {
-                    color: { color: '#4b5563' },
+                    color: { color: '#d1d5db' },
                     width: 2,
                     smooth: { enabled: true, type: 'cubicBezier', roundness: 0.5 },
                     arrows: 'to'
                 },
-                interaction: { hover: true },
+                interaction: {
+                    hover: true,
+                    zoomView: true,
+                    dragView: true
+                }
             }
         );
+
+        networkRef.current = network;
+
+        // Set canvas background to white
+        const canvas = containerRef.current?.querySelector('canvas') as HTMLCanvasElement;
+        if (canvas) {
+            const context = canvas.getContext('2d');
+            if (context) {
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
 
         network.on('click', (params) => {
             if (params.nodes.length > 0) {
@@ -63,7 +81,13 @@ export function ProcessGraph() {
             }
         });
 
-        return () => { network.destroy(); };
+        // Zoom event listener
+        network.on('zoom', () => {
+            const scale = network.getScale();
+            setZoom(scale);
+        });
+
+        return () => { network.destroy(); networkRef.current = null; };
     }, [getFlowData, setSelectedStateFilter, selectedStateFilter]);
 
     // Derived Summary List for Selected State
@@ -81,18 +105,68 @@ export function ProcessGraph() {
             })
         : [];
 
+    const handleZoomIn = () => {
+        if (networkRef.current) {
+            const currentScale = networkRef.current.getScale();
+            networkRef.current.setOptions({ physics: false });
+            networkRef.current.moveTo({ scale: Math.min(currentScale * 1.2, 3) });
+        }
+    };
+
+    const handleZoomOut = () => {
+        if (networkRef.current) {
+            const currentScale = networkRef.current.getScale();
+            networkRef.current.setOptions({ physics: false });
+            networkRef.current.moveTo({ scale: Math.max(currentScale / 1.2, 0.3) });
+        }
+    };
+
+    const handleZoomFit = () => {
+        if (networkRef.current) {
+            networkRef.current.fit({ animation: true });
+        }
+    };
+
     return (
         <div className="flex gap-4">
             {/* Graph Container */}
-            <div className={`glass-card p-6 mb-8 transition-all duration-300 ${selectedStateFilter ? 'w-2/3' : 'w-full'}`}>
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <span className="text-cyan-400">⚡</span>
-                    Process Explorer
-                    {selectedStateFilter && <span className="text-gray-500 text-sm font-normal ml-2">Filtered: {selectedStateFilter}</span>}
-                </h2>
+            <div className={`bg-white border border-gray-200 rounded-lg shadow-sm p-0 mb-8 transition-all duration-300 ${selectedStateFilter ? 'w-2/3' : 'w-full'}`}>
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <span>⚡</span>
+                        Process Explorer
+                        {selectedStateFilter && <span className="text-gray-500 text-sm font-normal ml-2">Filtered: {selectedStateFilter}</span>}
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleZoomOut}
+                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition-colors"
+                            title="Zoom out"
+                        >
+                            <span className="text-xl">−</span>
+                        </button>
+                        <div className="px-3 py-2 bg-gray-100 rounded text-sm text-gray-700 font-medium min-w-[60px] text-center">
+                            {Math.round(zoom * 100)}%
+                        </div>
+                        <button
+                            onClick={handleZoomIn}
+                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition-colors"
+                            title="Zoom in"
+                        >
+                            <span className="text-xl">+</span>
+                        </button>
+                        <button
+                            onClick={handleZoomFit}
+                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition-colors ml-2 text-sm"
+                            title="Fit to view"
+                        >
+                            🎯
+                        </button>
+                    </div>
+                </div>
                 <div
                     ref={containerRef}
-                    className="w-full h-[300px] bg-gray-900/50 rounded-lg cursor-pointer"
+                    className="w-full h-[400px] bg-white rounded-b-lg cursor-grab active:cursor-grabbing"
                 />
             </div>
 
