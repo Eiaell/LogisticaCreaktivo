@@ -285,7 +285,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
         try {
             // SEGUNDO: Guardar en Supabase con upsert para evitar conflictos
+            // NOTA: La tabla usa 'nombre' como clave primaria, NO 'razon_social'
             const { error } = await supabase.from('clientes').upsert({
+                nombre: razonSocialKey,
                 razon_social: razonSocialKey,
                 nombre_comercial: newCliente.nombre_comercial,
                 grupo_empresarial: newCliente.grupo_empresarial,
@@ -306,7 +308,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 logo_url: newCliente.logo,
                 created_at: now,
                 updated_at: now,
-            }, { onConflict: 'razon_social' });
+            }, { onConflict: 'nombre' });
 
             if (error) {
                 console.error("❌ Error saving to Supabase:", error);
