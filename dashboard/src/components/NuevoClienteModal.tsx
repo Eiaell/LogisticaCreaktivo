@@ -20,6 +20,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     // Step 2: Holding Info (if Holding type)
     const [holdingData, setHoldingData] = useState({
@@ -180,6 +181,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
         if (!validateSimple()) return;
 
         setIsSubmitting(true);
+        setSuccessMessage(null);
         try {
             let logoUrl: string | undefined;
             if (logoFile) {
@@ -201,9 +203,11 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
                 logo: logoUrl
             });
 
-            handleClose();
+            setSuccessMessage(`✅ Cliente "${simpleCliente.razon_social}" creado correctamente en Supabase`);
+            setTimeout(handleClose, 1500);
         } catch (err) {
             console.error('Error:', err);
+            setErrors({ submit: 'Error al crear cliente. Intenta nuevamente.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -214,6 +218,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
         if (!validateStep3()) return;
 
         setIsSubmitting(true);
+        setSuccessMessage(null);
         try {
             let logoUrl: string | undefined;
             if (logoFile) {
@@ -239,9 +244,11 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
                 });
             }
 
-            handleClose();
+            setSuccessMessage(`✅ Grupo "${holdingData.nombre_comercial}" creado con ${razonesSociales.length} razón(es) social(es)`);
+            setTimeout(handleClose, 1500);
         } catch (err) {
             console.error('Error:', err);
+            setErrors({ submit: 'Error al crear grupo. Intenta nuevamente.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -253,6 +260,7 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
         setLogoFile(null);
         setLogoPreview(null);
         setErrors({});
+        setSuccessMessage(null);
         setHoldingData({ nombre_comercial: '', razon_social: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '' });
         setRazonesSociales([]);
         setSimpleCliente({ razon_social: '', nombre_comercial: '', ruc: '', direccion: '', contacto: '', telefono: '', email: '' });
@@ -291,6 +299,14 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
                             </button>
                         </div>
                     </div>
+
+                    {/* Success Message */}
+                    {successMessage && (
+                        <div className="px-6 py-4 bg-green-950/30 border-b border-green-500/30 flex items-center gap-3">
+                            <span className="text-2xl">✅</span>
+                            <p className="text-sm text-green-300">{successMessage}</p>
+                        </div>
+                    )}
 
                     {/* Content */}
                     <div className="p-6">
@@ -443,6 +459,12 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
                                         {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
                                     </div>
                                 </div>
+
+                                {errors.submit && (
+                                    <div className="bg-red-950/30 border border-red-500/30 rounded-lg p-3 text-sm text-red-300">
+                                        {errors.submit}
+                                    </div>
+                                )}
 
                                 {/* Buttons */}
                                 <div className="flex gap-3 pt-6 border-t border-gray-800">
@@ -624,6 +646,11 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
                                 </div>
 
                                 {errors.razones && <p className="text-xs text-red-400">{errors.razones}</p>}
+                                {errors.submit && (
+                                    <div className="bg-red-950/30 border border-red-500/30 rounded-lg p-3 text-sm text-red-300">
+                                        {errors.submit}
+                                    </div>
+                                )}
 
                                 <div className="space-y-3 max-h-[300px] overflow-y-auto">
                                     {razonesSociales.map((razon, idx) => (
