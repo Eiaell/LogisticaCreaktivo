@@ -78,6 +78,14 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
         }
     };
 
+    const handleClickLogoButton = (razonSocial: string) => {
+        // Reset input ANTES de abrirlo
+        if (fileInputRefs.current[razonSocial]) {
+            fileInputRefs.current[razonSocial].value = '';
+        }
+        fileInputRefs.current[razonSocial]?.click();
+    };
+
     const handleDelete = async () => {
         if (confirmDelete) {
             await deleteCliente(confirmDelete);
@@ -107,7 +115,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
             <div className="flex items-start gap-4 mb-4">
                 <div
                     className="relative w-14 h-14 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center overflow-hidden cursor-pointer group/logo"
-                    onClick={() => fileInputRefs.current[cliente.razon_social]?.click()}
+                    onClick={() => handleClickLogoButton(cliente.razon_social)}
                 >
                     {cliente.logo ? (
                         <img src={cliente.logo} alt="" className="w-full h-full object-cover" />
@@ -117,20 +125,6 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity">
                         <span className="text-[8px] text-white font-bold">CAMBIAR</span>
                     </div>
-                    <input
-                        ref={el => {
-                            fileInputRefs.current[cliente.razon_social] = el;
-                        }}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                                handleLogoUpload(cliente.razon_social, e.target.files[0]);
-                                e.target.value = '';
-                            }
-                        }}
-                    />
                 </div>
                 <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-white truncate text-base">{cliente.nombre_comercial || cliente.razon_social}</h3>
@@ -484,6 +478,27 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                 onConfirm={handleDelete}
                 onCancel={() => setConfirmDelete(null)}
             />
+
+            {/* Hidden file inputs for all clients */}
+            {Object.values(clientes).map(cliente => (
+                <input
+                    key={`file-input-${cliente?.razon_social}`}
+                    ref={el => {
+                        if (cliente?.razon_social) {
+                            fileInputRefs.current[cliente.razon_social] = el;
+                        }
+                    }}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                        if (e.target.files?.[0] && cliente?.razon_social) {
+                            handleLogoUpload(cliente.razon_social, e.target.files[0]);
+                            e.target.value = '';
+                        }
+                    }}
+                />
+            ))}
         </div>
     );
 }
