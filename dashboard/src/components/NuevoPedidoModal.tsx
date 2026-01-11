@@ -35,11 +35,12 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
         displayName: string;
         razonSocial?: string;
         isGroup: boolean;
-        children?: Array<{ razonSocial: string; displayName: string; proyecto: string }>;
+        logo?: string;
+        children?: Array<{ razonSocial: string; displayName: string; proyecto: string; logo?: string }>;
     }> = [];
 
     // First, collect groups and their clients
-    const groupMap: Record<string, Array<{ razonSocial: string; displayName: string; proyecto: string }>> = {};
+    const groupMap: Record<string, Array<{ razonSocial: string; displayName: string; proyecto: string; logo?: string }>> = {};
 
     Object.entries(clientes).forEach(([razonSocial, clienteData]) => {
         const grupo = clienteData.grupo_empresarial;
@@ -54,7 +55,8 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                 displayName: clienteData.nombre_comercial && clienteData.nombre_comercial.trim()
                     ? clienteData.nombre_comercial
                     : razonSocial,
-                proyecto: clienteData.proyecto || 'Oficina Principal'
+                proyecto: clienteData.proyecto || 'Oficina Principal',
+                logo: clienteData.logo
             });
         } else {
             // Independent client
@@ -64,7 +66,8 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                     ? clienteData.nombre_comercial
                     : razonSocial,
                 razonSocial,
-                isGroup: false
+                isGroup: false,
+                logo: clienteData.logo
             });
         }
     });
@@ -178,12 +181,17 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                                                         setCliente(entity.razonSocial!);
                                                         setIsDropdownOpen(false);
                                                     }}
-                                                    className={`w-full text-left px-4 py-3 transition-colors border-b border-gray-800 last:border-b-0 ${
+                                                    className={`w-full text-left px-4 py-3 transition-colors border-b border-gray-800 last:border-b-0 flex items-center gap-3 ${
                                                         cliente === entity.razonSocial
                                                             ? 'bg-cyan-600/30 text-cyan-300'
                                                             : 'hover:bg-gray-900 text-gray-300'
                                                     }`}
                                                 >
+                                                    {entity.logo ? (
+                                                        <img src={entity.logo} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                                                    ) : (
+                                                        <span className="w-6 h-6 rounded bg-gray-800 flex items-center justify-center text-xs flex-shrink-0">🏢</span>
+                                                    )}
                                                     {entity.displayName}
                                                 </button>
                                             );
@@ -201,7 +209,14 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                                                     }}
                                                     className="w-full text-left px-4 py-3 bg-gray-900/50 hover:bg-gray-900 text-cyan-400 flex items-center justify-between transition-colors"
                                                 >
-                                                    <span className="font-semibold">{entity.displayName}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        {entity.logo ? (
+                                                            <img src={entity.logo} alt="" className="w-6 h-6 rounded object-cover" />
+                                                        ) : (
+                                                            <span className="w-6 h-6 rounded bg-gray-800 flex items-center justify-center text-xs">🏢</span>
+                                                        )}
+                                                        <span className="font-semibold">{entity.displayName}</span>
+                                                    </div>
                                                     <span className={`text-xs transition-transform ${isGroupExpanded ? 'rotate-90' : ''}`}>
                                                         ▶
                                                     </span>
@@ -219,14 +234,21 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                                                                     setIsDropdownOpen(false);
                                                                     setExpandedGroup(null);
                                                                 }}
-                                                                className={`w-full text-left px-8 py-2 text-sm transition-colors border-b border-gray-800 last:border-b-0 ${
+                                                                className={`w-full text-left px-8 py-2 text-sm transition-colors border-b border-gray-800 last:border-b-0 flex items-center gap-3 ${
                                                                     cliente === child.razonSocial
                                                                         ? 'bg-cyan-600/30 text-cyan-300'
                                                                         : 'hover:bg-gray-900/50 text-gray-400'
                                                                 }`}
                                                             >
-                                                                <div>{child.displayName}</div>
-                                                                <div className="text-xs text-gray-500">{child.proyecto}</div>
+                                                                {child.logo ? (
+                                                                    <img src={child.logo} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                                                                ) : (
+                                                                    <span className="w-5 h-5 rounded bg-gray-800 flex items-center justify-center text-xs flex-shrink-0">🏢</span>
+                                                                )}
+                                                                <div className="flex-1">
+                                                                    <div>{child.displayName}</div>
+                                                                    <div className="text-xs text-gray-500">{child.proyecto}</div>
+                                                                </div>
                                                             </button>
                                                         ))}
                                                     </div>
