@@ -78,17 +78,16 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
         }
     };
 
-    const handleClickLogoButton = (razonSocial: string) => {
+    const handleClickLogoButton = (e: React.MouseEvent, razonSocial: string) => {
+        // DETENER propagación para evitar que se dispare onSelectCliente
+        e.stopPropagation();
+
         // Reset input ANTES de abrirlo
         console.log('[ClientesPage] Logo button clicked for:', razonSocial);
-        console.log('[ClientesPage] fileInputRefs.current keys:', Object.keys(fileInputRefs.current));
-        console.log('[ClientesPage] Input exists?', !!fileInputRefs.current[razonSocial]);
         if (fileInputRefs.current[razonSocial]) {
             fileInputRefs.current[razonSocial].value = '';
-            console.log('[ClientesPage] Input reset');
         }
         fileInputRefs.current[razonSocial]?.click();
-        console.log('[ClientesPage] Click triggered');
     };
 
     const handleDelete = async () => {
@@ -120,7 +119,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
             <div className="flex items-start gap-4 mb-4">
                 <div
                     className="relative w-14 h-14 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center overflow-hidden cursor-pointer group/logo"
-                    onClick={() => handleClickLogoButton(cliente.razon_social)}
+                    onClick={(e) => handleClickLogoButton(e, cliente.razon_social)}
                 >
                     {cliente.logo ? (
                         <img src={cliente.logo} alt="" className="w-full h-full object-cover" />
