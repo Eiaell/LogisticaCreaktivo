@@ -62,10 +62,21 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
 
     const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+        console.log('[ClienteFicha] Logo change detected:', file?.name);
         if (file) {
-            const url = await uploadLogo(file, `cliente-${razonSocial}`);
-            if (url) {
-                await updateCliente(razonSocial, { logo: url });
+            try {
+                console.log('[ClienteFicha] Uploading logo...');
+                const url = await uploadLogo(file, `cliente-${razonSocial}`);
+                console.log('[ClienteFicha] Upload result:', url);
+                if (url) {
+                    console.log('[ClienteFicha] Updating cliente with logo URL:', url);
+                    await updateCliente(razonSocial, { logo: url });
+                    console.log('[ClienteFicha] Logo updated successfully');
+                } else {
+                    console.error('[ClienteFicha] Upload returned no URL');
+                }
+            } catch (err) {
+                console.error('[ClienteFicha] Error in handleLogoChange:', err);
             }
             // Reset input para permitir seleccionar el mismo archivo nuevamente
             e.target.value = '';
