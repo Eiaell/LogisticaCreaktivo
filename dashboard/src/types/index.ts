@@ -126,7 +126,7 @@ export interface Pedido {
     cliente: string;
     vendedora: string;
     descripcion: string;
-    estado: string;
+    estado: 'cotizacion' | 'aprobado' | 'aprobado_pendiente_cambios' | 'en_produccion' | 'listo' | 'entregado' | 'cerrado';
     fecha_compromiso?: string;
     rq_numero?: string | null;
     created_at: string;
@@ -134,6 +134,48 @@ export interface Pedido {
     precio?: number;
     pagado?: number;
     adelanto?: number; // Legacy support
+    lineas?: LineaPedido[]; // Nueva relación
+}
+
+// Línea de producto dentro de un pedido (SIMPLIFICADO)
+export interface LineaPedido {
+    id: string;
+    pedido_id: string;
+    item: string;                        // Ej: "Lanyards", "Afiches", "Bolsas"
+    detalle: string;                     // Texto libre: cantidades, especificaciones, colores, etc.
+    precio: number;                      // Precio total de la línea
+    created_at: string;
+    updated_at: string;
+}
+
+// Historial de Items pedidos (para búsqueda/catálogo)
+export interface ItemCotizacion {
+    id: string;
+    item: string;                        // "Bolsas", "Lanyards", etc.
+    proveedor_id: string;                // Proveedor que cotizó
+    proveedor_nombre: string;            // Nombre del proveedor
+    ultima_cotizacion: string;           // ISO timestamp
+    cantidad_pedidos: number;            // Cuántas veces se ha pedido este item
+    created_at: string;
+}
+
+// Variante de un producto (cantidad + detalles) - DEPRECATED pero mantener por compatibilidad
+export interface Variante {
+    id: string;                          // UUID
+    cantidad: number;                    // Ej: 25 unidades
+    descripcion: string;                 // Ej: "con gancho", "con gancho + tip top"
+}
+
+// Registro de cambio a una línea de pedido
+export interface CambioPedido {
+    id: string;
+    pedido_id: string;
+    linea_id: string;
+    campo_modificado: string;            // Ej: "cantidad", "color", "especificaciones"
+    valor_anterior: string;              // Valor anterior
+    valor_nuevo: string;                 // Valor nuevo
+    numero_cambio: number;               // 1, 2, 3... (cantidad de cambios realizados)
+    created_at: string;
 }
 
 
@@ -153,19 +195,39 @@ export interface AcuerdoProduccion {
     estado: string;
 }
 
-// Cotización de proveedor
+// Variante de una cotización (una cotización puede tener múltiples variantes)
+export interface VarianteCotizacion {
+    id: string;
+    cotizacion_id: string;           // FK a la cotización
+    producto_base: string;           // Campo normalizado OBLIGATORIO: "lanyard", "bolsa", "pin", etc. Para comparaciones de precios
+    descripcion: string;             // Ej: "Lanyard 2.5cm sin tip top" - Texto libre que ingresa el usuario
+    cantidad: number;                // Cantidad para esta variante
+    precio_unitario: number;         // Precio por unidad
+    precio_total: number;            // cantidad * precio_unitario (auto-calculado)
+    incluye_igv: boolean;            // Si el precio incluye IGV
+    tiempo_produccion_dias?: number; // Días de producción para esta variante
+    tiempo_entrega_dias?: number;    // Días de entrega para esta variante
+    created_at: string;
+    updated_at: string;
+}
+
+// Cotización de proveedor (puede tener una o más variantes)
 export interface Cotizacion {
     id: string;
-    proveedor_id: string;           // ID del proveedor (nombre)
+    pedido_id?: string;              // FK al pedido (para relación)
+    proveedor_id: string;            // ID del proveedor (nombre)
     fecha: string;                   // Fecha de la cotización
-    descripcion: string;             // Descripción del producto/servicio
-    cantidad?: number;               // Cantidad cotizada
-    precio_unitario?: number;        // Precio por unidad
-    precio_total: number;            // Precio total
-    incluye_igv: boolean;            // Si el precio incluye IGV
+    descripcion?: string;            // Descripción general (DEPRECADO - usar variantes)
+    cantidad?: number;               // DEPRECADO - usar variantes
+    precio_unitario?: number;        // DEPRECADO - usar variantes
+    precio_total?: number;           // DEPRECADO - usar variantes
+    incluye_igv?: boolean;           // DEPRECADO - usar variantes
     moneda: 'PEN' | 'USD';           // Moneda
 
-    // Condiciones de pago
+    // Relación a variantes
+    variantes?: VarianteCotizacion[]; // Array de variantes
+
+    // Condiciones de pago (aplican a toda la cotización)
     forma_pago: 'contado' | 'adelanto_50' | 'adelanto_70' | 'contra_entrega' | 'credito' | 'otro';
     condiciones_pago_detalle?: string;  // Detalle adicional de condiciones
 
@@ -175,7 +237,7 @@ export interface Cotizacion {
     cci?: string;                    // Código interbancario
     yape_plin?: string;              // Número de Yape/Plin
 
-    // Producción
+    // Producción (general, si no hay variantes)
     tiempo_produccion?: number;      // Días de producción
     tiempo_entrega?: number;         // Días de entrega después de producción
 
@@ -192,6 +254,38 @@ export interface Cotizacion {
 
     // Metadata
     created_at: string;
+    updated_at: string;
+}
+
+// Histórico de precios por proveedor - INDEPENDIENTE de cotizaciones
+// Se crea automáticamente cada vez que se registra una cotización
+export interface HistoricoPrecio {
+    id: string;
+    proveedor_id: string;           // FK al proveedor (por nombre)
+
+    // Producto normalizado (OBLIGATORIO)
+    producto_base: string;          // Ej: "lanyard", "bolsa", "pin" - Clave para comparaciones históricas
+
+    // Información adicional del producto
+    descripcion: string;            // Ej: "Lanyard 2.5 cm sublimado" - Descripción que ingresó el usuario
+    variante?: string;              // Ej: "con tip top", "sin tip top", "blanco", "rojo"
+
+    // Precios y cantidades
+    precio_unitario: number;        // Precio por unidad (S/.)
+    incluye_igv: boolean;           // Si el precio incluye IGV
+    cantidad_referencia?: number;   // Cantidad en la que se cotizó (para comparación)
+
+    // Tiempos
+    tiempo_produccion_dias?: number;// Días de producción
+    tiempo_entrega_dias?: number;   // Días de entrega
+
+    // Trazabilidad
+    pedido_origen_id?: string;      // ID del pedido que originó este histórico
+    cotizacion_origen_id?: string;  // ID de la cotización (si la hay)
+    fecha_cotizacion: string;       // ISO timestamp de cuándo se cotizó
+
+    // Metadata
+    created_at: string;             // Cuándo se registró en el histórico
     updated_at: string;
 }
 

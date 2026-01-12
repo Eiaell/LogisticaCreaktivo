@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import initSqlJs, { type Database } from 'sql.js';
-import type { Pedido, Payment, Proveedor, Cliente, Cotizacion } from '../types';
+import type { Pedido, Payment, Proveedor, Cliente, Cotizacion, LineaPedido, CambioPedido, ItemCotizacion, HistoricoPrecio } from '../types';
 import { supabase } from '../supabaseClient';
 import { type TraceEvent, parseEventsToPedidos } from '../utils/parsers';
 
@@ -12,6 +12,9 @@ interface DatabaseContextType {
     proveedores: Record<string, Proveedor>;
     clientes: Record<string, Cliente>;
     cotizaciones: Cotizacion[];
+    itemsCotizacion: ItemCotizacion[];
+    lineasPedido: LineaPedido[];
+    historicoPrecio: HistoricoPrecio[];
     setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
 
     // CRUD Pedidos
@@ -37,6 +40,27 @@ interface DatabaseContextType {
     deleteCotizacion: (id: string) => Promise<void>;
     getCotizacionesByProveedor: (proveedorId: string) => Cotizacion[];
 
+    // CRUD Histórico de Precios
+    createHistoricoPrecio: (data: Omit<HistoricoPrecio, 'id' | 'created_at' | 'updated_at'>) => Promise<HistoricoPrecio>;
+    getHistoricoPorProveedor: (proveedorId: string) => HistoricoPrecio[];
+    getHistoricoPorProductoBase: (proveedorId: string, productoBase: string) => HistoricoPrecio[];
+    getHistoricoReciente: (proveedorId: string, productoBase: string, diasAtras?: number) => HistoricoPrecio[];
+
+    // CRUD Líneas de Pedido
+    createLineaPedido: (pedidoId: string, lineData: Omit<LineaPedido, 'id' | 'created_at' | 'updated_at'>) => Promise<LineaPedido>;
+    updateLineaPedido: (lineaId: string, data: Partial<LineaPedido>) => Promise<void>;
+    deleteLineaPedido: (lineaId: string) => Promise<void>;
+    getLineasPedido: (pedidoId: string) => LineaPedido[];
+
+    // CRUD Cambios de Pedido
+    createCambioPedido: (cambioData: Omit<CambioPedido, 'id' | 'created_at'>) => Promise<CambioPedido>;
+    getCambiosPedido: (pedidoId: string) => CambioPedido[];
+
+    // Búsqueda de Items
+    getItemsUnicos: () => string[];
+    getItemsByNombre: (nombre: string) => ItemCotizacion[];
+    getProveedoresPorItem: (item: string) => ItemCotizacion[];
+
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
 
@@ -61,6 +85,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [proveedores, setProveedores] = useState<Record<string, Proveedor>>({});
     const [clientes, setClientes] = useState<Record<string, Cliente>>({});
     const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
+    const [lineasPedido, setLineasPedido] = useState<LineaPedido[]>([]);
+    const [cambiosPedido, setCambiosPedido] = useState<CambioPedido[]>([]);
+    const [itemsCotizacion, setItemsCotizacion] = useState<ItemCotizacion[]>([]);
+    const [historicoPrecio, setHistoricoPrecio] = useState<HistoricoPrecio[]>([]);
     const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -146,6 +174,39 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 const { data: cotizacionesData } = await supabase.from('cotizaciones').select('*');
                 if (cotizacionesData) {
                     setCotizaciones(cotizacionesData as Cotizacion[]);
+                }
+
+                // Cargar líneas de pedido (NUEVA ESTRUCTURA SIMPLIFICADA)
+                const { data: lineasData } = await supabase.from('lineas_pedido').select('*');
+                if (lineasData) {
+                    const lineasParsed = lineasData.map((l: any) => ({
+                        id: l.id,
+                        pedido_id: l.pedido_id,
+                        item: l.item,
+                        detalle: l.detalle,
+                        precio: l.precio,
+                        created_at: l.created_at,
+                        updated_at: l.updated_at
+                    }));
+                    setLineasPedido(lineasParsed);
+                }
+
+                // Cargar cambios de pedido
+                const { data: cambiosData } = await supabase.from('cambios_pedido').select('*');
+                if (cambiosData) {
+                    setCambiosPedido(cambiosData as CambioPedido[]);
+                }
+
+                // Cargar items y cotizaciones
+                const { data: itemsData } = await supabase.from('items_cotizacion').select('*');
+                if (itemsData) {
+                    setItemsCotizacion(itemsData as ItemCotizacion[]);
+                }
+
+                // Cargar histórico de precios
+                const { data: historicoPrecioData } = await supabase.from('historico_precios').select('*');
+                if (historicoPrecioData) {
+                    setHistoricoPrecio(historicoPrecioData as HistoricoPrecio[]);
                 }
 
                 // Sincronizar dataSource SOLO si logramos leer algo o terminar el proceso
@@ -544,6 +605,165 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         return cotizaciones.filter(c => c.proveedor_id === proveedorId);
     };
 
+    // CRUD Histórico de Precios
+    const createHistoricoPrecio = async (data: Omit<HistoricoPrecio, 'id' | 'created_at' | 'updated_at'>): Promise<HistoricoPrecio> => {
+        const now = new Date().toISOString();
+        const newHistorico: HistoricoPrecio = {
+            ...data,
+            id: `HIST-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+            created_at: now,
+            updated_at: now,
+        };
+
+        setHistoricoPrecio(prev => [newHistorico, ...prev]);
+
+        try {
+            const { error } = await supabase.from('historico_precios').insert({
+                id: newHistorico.id,
+                proveedor_id: newHistorico.proveedor_id,
+                producto_base: newHistorico.producto_base,
+                descripcion: newHistorico.descripcion,
+                variante: newHistorico.variante,
+                precio_unitario: newHistorico.precio_unitario,
+                incluye_igv: newHistorico.incluye_igv,
+                cantidad_referencia: newHistorico.cantidad_referencia,
+                tiempo_produccion_dias: newHistorico.tiempo_produccion_dias,
+                tiempo_entrega_dias: newHistorico.tiempo_entrega_dias,
+                pedido_origen_id: newHistorico.pedido_origen_id,
+                cotizacion_origen_id: newHistorico.cotizacion_origen_id,
+                fecha_cotizacion: newHistorico.fecha_cotizacion,
+                created_at: now,
+                updated_at: now,
+            });
+            if (error) throw error;
+            console.log("Histórico de precio creado en Supabase:", newHistorico.id);
+        } catch (err) {
+            console.error("Error creating histórico de precio:", err);
+        }
+
+        return newHistorico;
+    };
+
+    const getHistoricoPorProveedor = (proveedorId: string): HistoricoPrecio[] => {
+        return historicoPrecio
+            .filter(h => h.proveedor_id === proveedorId)
+            .sort((a, b) => new Date(b.fecha_cotizacion).getTime() - new Date(a.fecha_cotizacion).getTime());
+    };
+
+    const getHistoricoPorProductoBase = (proveedorId: string, productoBase: string): HistoricoPrecio[] => {
+        return historicoPrecio
+            .filter(h => h.proveedor_id === proveedorId && h.producto_base === productoBase)
+            .sort((a, b) => new Date(b.fecha_cotizacion).getTime() - new Date(a.fecha_cotizacion).getTime());
+    };
+
+    const getHistoricoReciente = (proveedorId: string, productoBase: string, diasAtras: number = 90): HistoricoPrecio[] => {
+        const ahora = new Date();
+        const haceXDias = new Date(ahora.getTime() - diasAtras * 24 * 60 * 60 * 1000);
+
+        return historicoPrecio
+            .filter(h =>
+                h.proveedor_id === proveedorId &&
+                h.producto_base === productoBase &&
+                new Date(h.fecha_cotizacion) >= haceXDias
+            )
+            .sort((a, b) => new Date(b.fecha_cotizacion).getTime() - new Date(a.fecha_cotizacion).getTime());
+    };
+
+    // CRUD Líneas de Pedido
+    const createLineaPedido = async (pedidoId: string, lineData: Omit<LineaPedido, 'id' | 'created_at' | 'updated_at'>): Promise<LineaPedido> => {
+        const now = new Date().toISOString();
+        const newLinea: LineaPedido = {
+            ...lineData,
+            id: `LIN-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+            created_at: now,
+            updated_at: now,
+        };
+
+        setLineasPedido(prev => [newLinea, ...prev]);
+
+        try {
+            const { error } = await supabase.from('lineas_pedido').insert({
+                id: newLinea.id,
+                pedido_id: pedidoId,
+                item: newLinea.item,
+                detalle: newLinea.detalle,
+                precio: newLinea.precio,
+                created_at: now,
+                updated_at: now,
+            });
+            if (error) throw error;
+            console.log("Línea de pedido creada en Supabase:", newLinea.id);
+        } catch (err) {
+            console.error("Error creating línea de pedido:", err);
+        }
+
+        return newLinea;
+    };
+
+    const updateLineaPedido = async (lineaId: string, data: Partial<LineaPedido>) => {
+        const now = new Date().toISOString();
+        setLineasPedido(prev => prev.map(l => l.id === lineaId ? { ...l, ...data, updated_at: now } : l));
+        try {
+            const { error } = await supabase.from('lineas_pedido').update({ ...data, updated_at: now }).eq('id', lineaId);
+            if (error) throw error;
+            console.log("Línea de pedido actualizada en Supabase:", lineaId);
+        } catch (err) {
+            console.error("Error updating línea de pedido:", err);
+        }
+    };
+
+    const deleteLineaPedido = async (lineaId: string) => {
+        setLineasPedido(prev => prev.filter(l => l.id !== lineaId));
+        try {
+            const { error } = await supabase.from('lineas_pedido').delete().eq('id', lineaId);
+            if (error) throw error;
+            console.log("Línea de pedido eliminada de Supabase:", lineaId);
+        } catch (err) {
+            console.error("Error deleting línea de pedido:", err);
+        }
+    };
+
+    const getLineasPedido = (pedidoId: string): LineaPedido[] => {
+        return lineasPedido.filter(l => l.pedido_id === pedidoId);
+    };
+
+    // CRUD Cambios de Pedido
+    const createCambioPedido = async (cambioData: Omit<CambioPedido, 'id' | 'created_at'>): Promise<CambioPedido> => {
+        const now = new Date().toISOString();
+        const newCambio: CambioPedido = {
+            ...cambioData,
+            id: `CAM-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+            created_at: now,
+        };
+
+        setCambiosPedido(prev => [newCambio, ...prev]);
+
+        try {
+            const { error } = await supabase.from('cambios_pedido').insert({
+                id: newCambio.id,
+                pedido_id: newCambio.pedido_id,
+                linea_id: newCambio.linea_id,
+                campo_modificado: newCambio.campo_modificado,
+                valor_anterior: newCambio.valor_anterior,
+                valor_nuevo: newCambio.valor_nuevo,
+                numero_cambio: newCambio.numero_cambio,
+                created_at: now,
+            });
+            if (error) throw error;
+            console.log("Cambio de pedido registrado en Supabase:", newCambio.id);
+        } catch (err) {
+            console.error("Error creating cambio de pedido:", err);
+        }
+
+        return newCambio;
+    };
+
+    const getCambiosPedido = (pedidoId: string): CambioPedido[] => {
+        return cambiosPedido.filter(c => c.pedido_id === pedidoId).sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+    };
+
     const addPayment = async (pedidoId: string, monto: number, nota: string = 'Pago registrado') => {
         const newPaymentLocal: Payment = {
             id: `PAY-${Date.now()}`,
@@ -566,6 +786,21 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             console.error("Error adding payment:", err);
         }
+    };
+
+    // Búsqueda de Items
+    const getItemsUnicos = (): string[] => {
+        const items = new Set(lineasPedido.map(l => l.item.toLowerCase()));
+        return Array.from(items).sort();
+    };
+
+    const getItemsByNombre = (nombre: string): ItemCotizacion[] => {
+        const search = nombre.toLowerCase();
+        return itemsCotizacion.filter(ic => ic.item.toLowerCase().includes(search));
+    };
+
+    const getProveedoresPorItem = (item: string): ItemCotizacion[] => {
+        return itemsCotizacion.filter(ic => ic.item.toLowerCase() === item.toLowerCase());
     };
 
     const exportBackup = () => {
@@ -820,7 +1055,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     return (
         <DatabaseContext.Provider value={{
-            db, events, pedidos, payments, proveedores, clientes, cotizaciones,
+            db, events, pedidos, payments, proveedores, clientes, cotizaciones, itemsCotizacion, lineasPedido, historicoPrecio,
             setPedidos,
             // CRUD Pedidos
             createPedido, updatePedido, deletePedido, deletePedidos,
@@ -830,6 +1065,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             createCliente, createProveedor, updateProveedor, updateCliente, deleteCliente, deleteProveedor,
             // CRUD Cotizaciones
             createCotizacion, updateCotizacion, deleteCotizacion, getCotizacionesByProveedor,
+            // CRUD Histórico de Precios
+            createHistoricoPrecio, getHistoricoPorProveedor, getHistoricoPorProductoBase, getHistoricoReciente,
+            // CRUD Líneas de Pedido
+            createLineaPedido, updateLineaPedido, deleteLineaPedido, getLineasPedido,
+            // CRUD Cambios de Pedido
+            createCambioPedido, getCambiosPedido,
+            // Búsqueda de Items
+            getItemsUnicos, getItemsByNombre, getProveedoresPorItem,
             // Filtros y estado
             selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
             loadDatabase, resetDatabase, exportBackup, uploadLogo
