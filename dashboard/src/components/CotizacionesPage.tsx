@@ -3,12 +3,14 @@ import { useDatabase } from '../context/DatabaseContext';
 import { PRODUCTOS_BASE, normalizarAProductoBase } from '../config/productosBase';
 import { ProviderHistoryPanel } from './ProviderHistoryPanel';
 import type { Cotizacion, HistoricoPrecio } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface CotizacionesPageProps {
   onBack?: () => void;
 }
 
 interface VarianteForm {
+  id?: string; // Para edición de variantes existentes
   descripcion: string;
   cantidad: number;
   precio_unitario: number;
@@ -17,6 +19,7 @@ interface VarianteForm {
   tiempo_produccion_dias?: number;
   tiempo_entrega_dias?: number;
   producto_base: string; // Campo OBLIGATORIO (seleccionado del diccionario)
+  variante?: string; // Campo opcional: diferencias comerciales (con gancho, con tiptop, etc)
   _precargado?: boolean; // Flag interno: indica si fue precargada desde histórico (no se guarda)
 }
 
@@ -224,6 +227,62 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
     });
   };
 
+  // Manejar click en botón Editar de una cotización
+  const handleEditarCotizacion = (cotizacion: Cotizacion, pedidoId: string) => {
+    // Pre-llenar el formulario con los datos de la cotización
+    const variantesForm = (cotizacion.variantes || []).map(v => ({
+      id: v.id,
+      descripcion: v.descripcion,
+      cantidad: v.cantidad,
+      precio_unitario: v.precio_unitario,
+      precio_total: v.precio_total,
+      incluye_igv: v.incluye_igv,
+      tiempo_produccion_dias: v.tiempo_produccion_dias,
+      tiempo_entrega_dias: v.tiempo_entrega_dias,
+      producto_base: v.producto_base,
+      variante: v.variante,
+      _precargado: false
+    }));
+
+    setFormData({
+      proveedor_nombre: cotizacion.proveedor_id,
+      variantes: variantesForm.length > 0 ? variantesForm : [{
+        descripcion: '',
+        cantidad: 0,
+        precio_unitario: 0,
+        precio_total: 0,
+        incluye_igv: false,
+        producto_base: '',
+        variante: ''
+      }],
+      forma_pago: (cotizacion.forma_pago || 'contado') as any,
+      condiciones_pago_detalle: cotizacion.condiciones_pago_detalle,
+      cuenta_bancaria: cotizacion.cuenta_bancaria,
+      banco: cotizacion.banco,
+      cci: cotizacion.cci,
+      yape_plin: cotizacion.yape_plin,
+      prueba_color: cotizacion.prueba_color,
+      muestra_fisica: cotizacion.muestra_fisica,
+      notas: cotizacion.notas
+    });
+
+    // Cargar histórico del proveedor
+    try {
+      const historico = getHistoricoPorProveedor(cotizacion.proveedor_id);
+      setHistoricoProveedor(historico);
+    } catch (error) {
+      console.error('Error al cargar histórico:', error);
+    }
+
+    // Establecer el filtro de proveedor
+    setFilterProveedor(cotizacion.proveedor_id);
+
+    // Marcar que estamos en modo edición y abrir el formulario
+    // IMPORTANTE: usar pedidoId para que isFormOpen = showingCotizacionForm === pedido.id se cumpla
+    setCotizacionEnEdicion(cotizacion);
+    setShowingCotizacionForm(pedidoId);
+  };
+
   const handleAddCotizacion = async () => {
     if (!formData.proveedor_nombre) {
       alert('Por favor ingresa el nombre del proveedor');
@@ -236,77 +295,161 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
     }
 
     // Validar que todas las variantes tengan información requerida
-    const variantesValidas = formData.variantes.every(v =>
-      v.descripcion && v.cantidad > 0 && v.precio_unitario > 0
-    );
+    const variantesValidas = formData.variantes.every(v => {
+      if (!v.descripcion) return false;
+      if (v.cantidad <= 0) return false;
+      if (v.precio_unitario <= 0) return false;
+      if (!v.producto_base) return false; // Validar que producto_base esté seleccionado
+      return true;
+    });
 
     if (!variantesValidas) {
-      alert('Todas las variantes deben tener descripción, cantidad y precio unitario válidos');
+      const errorMessages: string[] = [];
+      formData.variantes.forEach((v, idx) => {
+        if (!v.descripcion) errorMessages.push(`Variante ${idx + 1}: falta descripción`);
+        if (v.cantidad <= 0) errorMessages.push(`Variante ${idx + 1}: cantidad debe ser > 0`);
+        if (v.precio_unitario <= 0) errorMessages.push(`Variante ${idx + 1}: precio debe ser > 0`);
+        if (!v.producto_base) errorMessages.push(`Variante ${idx + 1}: debe seleccionar producto base`);
+      });
+      alert('Errores en variantes:\n\n' + errorMessages.join('\n'));
       return;
     }
 
     try {
+      // Detectar si estamos editando o creando
+      const isEditing = showingCotizacionForm && cotizacionEnEdicion;
+      const cotizacionId = showingCotizacionForm;
+
       // Calcular precio total de toda la cotización
       const precioTotalCotizacion = formData.variantes.reduce((sum, v) => sum + v.precio_total, 0);
 
-      const nuevaCotizacion = await createCotizacion({
-        proveedor_id: formData.proveedor_nombre,
-        fecha: new Date().toISOString(),
-        descripcion: `${formData.variantes.length} variante(s)`,
-        precio_total: precioTotalCotizacion,
-        incluye_igv: formData.variantes[0]?.incluye_igv || false,
-        moneda: 'PEN',
-        forma_pago: formData.forma_pago,
-        condiciones_pago_detalle: formData.condiciones_pago_detalle,
-        tiempo_produccion: formData.variantes[0]?.tiempo_produccion_dias,
-        tiempo_entrega: formData.variantes[0]?.tiempo_entrega_dias,
-        cuenta_bancaria: formData.cuenta_bancaria,
-        banco: formData.banco,
-        cci: formData.cci,
-        yape_plin: formData.yape_plin,
-        prueba_color: formData.prueba_color,
-        muestra_fisica: formData.muestra_fisica,
-        estado: 'pendiente',
-        notas: formData.notas,
-        variantes: formData.variantes.map((v, index) => ({
-          id: `${Date.now()}-${index}`,
-          cotizacion_id: '', // Se asignará en la BD
-          descripcion: v.descripcion,
-          cantidad: v.cantidad,
-          precio_unitario: v.precio_unitario,
-          precio_total: v.precio_total,
-          incluye_igv: v.incluye_igv,
-          tiempo_produccion_dias: v.tiempo_produccion_dias,
-          tiempo_entrega_dias: v.tiempo_entrega_dias,
-          producto_base: v.producto_base || normalizarAProductoBase(v.descripcion) || 'otro',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }))
-      });
+      if (isEditing && cotizacionId && cotizacionEnEdicion) {
+        // EDITAR: Actualizar cotización existente
+        // Primero, eliminar las variantes existentes de Supabase
+        if (cotizacionEnEdicion.variantes && cotizacionEnEdicion.variantes.length > 0) {
+          for (const variante of cotizacionEnEdicion.variantes) {
+            try {
+              await supabase.from('variantes_cotizacion').delete().eq('id', variante.id);
+            } catch (error) {
+              console.error('Error al eliminar variante:', error);
+            }
+          }
+        }
 
-      // Crear registros de histórico de precios para cada variante
-      // Crear un HistoricoPrecio para cada variante
-      for (const variante of formData.variantes) {
-        // Usar producto_base (que es obligatorio en la forma)
-        const productoBase = variante.producto_base;
-
-        await createHistoricoPrecio({
+        // Actualizar la cotización principal
+        await updateCotizacion(cotizacionId, {
           proveedor_id: formData.proveedor_nombre,
-          producto_base: productoBase,
-          descripcion: variante.descripcion,
-          variante: undefined, // Se podría extraer de la descripción si hay patrones comunes
-          precio_unitario: variante.precio_unitario,
-          incluye_igv: variante.incluye_igv,
-          cantidad_referencia: variante.cantidad,
-          tiempo_produccion_dias: variante.tiempo_produccion_dias,
-          tiempo_entrega_dias: variante.tiempo_entrega_dias,
-          pedido_origen_id: showingCotizacionForm || undefined,
-          cotizacion_origen_id: nuevaCotizacion.id,
-          fecha_cotizacion: new Date().toISOString()
-        });
-      }
+          descripcion: `${formData.variantes.length} variante(s)`,
+          precio_total: precioTotalCotizacion,
+          forma_pago: formData.forma_pago,
+          condiciones_pago_detalle: formData.condiciones_pago_detalle,
+          tiempo_produccion: formData.variantes[0]?.tiempo_produccion_dias,
+          tiempo_entrega: formData.variantes[0]?.tiempo_entrega_dias,
+          cuenta_bancaria: formData.cuenta_bancaria,
+          banco: formData.banco,
+          cci: formData.cci,
+          yape_plin: formData.yape_plin,
+          prueba_color: formData.prueba_color,
+          muestra_fisica: formData.muestra_fisica,
+          notas: formData.notas,
+          updated_at: new Date().toISOString()
+        } as any);
 
-      console.log(`✅ Cotización creada (ID: ${nuevaCotizacion.id}) con ${formData.variantes.length} variante(s) y registros de histórico`);
+        // Insertar las nuevas variantes
+        for (const variante of formData.variantes) {
+          try {
+            await supabase.from('variantes_cotizacion').insert({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              cotizacion_id: cotizacionId,
+              descripcion: variante.descripcion,
+              cantidad: variante.cantidad,
+              precio_unitario: variante.precio_unitario,
+              precio_total: variante.precio_total,
+              incluye_igv: variante.incluye_igv,
+              tiempo_produccion_dias: variante.tiempo_produccion_dias,
+              tiempo_entrega_dias: variante.tiempo_entrega_dias,
+              producto_base: variante.producto_base || normalizarAProductoBase(variante.descripcion) || 'otro',
+              variante: variante.variante || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          } catch (error) {
+            console.error('Error al insertar variante:', error);
+          }
+        }
+
+        alert(`✅ Cotización actualizada exitosamente con ${formData.variantes.length} variante(s)`);
+        console.log(`✅ Cotización actualizada (ID: ${cotizacionId}) con ${formData.variantes.length} variante(s)`);
+      } else {
+        // CREAR: Nueva cotización
+        // Solo incluir campos que existen en la tabla cotizaciones
+        const nuevaCotizacion = await createCotizacion({
+          proveedor_id: formData.proveedor_nombre,
+          fecha: new Date().toISOString(),
+          descripcion: `${formData.variantes.length} variante(s)`,
+          precio_total: precioTotalCotizacion,
+          incluye_igv: formData.variantes[0]?.incluye_igv || false,
+          moneda: 'PEN',
+          forma_pago: formData.forma_pago,
+          condiciones_pago_detalle: formData.condiciones_pago_detalle,
+          tiempo_produccion: formData.variantes[0]?.tiempo_produccion_dias,
+          tiempo_entrega: formData.variantes[0]?.tiempo_entrega_dias,
+          cuenta_bancaria: formData.cuenta_bancaria,
+          banco: formData.banco,
+          cci: formData.cci,
+          yape_plin: formData.yape_plin,
+          prueba_color: formData.prueba_color,
+          muestra_fisica: formData.muestra_fisica,
+          estado: 'pendiente',
+          notas: formData.notas
+        } as any);
+
+        // Insertar las variantes en la tabla variantes_cotizacion
+        for (const variante of formData.variantes) {
+          try {
+            await supabase.from('variantes_cotizacion').insert({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              cotizacion_id: nuevaCotizacion.id,
+              descripcion: variante.descripcion,
+              cantidad: variante.cantidad,
+              precio_unitario: variante.precio_unitario,
+              precio_total: variante.precio_total,
+              incluye_igv: variante.incluye_igv,
+              tiempo_produccion_dias: variante.tiempo_produccion_dias,
+              tiempo_entrega_dias: variante.tiempo_entrega_dias,
+              producto_base: variante.producto_base || normalizarAProductoBase(variante.descripcion) || 'otro',
+              variante: variante.variante || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          } catch (error) {
+            console.error('Error al insertar variante:', error);
+          }
+        }
+
+        // Crear registros de histórico de precios para cada variante
+        for (const variante of formData.variantes) {
+          const productoBase = variante.producto_base;
+
+          await createHistoricoPrecio({
+            proveedor_id: formData.proveedor_nombre,
+            producto_base: productoBase,
+            descripcion: variante.descripcion,
+            variante: variante.variante || undefined,
+            precio_unitario: variante.precio_unitario,
+            incluye_igv: variante.incluye_igv,
+            cantidad_referencia: variante.cantidad,
+            tiempo_produccion_dias: variante.tiempo_produccion_dias,
+            tiempo_entrega_dias: variante.tiempo_entrega_dias,
+            pedido_origen_id: showingCotizacionForm || undefined,
+            cotizacion_origen_id: nuevaCotizacion.id,
+            fecha_cotizacion: new Date().toISOString()
+          });
+        }
+
+        alert('✅ Cotización creada exitosamente');
+        console.log(`✅ Cotización creada (ID: ${nuevaCotizacion.id}) con ${formData.variantes.length} variante(s)`);
+      }
 
       // Resetear formulario
       setFormData({
@@ -318,7 +461,8 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
             precio_unitario: 0,
             precio_total: 0,
             incluye_igv: false,
-            producto_base: ''
+            producto_base: '',
+            variante: ''
           }
         ],
         forma_pago: 'contado'
@@ -326,9 +470,10 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
       setFilterProveedor('');
       setMostrarDropdown(false);
       setShowingCotizacionForm(null);
+      setCotizacionEnEdicion(null);
     } catch (error) {
-      console.error('Error al agregar cotización:', error);
-      alert('Error al agregar la cotización');
+      console.error('Error al guardar cotización:', error);
+      alert('Error al guardar la cotización');
     }
   };
 
@@ -472,7 +617,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-yellow-400 mb-2">📋 Pendientes</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.pendiente.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEditClick={handleEditarCotizacion} pedidoId={pedido.id} />
                                   ))}
                                 </div>
                               </div>
@@ -484,7 +629,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-green-400 mb-2">✅ Aprobadas</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.aprobada.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEditClick={handleEditarCotizacion} pedidoId={pedido.id} />
                                   ))}
                                 </div>
                               </div>
@@ -496,7 +641,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-red-400 mb-2">❌ Rechazadas</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.rechazada.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEditClick={handleEditarCotizacion} pedidoId={pedido.id} />
                                   ))}
                                 </div>
                               </div>
@@ -508,7 +653,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-gray-400 mb-2">⏱️ Vencidas</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.vencida.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEditClick={handleEditarCotizacion} pedidoId={pedido.id} />
                                   ))}
                                 </div>
                               </div>
@@ -903,103 +1048,6 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
         )}
       </div>
 
-      {/* Modal de Edición de Cotización */}
-      {cotizacionEnEdicion && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700">
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-cyan-400">✏️ Editar Cotización</h2>
-                <button
-                  onClick={() => setCotizacionEnEdicion(null)}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase block">Proveedor</label>
-                <p className="text-white font-semibold">{cotizacionEnEdicion.proveedor_id}</p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase block">Estado</label>
-                <select
-                  value={cotizacionEnEdicion.estado}
-                  onChange={(e) => setCotizacionEnEdicion({
-                    ...cotizacionEnEdicion,
-                    estado: e.target.value as any
-                  })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"
-                >
-                  <option value="pendiente">Pendiente</option>
-                  <option value="aprobada">Aprobada</option>
-                  <option value="rechazada">Rechazada</option>
-                  <option value="vencida">Vencida</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase block">Condiciones de Pago</label>
-                <input
-                  type="text"
-                  value={cotizacionEnEdicion.condiciones_pago_detalle || ''}
-                  onChange={(e) => setCotizacionEnEdicion({
-                    ...cotizacionEnEdicion,
-                    condiciones_pago_detalle: e.target.value
-                  })}
-                  placeholder="Ej: 50% adelanto, 50% contra entrega"
-                  className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase block">Notas</label>
-                <textarea
-                  value={cotizacionEnEdicion.notas || ''}
-                  onChange={(e) => setCotizacionEnEdicion({
-                    ...cotizacionEnEdicion,
-                    notas: e.target.value
-                  })}
-                  placeholder="Notas adicionales..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex gap-2 mt-6 pt-4 border-t border-gray-700">
-                <button
-                  onClick={() => setCotizacionEnEdicion(null)}
-                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      await updateCotizacion(cotizacionEnEdicion.id, {
-                        estado: cotizacionEnEdicion.estado,
-                        condiciones_pago_detalle: cotizacionEnEdicion.condiciones_pago_detalle,
-                        notas: cotizacionEnEdicion.notas,
-                        updated_at: new Date().toISOString()
-                      });
-                      alert('✅ Cotización actualizada exitosamente');
-                      setCotizacionEnEdicion(null);
-                    } catch (error) {
-                      console.error('Error al actualizar cotización:', error);
-                      alert('❌ Error al actualizar la cotización');
-                    }
-                  }}
-                  className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-bold transition-colors"
-                >
-                  ✓ Guardar Cambios
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1007,10 +1055,12 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
 // Componente para mostrar una cotización individual
 function CotizacionCard({
   cotizacion,
-  onEdit
+  onEditClick,
+  pedidoId
 }: {
   cotizacion: Cotizacion;
-  onEdit: (cotizacion: Cotizacion) => void;
+  onEditClick: (cotizacion: Cotizacion, pedidoId: string) => void;
+  pedidoId: string;
 }) {
   const { deleteCotizacion } = useDatabase();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1113,7 +1163,7 @@ function CotizacionCard({
               ▼ Contraer
             </button>
             <button
-              onClick={() => onEdit(cotizacion)}
+              onClick={() => onEditClick(cotizacion, pedidoId)}
               className="flex-1 py-2 bg-blue-900/50 hover:bg-blue-900 text-blue-300 rounded text-sm font-medium transition-colors"
             >
               ✏️ Editar

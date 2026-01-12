@@ -27,7 +27,7 @@ export function useKPIs(): KPIs | null {
 
         // Sum prices of active orders for 'Monto en Producción'
         const montoProduccion = pedidos
-            .filter(p => p.estado === 'en_produccion' || p.estado === 'cotizacion' || p.estado === 'aprobado' || p.estado === 'listo_recoger')
+            .filter(p => p.estado === 'en_produccion' || p.estado === 'cotizacion' || p.estado === 'aprobado' || p.estado === 'listo')
             .reduce((sum, p) => sum + (p.precio || 0), 0);
 
         const alertas = 0;
@@ -84,12 +84,12 @@ export function useProcessFlow() {
 
     const getFlowData = useCallback(() => {
         const nodeDefinitions = [
-            { id: 'cotizacion', label: 'Cotización', color: '#6366f1' },
-            { id: 'aprobado', label: 'Aprobado', color: '#8b5cf6' },
-            { id: 'en_produccion', label: 'En Producción', color: '#f59e0b' },
-            { id: 'listo_recoger', label: 'Listo Recoger', color: '#10b981' },
-            { id: 'entregado', label: 'Entregado', color: '#22c55e' },
-            { id: 'cerrado', label: 'Cerrado', color: '#64748b' },
+            { id: 'cotizacion', label: 'Cotización', color: '#d97706' }, // Amarillo/Ámbar
+            { id: 'aprobado', label: 'Aprobado', color: '#16a34a' }, // Verde
+            { id: 'en_produccion', label: 'En Producción', color: '#2563eb' }, // Azul
+            { id: 'listo', label: 'Listo', color: '#0891b2' }, // Cyan
+            { id: 'entregado', label: 'Entregado', color: '#14b8a6' }, // Teal
+            { id: 'cerrado', label: 'Cerrado', color: '#6b7280' }, // Gris
         ];
 
         const estadoCounts: Record<string, number> = {};
@@ -99,11 +99,8 @@ export function useProcessFlow() {
         } else {
             // Calc from pedidos
             pedidos.forEach(p => {
-                // Mapping logic for weird states from traces
                 let state = p.estado;
-                if (state === 'en_campo') state = 'listo_recoger';
                 if (!state) state = 'en_produccion';
-
                 estadoCounts[state] = (estadoCounts[state] || 0) + 1;
             });
         }
@@ -120,9 +117,9 @@ export function useProcessFlow() {
         const edges = [
             { id: 'e1', from: 'cotizacion', to: 'aprobado', arrows: 'to' },
             { id: 'e2', from: 'aprobado', to: 'en_produccion', arrows: 'to' },
-            { id: 'e3', from: 'en_produccion', to: 'listo_recoger', arrows: 'to' },
-            { id: 'e4', from: 'listo_recoger', to: 'entregado', arrows: 'to' },
-            { id: 'e6', from: 'entregado', to: 'cerrado', arrows: 'to' },
+            { id: 'e3', from: 'en_produccion', to: 'listo', arrows: 'to' },
+            { id: 'e4', from: 'listo', to: 'entregado', arrows: 'to' },
+            { id: 'e5', from: 'entregado', to: 'cerrado', arrows: 'to' },
         ];
 
         return { nodes, edges };

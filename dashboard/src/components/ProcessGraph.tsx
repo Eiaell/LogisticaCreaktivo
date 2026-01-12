@@ -92,7 +92,7 @@ export function ProcessGraph() {
 
     // Derived Summary List for Selected State
     const selectedItemsSummary = selectedStateFilter ?
-        pedidos.filter(p => p.estado === selectedStateFilter || (selectedStateFilter === 'listo_recoger' && p.estado === 'en_campo'))
+        pedidos.filter(p => p.estado === selectedStateFilter)
             .map(p => {
                 const firstWord = p.descripcion ? p.descripcion.split(' ')[0] : 'Pedido';
                 return {

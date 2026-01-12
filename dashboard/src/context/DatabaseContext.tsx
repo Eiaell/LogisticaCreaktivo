@@ -170,10 +170,34 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     })));
                 }
 
-                // Cargar cotizaciones
-                const { data: cotizacionesData } = await supabase.from('cotizaciones').select('*');
-                if (cotizacionesData) {
-                    setCotizaciones(cotizacionesData as Cotizacion[]);
+                // Cargar cotizaciones con variantes
+                const { data: cotizacionesData, error: cotError } = await supabase.from('cotizaciones').select('*');
+                if (cotError) {
+                    console.error('❌ Error cargando cotizaciones:', cotError);
+                    setCotizaciones([]);
+                } else if (cotizacionesData && cotizacionesData.length > 0) {
+                    console.log(`📋 Cargadas ${cotizacionesData.length} cotizaciones`);
+                    // Cargar variantes para cada cotización
+                    const cotizacionesConVariantes = await Promise.all(
+                        cotizacionesData.map(async (cot: any) => {
+                            const { data: variantesData, error: varError } = await supabase
+                                .from('variantes_cotizacion')
+                                .select('*')
+                                .eq('cotizacion_id', cot.id);
+                            if (varError) {
+                                console.error(`❌ Error cargando variantes para cotización ${cot.id}:`, varError);
+                            }
+                            return {
+                                ...cot,
+                                variantes: variantesData || []
+                            };
+                        })
+                    );
+                    setCotizaciones(cotizacionesConVariantes as Cotizacion[]);
+                    console.log(`✅ ${cotizacionesConVariantes.length} cotizaciones cargadas con variantes`);
+                } else {
+                    console.log('ℹ️ No hay cotizaciones en la base de datos');
+                    setCotizaciones([]);
                 }
 
                 // Cargar líneas de pedido (NUEVA ESTRUCTURA SIMPLIFICADA)

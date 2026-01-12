@@ -10,16 +10,20 @@ import { ClientesPage } from './components/ClientesPage';
 import { ClienteFichaPage } from './components/ClienteFichaPage';
 import { ProveedoresPage } from './components/ProveedoresPage';
 import { ProveedorFichaPage } from './components/ProveedorFichaPage';
+import { CatalogoItemsPage } from './components/CatalogoItemsPage';
+import { CotizacionesPage } from './components/CotizacionesPage';
 import { useDatabase, DatabaseProvider } from './context/DatabaseContext';
+import { useAutoBackup } from './hooks/useAutoBackup';
 
-type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'proveedor_ficha';
+type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'proveedor_ficha' | 'catalogo_items' | 'cotizaciones';
 
 interface DashboardProps {
   onNavigate: (page: PageView) => void;
 }
 
 function Dashboard({ onNavigate }: DashboardProps) {
-  const { pedidos, clientes, proveedores, exportBackup, loadDatabase } = useDatabase();
+  const { pedidos, clientes, proveedores, loadDatabase } = useDatabase();
+  const { createBackup } = useAutoBackup();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
   const [modalType, setModalType] = useState<'cliente' | 'proveedor' | 'nuevo_cliente' | 'nuevo_proveedor' | null>(null);
 
@@ -95,15 +99,29 @@ function Dashboard({ onNavigate }: DashboardProps) {
             <span className="font-medium">Proveedores</span>
             <span className="text-xs bg-emerald-500/30 px-2 py-0.5 rounded-full">{Object.keys(proveedores).length}</span>
           </button>
+          <button
+            onClick={() => onNavigate('catalogo_items')}
+            className="group px-4 py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-xl text-purple-300 hover:from-purple-600/40 hover:to-pink-600/40 hover:border-purple-400/50 hover:text-white transition-all flex items-center gap-2"
+          >
+            <span className="text-lg group-hover:scale-110 transition-transform">📦</span>
+            <span className="font-medium">Catálogo</span>
+          </button>
+          <button
+            onClick={() => onNavigate('cotizaciones')}
+            className="group px-4 py-2 bg-gradient-to-r from-yellow-600/20 to-orange-600/20 border border-yellow-500/30 rounded-xl text-yellow-300 hover:from-yellow-600/40 hover:to-orange-600/40 hover:border-yellow-400/50 hover:text-white transition-all flex items-center gap-2"
+          >
+            <span className="text-lg group-hover:scale-110 transition-transform">💰</span>
+            <span className="font-medium">Cotizaciones</span>
+          </button>
 
           <div className="w-px bg-gray-700 mx-1"></div>
 
           <button
-            onClick={exportBackup}
-            className="px-4 py-2 bg-blue-600 border border-blue-500 rounded-lg text-white hover:bg-blue-500 transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/40"
-            title="Descargar copia de seguridad de todos los datos"
+            onClick={() => createBackup()}
+            className="px-4 py-2 bg-green-600 border border-green-500 rounded-lg text-white hover:bg-green-500 transition-colors flex items-center gap-2 shadow-lg shadow-green-900/40 font-medium"
+            title="Descargar backup completo (clientes, proveedores, logos)"
           >
-            <span>💾</span> Guardar Respaldo
+            <span>💾</span> Backup Manual
           </button>
           <button
             onClick={() => document.getElementById('header-file-upload')?.click()}
@@ -214,6 +232,14 @@ function AppContent() {
             setCurrentPage('proveedor_ficha');
           }}
         />
+      );
+    case 'catalogo_items':
+      return (
+        <CatalogoItemsPage onBack={() => setCurrentPage('dashboard')} />
+      );
+    case 'cotizaciones':
+      return (
+        <CotizacionesPage onBack={() => setCurrentPage('dashboard')} />
       );
     default:
       return <Dashboard onNavigate={setCurrentPage} />;

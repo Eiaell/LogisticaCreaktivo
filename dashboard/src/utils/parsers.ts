@@ -56,7 +56,13 @@ export function parseEventsToPedidos(events: TraceEvent[]): { pedidos: Pedido[],
         // Smart Update: only update if value is present
         if (ctx.cliente) pedido.cliente = normalizeText(ctx.cliente as string);
         if (ctx.producto) pedido.descripcion = ctx.producto as string;
-        if (ctx.nuevoEstado) pedido.estado = ctx.nuevoEstado as string;
+        if (ctx.nuevoEstado) {
+            const estado = ctx.nuevoEstado as string;
+            const validEstados = ['cotizacion', 'aprobado', 'aprobado_pendiente_cambios', 'en_produccion', 'listo', 'entregado', 'cerrado'];
+            if (validEstados.includes(estado)) {
+                pedido.estado = estado as any;
+            }
+        }
         if (ctx.costoTotal) pedido.precio = Number(ctx.costoTotal);
         if (ctx.precio) pedido.precio = Number(ctx.precio);
         if (ctx.proveedor) pedido.vendedora = normalizeText(ctx.proveedor as string);

@@ -563,7 +563,7 @@ function CotizacionCard({
                 </div>
                 <div className="text-right">
                     <p className="text-2xl font-bold text-emerald-400">
-                        {cotizacion.moneda === 'USD' ? '$' : 'S/'} {cotizacion.precio_total.toLocaleString()}
+                        {cotizacion.moneda === 'USD' ? '$' : 'S/'} {(cotizacion.precio_total || 0).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-500">
                         {cotizacion.incluye_igv ? 'Incluye IGV' : 'Sin IGV'}

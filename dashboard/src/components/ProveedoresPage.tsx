@@ -64,20 +64,24 @@ export function ProveedoresPage({ onBack, onSelectProveedor }: ProveedoresPagePr
         }
     };
 
-    // Colores por especialidad
+    // Colores por especialidad - TODOS ÚNICOS Y DIFERENCIADOS
     const getEspecialidadColor = (especialidad: string) => {
         const colors: Record<string, string> = {
             'Logos': 'from-purple-500/20 to-purple-600/10 border-purple-500/30',
-            'Importadores / Merchandising general': 'from-blue-500/20 to-blue-600/10 border-blue-500/30',
+            'Importadores / Merchandising general': 'from-blue-600/20 to-blue-700/10 border-blue-600/30',
             'Textil': 'from-pink-500/20 to-pink-600/10 border-pink-500/30',
-            'Merchandising pequeño (pines, lanyards, llaveros)': 'from-amber-500/20 to-amber-600/10 border-amber-500/30',
-            'Papelería': 'from-green-500/20 to-green-600/10 border-green-500/30',
+            'Merchandising pequeño (pines, lanyards, llaveros)': 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30',
+            'Papelería': 'from-lime-500/20 to-lime-600/10 border-lime-500/30',
             'Producción gráfica / gran formato': 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/30',
-            'POP y activaciones BTL': 'from-red-500/20 to-red-600/10 border-red-500/30',
-            'Ecológico': 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30',
-            'Acrílico y loza': 'from-indigo-500/20 to-indigo-600/10 border-indigo-500/30',
-            'Decoración y ambientación': 'from-rose-500/20 to-rose-600/10 border-rose-500/30',
-            'Servicios especiales / ad-hoc': 'from-violet-500/20 to-violet-600/10 border-violet-500/30',
+            'POP y activaciones BTL': 'from-red-600/20 to-red-700/10 border-red-600/30',
+            'Ecológico': 'from-teal-500/20 to-teal-600/10 border-teal-500/30',
+            'Acrílico y loza': 'from-indigo-600/20 to-indigo-700/10 border-indigo-600/30',
+            'Decoración y ambientación': 'from-orange-500/20 to-orange-600/10 border-orange-500/30',
+            'Globos y decoración promocional': 'from-fuchsia-500/20 to-fuchsia-600/10 border-fuchsia-500/30',
+            'Logística y montaje': 'from-slate-600/20 to-slate-700/10 border-slate-600/30',
+            'Personal para eventos': 'from-emerald-600/20 to-emerald-700/10 border-emerald-600/30',
+            'Diseño y servicios creativos': 'from-violet-600/20 to-violet-700/10 border-violet-600/30',
+            'Servicios especiales / ad-hoc': 'from-amber-600/20 to-amber-700/10 border-amber-600/30',
         };
         return colors[especialidad] || 'from-gray-500/20 to-gray-600/10 border-gray-500/30';
     };
@@ -85,16 +89,20 @@ export function ProveedoresPage({ onBack, onSelectProveedor }: ProveedoresPagePr
     const getBadgeColor = (especialidad: string) => {
         const colors: Record<string, string> = {
             'Logos': 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-            'Importadores / Merchandising general': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+            'Importadores / Merchandising general': 'bg-blue-600/20 text-blue-300 border-blue-600/30',
             'Textil': 'bg-pink-500/20 text-pink-300 border-pink-500/30',
-            'Merchandising pequeño (pines, lanyards, llaveros)': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-            'Papelería': 'bg-green-500/20 text-green-300 border-green-500/30',
+            'Merchandising pequeño (pines, lanyards, llaveros)': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+            'Papelería': 'bg-lime-500/20 text-lime-300 border-lime-500/30',
             'Producción gráfica / gran formato': 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-            'POP y activaciones BTL': 'bg-red-500/20 text-red-300 border-red-500/30',
-            'Ecológico': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-            'Acrílico y loza': 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-            'Decoración y ambientación': 'bg-rose-500/20 text-rose-300 border-rose-500/30',
-            'Servicios especiales / ad-hoc': 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+            'POP y activaciones BTL': 'bg-red-600/20 text-red-300 border-red-600/30',
+            'Ecológico': 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+            'Acrílico y loza': 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30',
+            'Decoración y ambientación': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+            'Globos y decoración promocional': 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30',
+            'Logística y montaje': 'bg-slate-600/20 text-slate-300 border-slate-600/30',
+            'Personal para eventos': 'bg-emerald-600/20 text-emerald-300 border-emerald-600/30',
+            'Diseño y servicios creativos': 'bg-violet-600/20 text-violet-300 border-violet-600/30',
+            'Servicios especiales / ad-hoc': 'bg-amber-600/20 text-amber-300 border-amber-600/30',
         };
         return colors[especialidad] || 'bg-gray-500/20 text-gray-300 border-gray-500/30';
     };
@@ -103,16 +111,20 @@ export function ProveedoresPage({ onBack, onSelectProveedor }: ProveedoresPagePr
     const getDotColor = (especialidad: string) => {
         const colors: Record<string, string> = {
             'Logos': 'bg-purple-500',
-            'Importadores / Merchandising general': 'bg-blue-500',
+            'Importadores / Merchandising general': 'bg-blue-600',
             'Textil': 'bg-pink-500',
-            'Merchandising pequeño (pines, lanyards, llaveros)': 'bg-amber-500',
-            'Papelería': 'bg-green-500',
+            'Merchandising pequeño (pines, lanyards, llaveros)': 'bg-yellow-500',
+            'Papelería': 'bg-lime-500',
             'Producción gráfica / gran formato': 'bg-cyan-500',
-            'POP y activaciones BTL': 'bg-red-500',
-            'Ecológico': 'bg-emerald-500',
-            'Acrílico y loza': 'bg-indigo-500',
-            'Decoración y ambientación': 'bg-rose-500',
-            'Servicios especiales / ad-hoc': 'bg-violet-500',
+            'POP y activaciones BTL': 'bg-red-600',
+            'Ecológico': 'bg-teal-500',
+            'Acrílico y loza': 'bg-indigo-600',
+            'Decoración y ambientación': 'bg-orange-500',
+            'Globos y decoración promocional': 'bg-fuchsia-500',
+            'Logística y montaje': 'bg-slate-600',
+            'Personal para eventos': 'bg-emerald-600',
+            'Diseño y servicios creativos': 'bg-violet-600',
+            'Servicios especiales / ad-hoc': 'bg-amber-600',
         };
         return colors[especialidad] || 'bg-gray-500';
     };
