@@ -260,7 +260,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden">
       <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
         {/* Header - Fixed */}
         <div className="bg-gray-900 border-b border-gray-700 p-6 flex items-center justify-between flex-shrink-0">
