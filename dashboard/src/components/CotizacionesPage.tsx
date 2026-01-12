@@ -907,6 +907,9 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
 
 // Componente para mostrar una cotización individual
 function CotizacionCard({ cotizacion }: { cotizacion: Cotizacion }) {
+  const { deleteCotizacion } = useDatabase();
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case 'pendiente':
@@ -927,37 +930,29 @@ function CotizacionCard({ cotizacion }: { cotizacion: Cotizacion }) {
     cotizacion.variantes.reduce((sum, v) => sum + v.precio_total, 0) :
     cotizacion.precio_total || 0;
 
+  const handleEliminar = async () => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta cotización? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      await deleteCotizacion(cotizacion.id);
+      alert('✅ Cotización eliminada exitosamente');
+    } catch (error) {
+      console.error('Error al eliminar cotización:', error);
+      alert('❌ Error al eliminar la cotización');
+    }
+  };
+
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded p-3 hover:border-gray-600 transition-colors">
-      <div className="flex justify-between items-start gap-3">
+    <div className={`bg-gray-800/50 border rounded transition-all ${isExpanded ? 'border-cyan-500 bg-gray-800' : 'border-gray-700 hover:border-gray-600'} p-3`}>
+      {/* Encabezado - siempre visible */}
+      <div className="flex justify-between items-start gap-3 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-emerald-300">{cotizacion.proveedor_id}</p>
-
-          {/* Mostrar variantes si existen */}
-          {cotizacion.variantes && cotizacion.variantes.length > 0 ? (
-            <div className="mt-2 space-y-1">
-              {cotizacion.variantes.map((variante, idx) => (
-                <div key={idx} className="text-sm">
-                  <p className="text-gray-300 font-semibold">Variante {idx + 1}: {variante.descripcion}</p>
-                  <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-1">
-                    <span>📦 {variante.cantidad} unidades</span>
-                    <span>💰 S/. {variante.precio_unitario.toFixed(2)}/u</span>
-                    <span>= S/. {variante.precio_total.toFixed(2)}</span>
-                    {variante.tiempo_produccion_dias && <span>⏱️ {variante.tiempo_produccion_dias}d</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400 text-sm mt-1">{cotizacion.descripcion}</p>
-          )}
-
-          {cotizacion.condiciones_pago_detalle && (
-            <p className="text-xs text-gray-500 mt-2 italic">Condiciones: {cotizacion.condiciones_pago_detalle}</p>
-          )}
-          {cotizacion.notas && (
-            <p className="text-xs text-gray-500 mt-1 italic">Nota: {cotizacion.notas}</p>
-          )}
+          <div className="flex items-center gap-2">
+            <span className={`text-lg transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+            <p className="font-bold text-emerald-300">{cotizacion.proveedor_id}</p>
+          </div>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="font-bold text-white text-lg">S/. {precioTotal.toFixed(2)}</p>
@@ -969,6 +964,58 @@ function CotizacionCard({ cotizacion }: { cotizacion: Cotizacion }) {
           </span>
         </div>
       </div>
+
+      {/* Contenido expandido */}
+      {isExpanded && (
+        <div className="mt-4 space-y-3 border-t border-gray-700 pt-3">
+          {/* Mostrar variantes si existen */}
+          {cotizacion.variantes && cotizacion.variantes.length > 0 ? (
+            <div className="space-y-2">
+              {cotizacion.variantes.map((variante, idx) => (
+                <div key={idx} className="text-sm bg-gray-900/50 p-2 rounded border border-gray-700">
+                  <p className="text-cyan-300 font-semibold">Variante {idx + 1}: {variante.descripcion}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mt-2">
+                    <span>📦 Cantidad: {variante.cantidad} u</span>
+                    <span>💰 Precio: S/. {variante.precio_unitario.toFixed(2)}/u</span>
+                    <span>= Total: S/. {variante.precio_total.toFixed(2)}</span>
+                    {variante.tiempo_produccion_dias && <span>⏱️ Producción: {variante.tiempo_produccion_dias}d</span>}
+                    {variante.variante && <span>🏷️ Variante: {variante.variante}</span>}
+                    {variante.producto_base && <span>📦 Base: {variante.producto_base}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">{cotizacion.descripcion}</p>
+          )}
+
+          {cotizacion.forma_pago && (
+            <p className="text-xs text-gray-400"><span className="text-gray-500">Forma de pago:</span> {cotizacion.forma_pago}</p>
+          )}
+          {cotizacion.condiciones_pago_detalle && (
+            <p className="text-xs text-gray-400"><span className="text-gray-500">Condiciones:</span> {cotizacion.condiciones_pago_detalle}</p>
+          )}
+          {cotizacion.notas && (
+            <p className="text-xs text-gray-400"><span className="text-gray-500">Notas:</span> {cotizacion.notas}</p>
+          )}
+
+          {/* Botones de acción */}
+          <div className="flex gap-2 mt-3 pt-3 border-t border-gray-700">
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-sm font-medium transition-colors"
+            >
+              ▼ Contraer
+            </button>
+            <button
+              onClick={handleEliminar}
+              className="flex-1 py-2 bg-red-900/50 hover:bg-red-900 text-red-300 rounded text-sm font-medium transition-colors"
+            >
+              🗑️ Eliminar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
