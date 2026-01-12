@@ -261,9 +261,9 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        {/* Header */}
-        <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 flex items-center justify-between">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-3xl h-[90vh] flex flex-col shadow-2xl">
+        {/* Header - Fixed */}
+        <div className="bg-gray-900 border-b border-gray-700 p-6 flex items-center justify-between flex-shrink-0">
           <h2 className="text-xl font-bold text-white flex items-center gap-3">
             <span className="text-2xl">📋</span>
             Cotizaciones
@@ -276,7 +276,8 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Cotizaciones Existentes */}
           <div>
             <h3 className="text-sm font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
@@ -439,33 +440,33 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
                 + Agregar Variante
               </button>
             </div>
-
-            {/* Botones */}
-            <div className="flex gap-3 pt-4 border-t border-gray-800">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                onClick={handleAddCotizacion}
-                disabled={isSubmitting || !formData.proveedor_nombre}
-                className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-800 disabled:text-gray-600 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <span className="animate-spin">⏳</span>
-                ) : (
-                  <>
-                    <span>Guardar Cotización</span>
-                    <span>✓</span>
-                  </>
-                )}
-              </button>
-            </div>
           </div>
+        </div>
+
+        {/* Footer - Fixed */}
+        <div className="bg-gray-900 border-t border-gray-700 p-6 flex gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
+          >
+            Cerrar
+          </button>
+          <button
+            type="button"
+            onClick={handleAddCotizacion}
+            disabled={isSubmitting || !formData.proveedor_nombre}
+            className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-800 disabled:text-gray-600 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? (
+              <span className="animate-spin">⏳</span>
+            ) : (
+              <>
+                <span>Guardar Cotización</span>
+                <span>✓</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
