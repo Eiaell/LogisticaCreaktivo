@@ -35,9 +35,10 @@ interface NuevaCotizacionForm {
 }
 
 export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
-  const { pedidos, cotizaciones, lineasPedido, clientes, proveedores, createCotizacion, createHistoricoPrecio, getHistoricoPorProveedor } = useDatabase();
+  const { pedidos, cotizaciones, lineasPedido, clientes, proveedores, createCotizacion, createHistoricoPrecio, getHistoricoPorProveedor, updateCotizacion } = useDatabase();
   const [expandedPedidoId, setExpandedPedidoId] = useState<string | null>(null);
   const [showingCotizacionForm, setShowingCotizacionForm] = useState<string | null>(null);
+  const [cotizacionEnEdicion, setCotizacionEnEdicion] = useState<Cotizacion | null>(null);
   const [filterProveedor, setFilterProveedor] = useState('');
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
   const [historicoProveedor, setHistoricoProveedor] = useState<HistoricoPrecio[]>([]);
@@ -471,7 +472,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-yellow-400 mb-2">📋 Pendientes</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.pendiente.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
                                   ))}
                                 </div>
                               </div>
@@ -483,7 +484,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-green-400 mb-2">✅ Aprobadas</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.aprobada.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
                                   ))}
                                 </div>
                               </div>
@@ -495,7 +496,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-red-400 mb-2">❌ Rechazadas</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.rechazada.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
                                   ))}
                                 </div>
                               </div>
@@ -507,7 +508,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                 <h5 className="text-xs font-bold uppercase text-gray-400 mb-2">⏱️ Vencidas</h5>
                                 <div className="space-y-2">
                                   {cotizacionesPorEstado.vencida.map(cot => (
-                                    <CotizacionCard key={cot.id} cotizacion={cot} />
+                                    <CotizacionCard key={cot.id} cotizacion={cot} onEdit={setCotizacionEnEdicion} />
                                   ))}
                                 </div>
                               </div>
@@ -901,12 +902,116 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
           </div>
         )}
       </div>
+
+      {/* Modal de Edición de Cotización */}
+      {cotizacionEnEdicion && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700">
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-cyan-400">✏️ Editar Cotización</h2>
+                <button
+                  onClick={() => setCotizacionEnEdicion(null)}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase block">Proveedor</label>
+                <p className="text-white font-semibold">{cotizacionEnEdicion.proveedor_id}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase block">Estado</label>
+                <select
+                  value={cotizacionEnEdicion.estado}
+                  onChange={(e) => setCotizacionEnEdicion({
+                    ...cotizacionEnEdicion,
+                    estado: e.target.value as any
+                  })}
+                  className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"
+                >
+                  <option value="pendiente">Pendiente</option>
+                  <option value="aprobada">Aprobada</option>
+                  <option value="rechazada">Rechazada</option>
+                  <option value="vencida">Vencida</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase block">Condiciones de Pago</label>
+                <input
+                  type="text"
+                  value={cotizacionEnEdicion.condiciones_pago_detalle || ''}
+                  onChange={(e) => setCotizacionEnEdicion({
+                    ...cotizacionEnEdicion,
+                    condiciones_pago_detalle: e.target.value
+                  })}
+                  placeholder="Ej: 50% adelanto, 50% contra entrega"
+                  className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase block">Notas</label>
+                <textarea
+                  value={cotizacionEnEdicion.notas || ''}
+                  onChange={(e) => setCotizacionEnEdicion({
+                    ...cotizacionEnEdicion,
+                    notas: e.target.value
+                  })}
+                  placeholder="Notas adicionales..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2 mt-6 pt-4 border-t border-gray-700">
+                <button
+                  onClick={() => setCotizacionEnEdicion(null)}
+                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateCotizacion(cotizacionEnEdicion.id, {
+                        estado: cotizacionEnEdicion.estado,
+                        condiciones_pago_detalle: cotizacionEnEdicion.condiciones_pago_detalle,
+                        notas: cotizacionEnEdicion.notas,
+                        updated_at: new Date().toISOString()
+                      });
+                      alert('✅ Cotización actualizada exitosamente');
+                      setCotizacionEnEdicion(null);
+                    } catch (error) {
+                      console.error('Error al actualizar cotización:', error);
+                      alert('❌ Error al actualizar la cotización');
+                    }
+                  }}
+                  className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-bold transition-colors"
+                >
+                  ✓ Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // Componente para mostrar una cotización individual
-function CotizacionCard({ cotizacion }: { cotizacion: Cotizacion }) {
+function CotizacionCard({
+  cotizacion,
+  onEdit
+}: {
+  cotizacion: Cotizacion;
+  onEdit: (cotizacion: Cotizacion) => void;
+}) {
   const { deleteCotizacion } = useDatabase();
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -1006,6 +1111,12 @@ function CotizacionCard({ cotizacion }: { cotizacion: Cotizacion }) {
               className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-sm font-medium transition-colors"
             >
               ▼ Contraer
+            </button>
+            <button
+              onClick={() => onEdit(cotizacion)}
+              className="flex-1 py-2 bg-blue-900/50 hover:bg-blue-900 text-blue-300 rounded text-sm font-medium transition-colors"
+            >
+              ✏️ Editar
             </button>
             <button
               onClick={handleEliminar}
