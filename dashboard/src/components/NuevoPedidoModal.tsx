@@ -8,13 +8,19 @@ interface Props {
 
 const VENDEDORAS = ['Angélica', 'Johana', 'Natalia', 'Patricia', 'Pati'];
 const ESTADOS_INICIALES = [
-    { value: 'cotizacion', label: 'Cotización' },
-    { value: 'aprobado', label: 'Aprobado' },
-    { value: 'en_produccion', label: 'En Producción' },
+    { value: 'cotizacion', label: 'Cotización', color: 'bg-yellow-600', textColor: 'text-yellow-100', borderColor: 'border-yellow-500' },
+    { value: 'aprobado', label: 'Aprobado', color: 'bg-green-600', textColor: 'text-green-100', borderColor: 'border-green-500' },
+    { value: 'en_produccion', label: 'En Producción', color: 'bg-blue-600', textColor: 'text-blue-100', borderColor: 'border-blue-500' },
 ];
 
+const getEstadoColor = (estado: string) => {
+    const estadoObj = ESTADOS_INICIALES.find(e => e.value === estado);
+    return estadoObj || ESTADOS_INICIALES[0];
+};
+
+
 export function NuevoPedidoModal({ isOpen, onClose }: Props) {
-    const { clientes, createPedido } = useDatabase();
+    const { clientes, getItemsUnicos, createPedido, createLineaPedido } = useDatabase();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
@@ -22,12 +28,53 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     // Form state
     const [cliente, setCliente] = useState('');
     const [nuevoCliente, setNuevoCliente] = useState('');
-    const [descripcion, setDescripcion] = useState('');
     const [vendedora, setVendedora] = useState('');
-    const [estado, setEstado] = useState('cotizacion');
-    const [precio, setPrecio] = useState('');
+    const [estado, setEstado] = useState<'cotizacion' | 'aprobado' | 'en_produccion'>('cotizacion');
+    const [isEstadoDropdownOpen, setIsEstadoDropdownOpen] = useState(false);
     const [rqNumero, setRqNumero] = useState('');
     const [fechaCompromiso, setFechaCompromiso] = useState('');
+
+    // Form para cada item (como un object con múltiples entradas)
+    const [itemForms, setItemForms] = useState<Array<{id: string; item: string; detalle: string}>>([{id: `FORM-${Date.now()}`, item: '', detalle: ''}]);
+
+    // Get unique items from history for autocomplete
+    const itemsHistorico = getItemsUnicos();
+
+    // Función para obtener labels dinámicos según estado
+    const getLabels = () => {
+        switch (estado) {
+            case 'cotizacion':
+                return {
+                    fecha: 'Fecha de Pedido de Cotización',
+                    detalle: 'Detalle de Pedido de Cotización',
+                    mostrarPrecio: false,
+                    placeholderDetalle: 'Descripción de lo que se necesita cotizar...'
+                };
+            case 'aprobado':
+                return {
+                    fecha: 'Fecha de Pedido de Compra',
+                    detalle: 'Detalle de Compra',
+                    mostrarPrecio: true,
+                    placeholderDetalle: '100 unidades, color rojo, con logo, cinta 2.5cm FULL COLOR...'
+                };
+            case 'en_produccion':
+                return {
+                    fecha: 'Fecha desde que está en Producción',
+                    detalle: 'Detalle de Producción',
+                    mostrarPrecio: true,
+                    placeholderDetalle: 'Estado de producción, especificaciones, observaciones...'
+                };
+            default:
+                return {
+                    fecha: 'Fecha de Compromiso',
+                    detalle: 'Detalle',
+                    mostrarPrecio: true,
+                    placeholderDetalle: 'Ingrese detalles...'
+                };
+        }
+    };
+
+    const labels = getLabels();
 
     // Build structure: main entities (groups + independent clients)
     const mainEntities: Array<{
@@ -102,30 +149,74 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     const resetForm = () => {
         setCliente('');
         setNuevoCliente('');
-        setDescripcion('');
         setVendedora('');
         setEstado('cotizacion');
-        setPrecio('');
         setRqNumero('');
         setFechaCompromiso('');
+        setItemForms([{id: `FORM-${Date.now()}`, item: '', detalle: ''}]);
+    };
+
+    const updateItemForm = (formId: string, field: 'item' | 'detalle', value: string) => {
+        setItemForms(prev => prev.map(form =>
+            form.id === formId ? {...form, [field]: value} : form
+        ));
+    };
+
+
+    const deleteItemFromForm = (formId: string) => {
+        if (itemForms.length === 1) return; // Siempre mantener al menos una forma
+        setItemForms(prev => prev.filter(f => f.id !== formId));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!clienteFinal || !descripcion) return;
+        // Cliente es OPCIONAL - permitir crear sin especificar cliente
+
+        // Convertir itemForms con datos a lineas
+        const itemsACrear = itemForms.filter(f => f.item && f.detalle);
+        if (!itemsACrear.length) return;
 
         setIsSubmitting(true);
         try {
-            await createPedido({
-                cliente: clienteFinal,
-                descripcion,
+            // Convertir fecha YYYY-MM-DD a ISO ajustando por zona horaria (Peru UTC-5)
+            let fechaFinal: string | undefined = undefined;
+            if (fechaCompromiso) {
+                // fechaCompromiso es "YYYY-MM-DD" del input type="date"
+                // Lo convertimos a ISO string agregando la zona horaria correcta
+                const partes = fechaCompromiso.split('-');
+                const year = parseInt(partes[0]);
+                const month = parseInt(partes[1]) - 1; // Meses son 0-11
+                const day = parseInt(partes[2]);
+
+                // Crear date en zona horaria local (sin asumir UTC)
+                const fecha = new Date(year, month, day, 0, 0, 0, 0);
+                fechaFinal = fecha.toISOString();
+            }
+
+            // Create the pedido
+            const descripcionItems = itemsACrear.map(f => f.item).join(', ');
+            const pedido = await createPedido({
+                cliente: clienteFinal || '', // Cliente es opcional - permitir string vacío
+                descripcion: descripcionItems,
                 vendedora: vendedora || '',
                 estado,
-                precio: precio ? Number(precio) : 0,
+                precio: 0, // En cotización siempre es 0
                 pagado: 0,
                 rq_numero: rqNumero || null,
-                fecha_compromiso: fechaCompromiso || undefined,
+                fecha_compromiso: fechaFinal,
             });
+
+            // Create all lines
+            for (const form of itemsACrear) {
+                await createLineaPedido(pedido.id, {
+                    pedido_id: pedido.id,
+                    item: form.item,
+                    detalle: form.detalle,
+                    precio: 0, // En cotización siempre es 0
+                } as any);
+            }
+
+            console.log('✅ Pedido creado exitosamente:', pedido.id);
             resetForm();
             onClose();
         } catch (err) {
@@ -159,7 +250,7 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                     {/* Cliente */}
                     <div className="space-y-2">
                         <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
-                            Cliente *
+                            Cliente <span className="text-gray-500">(opcional)</span>
                         </label>
 
                         <div className="relative">
@@ -296,20 +387,6 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                         )}
                     </div>
 
-                    {/* Descripción */}
-                    <div className="space-y-1">
-                        <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
-                            Descripción *
-                        </label>
-                        <textarea
-                            value={descripcion}
-                            onChange={(e) => setDescripcion(e.target.value)}
-                            placeholder="Ej: 500 polos algodón con logo bordado"
-                            className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none resize-none h-20"
-                            required
-                        />
-                    </div>
-
                     {/* Vendedora + Estado */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
@@ -327,38 +404,47 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 relative">
                             <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
                                 Estado Inicial
                             </label>
-                            <select
-                                value={estado}
-                                onChange={(e) => setEstado(e.target.value)}
-                                className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none"
+                            <button
+                                type="button"
+                                onClick={() => setIsEstadoDropdownOpen(!isEstadoDropdownOpen)}
+                                className={`w-full rounded-lg p-3 text-left font-medium transition-all border-2 flex items-center justify-between ${getEstadoColor(estado).color} ${getEstadoColor(estado).textColor} ${getEstadoColor(estado).borderColor}`}
                             >
-                                {ESTADOS_INICIALES.map(e => (
-                                    <option key={e.value} value={e.value}>{e.label}</option>
-                                ))}
-                            </select>
+                                <span>{ESTADOS_INICIALES.find(e => e.value === estado)?.label}</span>
+                                <span className={`text-sm transition-transform ${isEstadoDropdownOpen ? 'rotate-180' : ''}`}>▼</span>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isEstadoDropdownOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border-2 border-gray-700 rounded-lg shadow-lg z-50">
+                                    {ESTADOS_INICIALES.map(e => (
+                                        <button
+                                            key={e.value}
+                                            type="button"
+                                            onClick={() => {
+                                                setEstado(e.value as 'cotizacion' | 'aprobado' | 'en_produccion');
+                                                setIsEstadoDropdownOpen(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 border-b border-gray-800 last:border-b-0 transition-colors flex items-center gap-3 ${
+                                                estado === e.value
+                                                    ? `${e.color} ${e.textColor} font-bold`
+                                                    : 'text-gray-400 hover:text-white hover:bg-gray-900'
+                                            }`}
+                                        >
+                                            <span className={`w-3 h-3 rounded-full ${e.color}`}></span>
+                                            {e.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Precio + RQ */}
+                    {/* RQ + Fecha Compromiso */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
-                                Precio (S/.)
-                            </label>
-                            <input
-                                type="number"
-                                value={precio}
-                                onChange={(e) => setPrecio(e.target.value)}
-                                placeholder="0.00"
-                                step="0.01"
-                                min="0"
-                                className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none font-mono"
-                            />
-                        </div>
                         <div className="space-y-1">
                             <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
                                 RQ / Referencia
@@ -368,22 +454,86 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                                 value={rqNumero}
                                 onChange={(e) => setRqNumero(e.target.value)}
                                 placeholder="Ej: RQ-2024-001"
-                                className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none"
+                                className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none text-sm"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
+                                {labels.fecha}
+                            </label>
+                            <input
+                                type="date"
+                                value={fechaCompromiso}
+                                onChange={(e) => setFechaCompromiso(e.target.value)}
+                                className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none text-sm"
                             />
                         </div>
                     </div>
 
-                    {/* Fecha Compromiso */}
-                    <div className="space-y-1">
+                    {/* Items/Líneas Section - SIMPLE */}
+                    <div className="space-y-3 border-t border-gray-700 pt-4">
                         <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
-                            Fecha de Compromiso
+                            Items a Pedir *
                         </label>
-                        <input
-                            type="date"
-                            value={fechaCompromiso}
-                            onChange={(e) => setFechaCompromiso(e.target.value)}
-                            className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none"
-                        />
+
+                        {/* Formularios para agregar items */}
+                        <div className="space-y-3">
+                            {itemForms.map((form, index) => (
+                                <div key={form.id} className="border-2 border-cyan-600/40 rounded-lg p-4 space-y-3 bg-gray-900/30">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-2xs text-gray-400 font-bold uppercase">Item {index + 1}</span>
+                                        {itemForms.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => deleteItemFromForm(form.id)}
+                                                className="text-red-400 hover:text-red-300 text-lg"
+                                                title="Eliminar este item"
+                                            >
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Item input */}
+                                    <div>
+                                        <label className="text-xs text-gray-400 font-bold uppercase tracking-wide block mb-2">Producto / Item *</label>
+                                        <datalist id={`items-${form.id}`}>
+                                            {itemsHistorico.map(item => (
+                                                <option key={item} value={item} />
+                                            ))}
+                                        </datalist>
+                                        <input
+                                            type="text"
+                                            list={`items-${form.id}`}
+                                            value={form.item}
+                                            onChange={(e) => updateItemForm(form.id, 'item', e.target.value)}
+                                            placeholder="Ej: Bolsas, Camisetas, Afiches..."
+                                            className="w-full bg-gray-800 border-2 border-gray-600 hover:border-cyan-500 focus:border-cyan-400 rounded-lg p-3 text-white text-sm focus:outline-none transition-colors"
+                                        />
+                                    </div>
+
+                                    {/* Detalle */}
+                                    <div>
+                                        <label className="text-xs text-gray-400 font-bold uppercase tracking-wide block mb-2">{labels.detalle} *</label>
+                                        <textarea
+                                            value={form.detalle}
+                                            onChange={(e) => updateItemForm(form.id, 'detalle', e.target.value)}
+                                            placeholder={labels.placeholderDetalle}
+                                            className="w-full bg-gray-800 border-2 border-gray-600 hover:border-cyan-500 focus:border-cyan-400 rounded-lg p-3 text-white text-sm focus:outline-none resize-none h-20 transition-colors"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Botón para agregar otro item */}
+                        <button
+                            type="button"
+                            onClick={() => setItemForms(prev => [...prev, {id: `FORM-${Date.now()}`, item: '', detalle: ''}])}
+                            className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm font-medium transition-colors"
+                        >
+                            + Agregar otro Item
+                        </button>
                     </div>
 
                     {/* Actions */}
@@ -397,7 +547,7 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting || !clienteFinal || !descripcion}
+                            disabled={isSubmitting || !itemForms.some(f => f.item && f.detalle)}
                             className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-800 disabled:text-gray-600 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? (

@@ -4,7 +4,24 @@ import { usePedidos } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
 import { ClienteModal } from './ClienteModal';
 import { NuevoPedidoModal } from './NuevoPedidoModal';
+import { CotizacionesModal } from './CotizacionesModal';
 import { ConfirmDialog } from './ConfirmDialog';
+
+// Función para formatear ISO date sin desplazar por zona horaria
+const formatDateISO = (isoString: string): string => {
+    // Extrae la parte YYYY-MM-DD del ISO string
+    return isoString.split('T')[0];
+};
+
+// Función para mostrar fecha en formato local
+const getLocalDate = (isoString: string): Date => {
+    // Parsea ISO string sin asumir UTC
+    const partes = isoString.split('T')[0].split('-');
+    const year = parseInt(partes[0]);
+    const month = parseInt(partes[1]) - 1;
+    const day = parseInt(partes[2]);
+    return new Date(year, month, day);
+};
 
 export function PedidosTable() {
     // Get shared state
@@ -26,6 +43,7 @@ export function PedidosTable() {
     const [newAdelantoMonto, setNewAdelantoMonto] = useState('');
     const [newAdelantoNota, setNewAdelantoNota] = useState('');
     const [showNuevoPedidoModal, setShowNuevoPedidoModal] = useState(false);
+    const [cotizacionesModalPedidoId, setCotizacionesModalPedidoId] = useState<string | null>(null);
 
     // Selection state
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -279,9 +297,12 @@ export function PedidosTable() {
                                 { label: 'Vendedor/a', w: 'w-32' },
                                 { label: 'Estado', w: 'w-40' },
                                 { label: 'RQ', w: 'w-24' },
-                                { label: 'Precio', w: 'w-32' },
-                                { label: 'Pagado', w: 'w-32' },
-                                { label: 'Saldo', w: 'w-32' },
+                                // Mostrar Precio/Pagado/Saldo solo si hay algún pedido que NO sea cotización
+                                ...(filteredPedidos.some(p => p.estado !== 'cotizacion') ? [
+                                    { label: 'Precio', w: 'w-32' },
+                                    { label: 'Pagado', w: 'w-32' },
+                                    { label: 'Saldo', w: 'w-32' }
+                                ] : []),
                                 { label: '', w: 'w-10' }
                             ].map((col, idx) => (
                                 <th key={idx} className={`p-4 text-left font-medium ${col.w}`}>{col.label}</th>
@@ -306,7 +327,7 @@ export function PedidosTable() {
                                     {/* Fecha */}
                                     <td
                                         className="p-4 align-middle cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleEditStart(pedido.id, 'created_at', pedido.created_at.split('T')[0])}
+                                        onClick={() => handleEditStart(pedido.id, 'created_at', formatDateISO(pedido.created_at))}
                                     >
                                         {editingCell?.id === pedido.id && editingCell?.field === 'created_at' ? (
                                             <input
@@ -320,40 +341,93 @@ export function PedidosTable() {
                                             />
                                         ) : (
                                             <span className="text-gray-400 text-sm">
-                                                {new Date(pedido.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                                                {getLocalDate(pedido.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
                                             </span>
                                         )}
                                     </td>
-                                    <td className="p-4 align-middle">
-                                        <div
-                                            className="flex items-center gap-3 font-bold text-gray-100 hover:text-cyan-400 cursor-pointer transition-colors group/client"
-                                            onClick={() => {
-                                                setFilterCliente(pedido.cliente);
-                                                setShowClienteModal(true);
-                                            }}
-                                        >
-                                            <div className="relative w-8 h-8 flex-shrink-0 bg-gray-900 rounded-full border border-gray-800 overflow-hidden shadow-inner">
-                                                {clientes[pedido.cliente]?.logo ? (
-                                                    <img
-                                                        src={clientes[pedido.cliente].logo}
-                                                        alt=""
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            console.warn("Logo failed for:", pedido.cliente);
-                                                            (e.target as HTMLImageElement).style.opacity = '0';
-                                                        }}
+                                    <td className="p-4 align-middle relative">
+                                        {editingCell?.id === pedido.id && editingCell?.field === 'cliente' ? (
+                                            <div className="absolute top-full left-4 mt-1 bg-gray-950 border border-gray-700 rounded-lg shadow-xl z-40 w-64 max-h-72 overflow-y-auto">
+                                                <div className="p-2 border-b border-gray-800">
+                                                    <input
+                                                        autoFocus
+                                                        type="text"
+                                                        value={editValue}
+                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                        placeholder="Buscar cliente..."
+                                                        className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white text-xs focus:border-cyan-500 outline-none"
                                                     />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">
-                                                        👤
-                                                    </div>
-                                                )}
+                                                </div>
+                                                <div className="max-h-60 overflow-y-auto">
+                                                    {Object.entries(clientes)
+                                                        .filter(([key]) => !editValue || key.toLowerCase().includes(editValue.toLowerCase()) || clientes[key].nombre_comercial?.toLowerCase().includes(editValue.toLowerCase()))
+                                                        .map(([razonSocial, cliente]) => (
+                                                            <button
+                                                                key={razonSocial}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    updatePedido(pedido.id, { cliente: razonSocial });
+                                                                    setEditingCell(null);
+                                                                    setEditValue('');
+                                                                }}
+                                                                className="w-full text-left px-3 py-2 hover:bg-gray-900 border-b border-gray-800 last:border-b-0 transition-colors flex items-center gap-2"
+                                                            >
+                                                                {cliente.logo ? (
+                                                                    <img src={cliente.logo} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                                                                ) : (
+                                                                    <span className="w-5 h-5 rounded bg-gray-800 flex items-center justify-center text-[10px] flex-shrink-0">🏢</span>
+                                                                )}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="text-xs text-gray-300 truncate">{cliente.nombre_comercial || razonSocial}</div>
+                                                                    <div className="text-[10px] text-gray-600">{razonSocial}</div>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                </div>
+                                                <div className="border-t border-gray-800 p-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            updatePedido(pedido.id, { cliente: '' });
+                                                            setEditingCell(null);
+                                                            setEditValue('');
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-900 rounded transition-colors"
+                                                    >
+                                                        ✕ Limpiar cliente
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col leading-tight">
-                                                <span>{pedido.cliente}</span>
-                                                <span className="text-[10px] text-gray-500 font-mono font-normal">{pedido.id}</span>
+                                        ) : (
+                                            <div
+                                                className="flex items-center gap-3 font-bold text-gray-100 hover:text-cyan-400 cursor-pointer transition-colors group/client"
+                                                onClick={() => handleEditStart(pedido.id, 'cliente', pedido.cliente)}
+                                            >
+                                                <div className="relative w-8 h-8 flex-shrink-0 bg-gray-900 rounded-full border border-gray-800 overflow-hidden shadow-inner">
+                                                    {pedido.cliente && clientes[pedido.cliente]?.logo ? (
+                                                        <img
+                                                            src={clientes[pedido.cliente].logo}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                console.warn("Logo failed for:", pedido.cliente);
+                                                                (e.target as HTMLImageElement).style.opacity = '0';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">
+                                                            ⚠️
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col leading-tight">
+                                                    <span className={pedido.cliente ? 'text-gray-100' : 'text-gray-500 italic'}>
+                                                        {pedido.cliente || 'Sin cliente'}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-500 font-mono font-normal">{pedido.id}</span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </td>
                                     <td className="p-4 align-middle hover:text-cyan-400 cursor-pointer transition-colors" onClick={() => handleEditStart(pedido.id, 'descripcion', pedido.descripcion)}>
                                         {editingCell?.id === pedido.id && editingCell?.field === 'descripcion' ? (
@@ -391,38 +465,47 @@ export function PedidosTable() {
                                     </td>
                                     <td className="p-4 align-middle">
                                         {editingCell?.id === pedido.id && editingCell?.field === 'estado' ? (
-                                            <select
-                                                autoFocus
-                                                value={editValue}
-                                                onChange={e => {
-                                                    setEditValue(e.target.value);
-                                                    const newVal = e.target.value;
-                                                    updatePedido(pedido.id, { estado: newVal });
-                                                    setEditingCell(null);
-                                                }}
-                                                onBlur={() => setEditingCell(null)}
-                                                className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 text-xs text-white outline-none w-full"
-                                            >
-                                                <option value="cotizacion">Cotización</option>
-                                                <option value="aprobado">Aprobado</option>
-                                                <option value="en_produccion">En Producción</option>
-                                                <option value="listo_recoger">Listo Recoger</option>
-                                                <option value="entregado">Entregado</option>
-                                                <option value="cerrado">Cerrado</option>
-                                                <option value="cancelado">Cancelado</option>
-                                            </select>
+                                            <div className="absolute z-50">
+                                                <div className="bg-gray-950 border border-gray-700 rounded-lg shadow-lg">
+                                                    {['cotizacion', 'aprobado', 'en_produccion', 'listo', 'entregado', 'cerrado'].map(estadoOpt => {
+                                                        const colors: Record<string, string> = {
+                                                            'cotizacion': 'bg-yellow-600/40 text-yellow-300 border-yellow-500/50 hover:bg-yellow-600/60',
+                                                            'aprobado': 'bg-green-600/40 text-green-300 border-green-500/50 hover:bg-green-600/60',
+                                                            'en_produccion': 'bg-blue-600/40 text-blue-300 border-blue-500/50 hover:bg-blue-600/60',
+                                                            'listo': 'bg-cyan-600/40 text-cyan-300 border-cyan-500/50 hover:bg-cyan-600/60',
+                                                            'entregado': 'bg-teal-600/40 text-teal-300 border-teal-500/50 hover:bg-teal-600/60',
+                                                            'cerrado': 'bg-gray-600/40 text-gray-300 border-gray-500/50 hover:bg-gray-600/60',
+                                                        };
+                                                        return (
+                                                            <button
+                                                                key={estadoOpt}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newVal = estadoOpt as 'cotizacion' | 'aprobado' | 'en_produccion' | 'listo' | 'entregado' | 'cerrado';
+                                                                    updatePedido(pedido.id, { estado: newVal });
+                                                                    setEditingCell(null);
+                                                                }}
+                                                                className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs font-semibold uppercase tracking-wide transition-colors ${colors[estadoOpt]}`}
+                                                            >
+                                                                {estadoOpt === 'cotizacion' ? 'Cotización' :
+                                                                 estadoOpt === 'en_produccion' ? 'En Producción' :
+                                                                 estadoOpt.charAt(0).toUpperCase() + estadoOpt.slice(1)}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         ) : (
                                             <span
                                                 onClick={() => handleEditStart(pedido.id, 'estado', pedido.estado)}
                                                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:ring-1 hover:ring-white/30 transition-all
-                                                ${pedido.estado === 'cotizacion' ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30' :
-                                                        pedido.estado === 'aprobado' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                                            pedido.estado === 'en_produccion' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                                                                pedido.estado === 'listo_recoger' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
-                                                                    pedido.estado === 'entregado' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                                                        pedido.estado === 'cerrado' ? 'bg-emerald-600/20 text-emerald-500 border border-emerald-600/30' :
-                                                                            pedido.estado === 'cancelado' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                                                                                'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
+                                                ${pedido.estado === 'cotizacion' ? 'bg-yellow-600/30 text-yellow-300 border border-yellow-500/50' :
+                                                        pedido.estado === 'aprobado' ? 'bg-green-600/30 text-green-300 border border-green-500/50' :
+                                                                pedido.estado === 'en_produccion' ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50' :
+                                                                    pedido.estado === 'listo' ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/50' :
+                                                                        pedido.estado === 'entregado' ? 'bg-teal-600/30 text-teal-300 border border-teal-500/50' :
+                                                                            pedido.estado === 'cerrado' ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50' :
+                                                                                'bg-gray-600/30 text-gray-300 border border-gray-500/50'}`}>
                                                 {pedido.estado.replace('_', ' ')}
                                             </span>
                                         )}
@@ -430,40 +513,45 @@ export function PedidosTable() {
                                     <td className="p-4 align-middle font-mono text-gray-500 italic">
                                         {pedido.rq_numero || '-'}
                                     </td>
-                                    <td className="p-4 align-middle font-mono text-gray-100 group/price">
-                                        <div className="flex items-center gap-2">
-                                            {editingCell?.id === pedido.id && editingCell?.field === 'precio' ? (
-                                                <input
-                                                    autoFocus
-                                                    value={editValue}
-                                                    onChange={e => setEditValue(e.target.value)}
-                                                    onBlur={handleEditSave}
-                                                    onKeyDown={e => e.key === 'Enter' && handleEditSave()}
-                                                    className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-24 outline-none font-mono"
-                                                />
-                                            ) : (
-                                                <div
-                                                    className="flex items-center gap-1 cursor-pointer hover:text-cyan-400 transition-colors"
-                                                    onClick={() => handleEditStart(pedido.id, 'precio', pedido.precio)}
-                                                >
-                                                    <span className="text-gray-500">S/.</span>
-                                                    {(pedido.precio || 0).toFixed(2)}
+                                    {/* Mostrar Precio/Pagado/Saldo solo si estado !== 'cotizacion' */}
+                                    {pedido.estado !== 'cotizacion' && (
+                                        <>
+                                            <td className="p-4 align-middle font-mono text-gray-100 group/price">
+                                                <div className="flex items-center gap-2">
+                                                    {editingCell?.id === pedido.id && editingCell?.field === 'precio' ? (
+                                                        <input
+                                                            autoFocus
+                                                            value={editValue}
+                                                            onChange={e => setEditValue(e.target.value)}
+                                                            onBlur={handleEditSave}
+                                                            onKeyDown={e => e.key === 'Enter' && handleEditSave()}
+                                                            className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-24 outline-none font-mono"
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            className="flex items-center gap-1 cursor-pointer hover:text-cyan-400 transition-colors"
+                                                            onClick={() => handleEditStart(pedido.id, 'precio', pedido.precio)}
+                                                        >
+                                                            <span className="text-gray-500">S/.</span>
+                                                            {(pedido.precio || 0).toFixed(2)}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="p-4 align-middle font-mono text-emerald-400">
-                                        <span className="flex items-center gap-1">
-                                            <span className="text-emerald-900">S/.</span>
-                                            {(pedido.pagado || 0).toFixed(2)}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 align-middle font-mono font-bold">
-                                        <span className={`flex items-center gap-1 ${(pedido.precio || 0) - (pedido.pagado || 0) > 0 ? 'text-red-400' : 'text-gray-500'}`}>
-                                            <span className="opacity-30">S/.</span>
-                                            {((pedido.precio || 0) - (pedido.pagado || 0)).toFixed(2)}
-                                        </span>
-                                    </td>
+                                            </td>
+                                            <td className="p-4 align-middle font-mono text-emerald-400">
+                                                <span className="flex items-center gap-1">
+                                                    <span className="text-emerald-900">S/.</span>
+                                                    {(pedido.pagado || 0).toFixed(2)}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 align-middle font-mono font-bold">
+                                                <span className={`flex items-center gap-1 ${(pedido.precio || 0) - (pedido.pagado || 0) > 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                                                    <span className="opacity-30">S/.</span>
+                                                    {((pedido.precio || 0) - (pedido.pagado || 0)).toFixed(2)}
+                                                </span>
+                                            </td>
+                                        </>
+                                    )}
                                     <td className="p-4 align-middle">
                                         <button
                                             onClick={() => toggleExpand(pedido.id)}
@@ -533,6 +621,18 @@ export function PedidosTable() {
                                                     </button>
                                                 </div>
 
+                                                {/* Cotizaciones Panel */}
+                                                <div className="w-full md:w-48 bg-cyan-950/20 p-4 rounded-xl border border-cyan-900/30 space-y-3">
+                                                    <h4 className="text-xs uppercase font-bold text-cyan-400/60 tracking-widest">📋 Cotizaciones</h4>
+                                                    <button
+                                                        onClick={() => setCotizacionesModalPedidoId(pedido.id)}
+                                                        className="w-full py-2 bg-cyan-600/20 hover:bg-cyan-600 border border-cyan-500/30 hover:border-cyan-500 text-cyan-400 hover:text-white rounded font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        <span>➕</span>
+                                                        Ver / Agregar
+                                                    </button>
+                                                </div>
+
                                                 {/* Actions Panel */}
                                                 <div className="w-full md:w-48 bg-red-950/20 p-4 rounded-xl border border-red-900/30 space-y-3">
                                                     <h4 className="text-xs uppercase font-bold text-red-400/60 tracking-widest">Acciones</h4>
@@ -577,6 +677,14 @@ export function PedidosTable() {
                 isOpen={showNuevoPedidoModal}
                 onClose={() => setShowNuevoPedidoModal(false)}
             />
+
+            {/* Modal Cotizaciones */}
+            {cotizacionesModalPedidoId && (
+                <CotizacionesModal
+                    pedidoId={cotizacionesModalPedidoId}
+                    onClose={() => setCotizacionesModalPedidoId(null)}
+                />
+            )}
 
             {/* Confirm Delete Dialog */}
             <ConfirmDialog
