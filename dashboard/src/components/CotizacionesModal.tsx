@@ -17,6 +17,7 @@ interface VarianteForm {
   tiempo_produccion_dias?: number;
   tiempo_entrega_dias?: number;
   producto_base: string;
+  variante?: string;
   _precargado?: boolean;
 }
 
@@ -43,7 +44,8 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
         precio_unitario: 0,
         precio_total: 0,
         incluye_igv: false,
-        producto_base: ''
+        producto_base: '',
+        variante: ''
       }
     ],
     forma_pago: 'contado'
@@ -97,7 +99,8 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
           precio_unitario: 0,
           precio_total: 0,
           incluye_igv: false,
-          producto_base: ''
+          producto_base: '',
+          variante: ''
         }
       ]
     });
@@ -148,6 +151,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
       tiempo_produccion_dias: historico.tiempo_produccion_dias,
       tiempo_entrega_dias: historico.tiempo_entrega_dias,
       producto_base: historico.producto_base,
+      variante: historico.variante || '',
       _precargado: true
     };
 
@@ -164,17 +168,18 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
       return;
     }
 
-    if (formData.variantes.length === 0 || !formData.variantes[0].descripcion) {
-      alert('Por favor agrega al menos una variante con descripción');
+    if (formData.variantes.length === 0) {
+      alert('Por favor agrega al menos una variante');
       return;
     }
 
+    // Validar que todas las variantes tengan los campos OBLIGATORIOS
     const variantesValidas = formData.variantes.every(v =>
-      v.descripcion && v.cantidad > 0 && v.precio_unitario > 0 && v.producto_base
+      v.producto_base && v.cantidad > 0 && v.precio_unitario > 0
     );
 
     if (!variantesValidas) {
-      alert('Todas las variantes deben tener: descripción, cantidad, precio unitario y producto base');
+      alert('Todas las variantes deben tener: producto base, cantidad > 0 y precio unitario > 0');
       return;
     }
 
@@ -182,6 +187,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
     try {
       const variantes = formData.variantes.map(v => ({
         producto_base: v.producto_base,
+        variante: v.variante || undefined,
         descripcion: v.descripcion,
         cantidad: v.cantidad,
         precio_unitario: v.precio_unitario,
@@ -205,6 +211,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
         await createHistoricoPrecio({
           proveedor_id: formData.proveedor_nombre,
           producto_base: variante.producto_base,
+          variante: variante.variante || undefined,
           descripcion: variante.descripcion,
           precio_unitario: variante.precio_unitario,
           incluye_igv: variante.incluye_igv,
@@ -218,6 +225,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
       }
 
       alert('✅ Cotización guardada exitosamente');
+      // Reset form after successful save
       setFormData({
         proveedor_nombre: '',
         variantes: [
@@ -227,7 +235,8 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
             precio_unitario: 0,
             precio_total: 0,
             incluye_igv: false,
-            producto_base: ''
+            producto_base: '',
+            variante: ''
           }
         ],
         forma_pago: 'contado'
@@ -353,19 +362,40 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
                 </div>
               </div>
 
-              {/* Histórico */}
+              {/* Histórico Agrupado por Producto Base */}
               {historicoProveedor.length > 0 && (
-                <div className="bg-gray-950 p-3 rounded border border-gray-800">
-                  <p className="text-xs text-gray-400 font-bold mb-2">Histórico de este proveedor:</p>
-                  <div className="space-y-1">
-                    {historicoProveedor.slice(0, 3).map((h) => (
-                      <button
-                        key={h.id}
-                        onClick={() => precargarVariante(h)}
-                        className="w-full text-left text-xs p-2 hover:bg-gray-900 rounded transition-colors text-gray-300"
-                      >
-                        {h.descripcion} - S/. {h.precio_unitario.toFixed(2)}
-                      </button>
+                <div className="bg-gray-950 p-3 rounded border border-cyan-800/50">
+                  <p className="text-xs text-cyan-400 font-bold mb-2">💾 Histórico de este proveedor:</p>
+                  <div className="space-y-2">
+                    {/* Agrupar por producto_base */}
+                    {Array.from(
+                      new Map(
+                        historicoProveedor.map(h => [
+                          h.producto_base,
+                          historicoProveedor.filter(x => x.producto_base === h.producto_base)
+                        ])
+                      ).entries()
+                    ).slice(0, 5).map(([productoBase, variantes]) => (
+                      <div key={productoBase} className="space-y-1">
+                        <p className="text-xs text-cyan-300 font-bold">{productoBase}</p>
+                        <div className="space-y-1 pl-2">
+                          {variantes.slice(0, 2).map((h) => (
+                            <button
+                              key={h.id}
+                              onClick={() => precargarVariante(h)}
+                              className="w-full text-left text-xs p-2 hover:bg-gray-900 rounded transition-colors text-gray-300 border border-gray-800 hover:border-gray-700"
+                            >
+                              <div className="flex justify-between">
+                                <span>
+                                  {h.variante ? `${h.variante}` : 'Sin variante'}
+                                  {h.descripcion && <span className="text-gray-500 ml-1">({h.descripcion})</span>}
+                                </span>
+                                <span className="text-emerald-400 font-bold">S/. {h.precio_unitario.toFixed(2)}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -376,9 +406,9 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
                 <label className="text-xs text-gray-400 font-bold uppercase block mb-2">Variantes *</label>
                 <div className="space-y-3 max-h-48 overflow-y-auto">
                   {formData.variantes.map((variante, index) => (
-                    <div key={index} className="p-3 bg-gray-950 border border-gray-800 rounded space-y-2">
+                    <div key={index} className="p-3 bg-gray-950 border border-gray-800 rounded space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">Variante #{index + 1}</span>
+                        <span className="text-xs text-gray-400 font-bold">Variante #{index + 1}</span>
                         {formData.variantes.length > 1 && (
                           <button
                             type="button"
@@ -390,52 +420,81 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
                         )}
                       </div>
 
-                      <input
-                        type="text"
-                        value={variante.descripcion}
-                        onChange={(e) => actualizarVariante(index, 'descripcion', e.target.value)}
-                        placeholder="Descripción"
-                        className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
-                      />
+                      {/* Producto Base (OBLIGATORIO - normalizado) */}
+                      <div>
+                        <label className="text-xs text-gray-500 font-bold block mb-1">Producto Base *</label>
+                        <select
+                          value={variante.producto_base}
+                          onChange={(e) => actualizarVariante(index, 'producto_base', e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-cyan-500 outline-none"
+                        >
+                          <option value="">Selecciona producto...</option>
+                          {PRODUCTOS_BASE.map(p => (
+                            <option key={p.id} value={p.id}>{p.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      {/* Variante (EDITABLE - diferencias comerciales) */}
+                      <div>
+                        <label className="text-xs text-gray-500 font-bold block mb-1">Variante (Ej: con gancho, con tiptop)</label>
                         <input
-                          type="number"
-                          value={variante.cantidad || ''}
-                          onChange={(e) => actualizarVariante(index, 'cantidad', parseInt(e.target.value) || 0)}
-                          placeholder="Cantidad"
-                          className="bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
-                        />
-                        <input
-                          type="number"
-                          value={variante.precio_unitario || ''}
-                          onChange={(e) => actualizarVariante(index, 'precio_unitario', parseFloat(e.target.value) || 0)}
-                          placeholder="Precio"
-                          className="bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                          type="text"
+                          value={variante.variante || ''}
+                          onChange={(e) => actualizarVariante(index, 'variante', e.target.value)}
+                          placeholder="Ej: con gancho, con tiptop, color blanco..."
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-cyan-500 outline-none"
                         />
                       </div>
 
-                      <select
-                        value={variante.producto_base}
-                        onChange={(e) => actualizarVariante(index, 'producto_base', e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
-                      >
-                        <option value="">Selecciona producto...</option>
-                        {PRODUCTOS_BASE.map(p => (
-                          <option key={p.id} value={p.id}>{p.nombre}</option>
-                        ))}
-                      </select>
+                      {/* Descripción (LIBRE - solo para lectura humana) */}
+                      <div>
+                        <label className="text-xs text-gray-500 font-bold block mb-1">Descripción (opcional, solo referencia)</label>
+                        <input
+                          type="text"
+                          value={variante.descripcion}
+                          onChange={(e) => actualizarVariante(index, 'descripcion', e.target.value)}
+                          placeholder="Ej: Lanyard 2.5cm sublimado con gancho..."
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                        />
+                      </div>
 
+                      {/* Cantidad y Precio */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-500 font-bold block mb-1">Cantidad *</label>
+                          <input
+                            type="number"
+                            value={variante.cantidad || ''}
+                            onChange={(e) => actualizarVariante(index, 'cantidad', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 font-bold block mb-1">Precio Unitario *</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={variante.precio_unitario || ''}
+                            onChange={(e) => actualizarVariante(index, 'precio_unitario', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Total y checkbox IGV */}
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-500">Total: S/. {variante.precio_total.toFixed(2)}</span>
-                        <label className="text-gray-400 flex items-center gap-1">
+                        <span className="text-gray-500">Total: <span className="text-cyan-400 font-bold">S/. {variante.precio_total.toFixed(2)}</span></span>
+                        <label className="text-gray-400 flex items-center gap-2 hover:text-gray-300">
                           <input
                             type="checkbox"
                             checked={variante.incluye_igv}
                             onChange={(e) => actualizarVariante(index, 'incluye_igv', e.target.checked)}
-                            className="w-3 h-3"
+                            className="w-3 h-3 cursor-pointer"
                           />
-                          +IGV
+                          Incluye IGV
                         </label>
                       </div>
                     </div>

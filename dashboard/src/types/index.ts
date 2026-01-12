@@ -200,7 +200,8 @@ export interface VarianteCotizacion {
     id: string;
     cotizacion_id: string;           // FK a la cotización
     producto_base: string;           // Campo normalizado OBLIGATORIO: "lanyard", "bolsa", "pin", etc. Para comparaciones de precios
-    descripcion: string;             // Ej: "Lanyard 2.5cm sin tip top" - Texto libre que ingresa el usuario
+    variante?: string;               // Ej: "con gancho", "con tiptop", "blanco", "rojo" - Diferencias comerciales
+    descripcion: string;             // Ej: "Lanyard 2.5cm con gancho + tiptop" - Texto libre SOLO para lectura (no se usa para lógica)
     cantidad: number;                // Cantidad para esta variante
     precio_unitario: number;         // Precio por unidad
     precio_total: number;            // cantidad * precio_unitario (auto-calculado)
