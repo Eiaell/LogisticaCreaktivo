@@ -261,7 +261,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-3xl h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
         {/* Header - Fixed */}
         <div className="bg-gray-900 border-b border-gray-700 p-6 flex items-center justify-between flex-shrink-0">
           <h2 className="text-xl font-bold text-white flex items-center gap-3">
@@ -277,7 +277,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Cotizaciones Existentes */}
           <div>
             <h3 className="text-sm font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
@@ -444,7 +444,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
         </div>
 
         {/* Footer - Fixed */}
-        <div className="bg-gray-900 border-t border-gray-700 p-6 flex gap-3 flex-shrink-0">
+        <div className="bg-gray-900 border-t border-gray-700 p-4 flex gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
