@@ -17,6 +17,7 @@ interface VarianteForm {
   tiempo_produccion_dias?: number;
   tiempo_entrega_dias?: number;
   producto_base: string; // Campo OBLIGATORIO (seleccionado del diccionario)
+  _precargado?: boolean; // Flag interno: indica si fue precargada desde histórico (no se guarda)
 }
 
 interface NuevaCotizacionForm {
@@ -151,22 +152,50 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
 
   // Precargar variante desde histórico (sin insertar automáticamente cantidad/precio total)
   const precargarVariante = (historico: HistoricoPrecio) => {
-    // Agregar una nueva variante con los datos del histórico
+    // POLÍTICA DE COPIA SELECTIVA:
+    // Campos que SÍ se copian (requerimiento de producto):
+    //   ✅ descripcion: Descripción de la variante histórica
+    //   ✅ precio_unitario: Precio unitario del histórico
+    //   ✅ incluye_igv: Flag de IGV
+    //   ✅ tiempo_produccion_dias: Tiempo de producción
+    //   ✅ tiempo_entrega_dias: Tiempo de entrega
+    //   ✅ producto_base: Clasificación estándar
+    //
+    // Campos que NO se copian (requerimiento de control de usuario):
+    //   ❌ cantidad: Usuario debe especificar cantidad NUEVA (no heredar del histórico)
+    //   ❌ precio_total: Se auto-calcula cuando usuario cambia cantidad
+    //   ❌ referencias de pedidos/cotizaciones: Garantiza trazabilidad limpia
+    //
+    // Nota: cantidad_referencia se muestra en tooltip para contexto del usuario
+
     const nuevaVariante: VarianteForm = {
       descripcion: historico.descripcion,
-      cantidad: historico.cantidad_referencia || 0, // Usar cantidad de referencia
-      precio_unitario: historico.precio_unitario,
-      precio_total: (historico.cantidad_referencia || 0) * historico.precio_unitario,
-      incluye_igv: historico.incluye_igv,
-      tiempo_produccion_dias: historico.tiempo_produccion_dias,
-      tiempo_entrega_dias: historico.tiempo_entrega_dias,
-      producto_base: historico.producto_base
+      cantidad: 0, // ❌ NO copiar: usuario especifica cantidad nueva
+      precio_unitario: historico.precio_unitario, // ✅ Copiar
+      precio_total: 0, // ❌ NO copiar: auto-calcula
+      incluye_igv: historico.incluye_igv, // ✅ Copiar
+      tiempo_produccion_dias: historico.tiempo_produccion_dias, // ✅ Copiar
+      tiempo_entrega_dias: historico.tiempo_entrega_dias, // ✅ Copiar
+      producto_base: historico.producto_base, // ✅ Copiar
+      _precargado: true // Flag visual: indica que fue precargada desde histórico
     };
 
+    // Agregar variante al formulario
+    const nuevasVariantes = [...formData.variantes, nuevaVariante];
     setFormData({
       ...formData,
-      variantes: [...formData.variantes, nuevaVariante]
+      variantes: nuevasVariantes
     });
+
+    // Mostrar feedback visual al usuario
+    const productoNombre = PRODUCTOS_BASE.find(p => p.id === historico.producto_base)?.nombre || historico.producto_base;
+    const mensaje = `✅ Variante "${productoNombre}" precargada desde histórico.\n\nCantidad referencia: ${historico.cantidad_referencia || '?'} unidades\n\nAjusta la cantidad según necesites.`;
+
+    // TODO: Reemplazar alert() con toast notification system
+    // Actualmente usar alert como fallback, pero ideal integrar:
+    // - React Toastify, React Hot Toast, o similar
+    // - Para mejor UX sin interrumpir el flujo
+    alert(mensaje);
   };
 
   // Actualizar variante
@@ -578,7 +607,14 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                             {formData.variantes.map((variante, index) => (
                               <div key={index} className="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-3">
                                 <div className="flex items-center justify-between">
-                                  <h6 className="text-xs font-bold text-cyan-300">Variante #{index + 1}</h6>
+                                  <div className="flex items-center gap-2">
+                                    <h6 className="text-xs font-bold text-cyan-300">Variante #{index + 1}</h6>
+                                    {variante._precargado && (
+                                      <span className="text-xs bg-emerald-600/50 text-emerald-200 px-2 py-0.5 rounded font-bold">
+                                        📦 PRECARGADA
+                                      </span>
+                                    )}
+                                  </div>
                                   {formData.variantes.length > 1 && (
                                     <button
                                       onClick={() => eliminarVariante(index)}
@@ -631,6 +667,7 @@ export function CotizacionesPage({ onBack }: CotizacionesPageProps) {
                                       value={variante.cantidad || ''}
                                       onChange={(e) => actualizarVariante(index, 'cantidad', parseInt(e.target.value) || 0)}
                                       placeholder="25"
+                                      title="Ingresa la cantidad nueva. Nota: si precargaste desde histórico, la cantidad anterior era referencial."
                                       className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none"
                                     />
                                   </div>
