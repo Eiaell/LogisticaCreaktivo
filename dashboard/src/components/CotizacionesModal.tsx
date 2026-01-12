@@ -28,7 +28,7 @@ interface NuevaCotizacionForm {
 }
 
 export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps) {
-  const { cotizaciones, proveedores, pedidos, createCotizacion, createHistoricoPrecio, getHistoricoPorProveedor } = useDatabase();
+  const { cotizaciones, proveedores, pedidos, createCotizacion, createHistoricoPrecio, getHistoricoPorProveedor, deleteCotizacion } = useDatabase();
   const [filterProveedor, setFilterProveedor] = useState('');
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
   const [historicoProveedor, setHistoricoProveedor] = useState<HistoricoPrecio[]>([]);
@@ -160,6 +160,20 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
       ...formData,
       variantes: nuevasVariantes
     });
+  };
+
+  const handleEliminarCotizacion = async (cotizacionId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta cotización? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      await deleteCotizacion(cotizacionId);
+      alert('✅ Cotización eliminada exitosamente');
+    } catch (error) {
+      console.error('Error al eliminar cotización:', error);
+      alert('❌ Error al eliminar la cotización');
+    }
   };
 
   const handleAddCotizacion = async () => {
@@ -303,17 +317,26 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
                 </div>
               ) : (
                 cotizacionesPedido.map((cot) => (
-                  <div key={cot.id} className="p-3 bg-gray-950 border border-gray-800 rounded hover:border-gray-700">
-                    <div className="flex justify-between items-start">
-                      <div>
+                  <div key={cot.id} className="p-3 bg-gray-950 border border-gray-800 rounded hover:border-gray-700 transition-colors">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1">
                         <p className="font-bold text-cyan-300 text-sm">{cot.proveedor_id}</p>
                         <p className="text-xs text-gray-500 mt-1">
                           {cot.variantes?.length || 0} variante(s) • {new Date(cot.created_at).toLocaleDateString('es-PE')}
                         </p>
                       </div>
-                      <p className="font-bold text-emerald-400 text-sm">
-                        S/. {cot.variantes?.reduce((s, v) => s + (v.precio_total || 0), 0).toFixed(2) || '0.00'}
-                      </p>
+                      <div className="text-right">
+                        <p className="font-bold text-emerald-400 text-sm">
+                          S/. {cot.variantes?.reduce((s, v) => s + (v.precio_total || 0), 0).toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleEliminarCotizacion(cot.id)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-950/30 p-1.5 rounded transition-colors text-lg flex-shrink-0"
+                        title="Eliminar cotización"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 ))
