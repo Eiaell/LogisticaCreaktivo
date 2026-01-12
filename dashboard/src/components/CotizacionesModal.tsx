@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import { PRODUCTOS_BASE, normalizarAProductoBase } from '../config/productosBase';
 import type { HistoricoPrecio } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface CotizacionesModalProps {
   pedidoId: string;
@@ -199,28 +200,44 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
 
     setIsSubmitting(true);
     try {
-      const variantes = formData.variantes.map(v => ({
-        producto_base: v.producto_base,
-        variante: v.variante || undefined,
-        descripcion: v.descripcion,
-        cantidad: v.cantidad,
-        precio_unitario: v.precio_unitario,
-        precio_total: v.precio_total,
-        incluye_igv: v.incluye_igv,
-        tiempo_produccion_dias: v.tiempo_produccion_dias,
-        tiempo_entrega_dias: v.tiempo_entrega_dias
-      }));
+      // Calcular precio total de la cotización
+      const precioTotalCotizacion = formData.variantes.reduce((sum, v) => sum + v.precio_total, 0);
 
+      // Crear la cotización SIN incluir el array variantes (ese va en otra tabla)
       const nuevaCotizacion = await createCotizacion({
         pedido_id: pedidoId,
         proveedor_id: formData.proveedor_nombre,
         fecha: new Date().toISOString(),
-        variantes: variantes as any,
+        precio_total: precioTotalCotizacion,
         forma_pago: formData.forma_pago,
         moneda: 'PEN',
         estado: 'pendiente'
-      });
+      } as any);
 
+      // Insertar cada variante en la tabla variantes_cotizacion
+      for (const variante of formData.variantes) {
+        try {
+          await supabase.from('variantes_cotizacion').insert({
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            cotizacion_id: nuevaCotizacion.id,
+            producto_base: variante.producto_base,
+            variante: variante.variante || null,
+            descripcion: variante.descripcion,
+            cantidad: variante.cantidad,
+            precio_unitario: variante.precio_unitario,
+            precio_total: variante.precio_total,
+            incluye_igv: variante.incluye_igv,
+            tiempo_produccion_dias: variante.tiempo_produccion_dias,
+            tiempo_entrega_dias: variante.tiempo_entrega_dias,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error('Error al insertar variante:', error);
+        }
+      }
+
+      // Crear registros de histórico de precios
       for (const variante of formData.variantes) {
         await createHistoricoPrecio({
           proveedor_id: formData.proveedor_nombre,
@@ -238,7 +255,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
         });
       }
 
-      alert('✅ Cotización guardada exitosamente');
+      alert(`✅ Cotización guardada exitosamente con ${formData.variantes.length} variante(s)`);
       // Reset form after successful save
       setFormData({
         proveedor_nombre: '',
