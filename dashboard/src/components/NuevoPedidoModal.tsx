@@ -230,7 +230,7 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
 
     return (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-800">
                     <h2 className="text-xl font-bold text-white flex items-center gap-3">
@@ -246,7 +246,7 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
                     {/* Cliente */}
                     <div className="space-y-2">
                         <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
@@ -537,7 +537,7 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-4 border-t border-gray-800">
+                    <div className="flex gap-3 p-6 border-t border-gray-700 bg-gray-900/50 -m-6 mt-4">
                         <button
                             type="button"
                             onClick={onClose}
