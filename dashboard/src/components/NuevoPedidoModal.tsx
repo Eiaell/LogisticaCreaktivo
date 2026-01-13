@@ -229,8 +229,8 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 my-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-800">
                     <h2 className="text-xl font-bold text-white flex items-center gap-3">
@@ -470,57 +470,70 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                         </div>
                     </div>
 
-                    {/* Items/Líneas Section - SIMPLE */}
-                    <div className="space-y-3 border-t border-gray-700 pt-4">
-                        <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
-                            Items a Pedir *
-                        </label>
+                    {/* Items/Líneas Section - REFINED */}
+                    <div className="space-y-4 border-t border-gray-700 pt-6">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm text-gray-300 font-semibold uppercase tracking-wide">
+                                📋 Líneas de Pedido
+                            </label>
+                            <span className="text-xs text-gray-500">{itemForms.length} ítem{itemForms.length !== 1 ? 's' : ''}</span>
+                        </div>
 
                         {/* Formularios para agregar items */}
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {itemForms.map((form, index) => (
-                                <div key={form.id} className="border-2 border-cyan-600/40 rounded-lg p-4 space-y-3 bg-gray-900/30">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-2xs text-gray-400 font-bold uppercase">Item {index + 1}</span>
+                                <div key={form.id} className="bg-gradient-to-br from-gray-800/40 to-gray-900/40 border border-gray-700 rounded-xl p-5 space-y-4 hover:border-gray-600 transition-all group">
+                                    {/* Item Header */}
+                                    <div className="flex items-baseline justify-between">
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-sm font-semibold text-cyan-400">Línea {index + 1}</span>
+                                            <span className="text-xs text-gray-600">•</span>
+                                            <span className="text-xs text-gray-500">{form.item || 'Sin especificar'}</span>
+                                        </div>
                                         {itemForms.length > 1 && (
                                             <button
                                                 type="button"
                                                 onClick={() => deleteItemFromForm(form.id)}
-                                                className="text-red-400 hover:text-red-300 text-lg"
+                                                className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-950/20 transition-all opacity-0 group-hover:opacity-100"
                                                 title="Eliminar este item"
                                             >
-                                                ✕
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
                                             </button>
                                         )}
                                     </div>
 
-                                    {/* Item input */}
-                                    <div>
-                                        <label className="text-xs text-gray-400 font-bold uppercase tracking-wide block mb-2">Producto / Item *</label>
-                                        <datalist id={`items-${form.id}`}>
-                                            {itemsHistorico.map(item => (
-                                                <option key={item} value={item} />
-                                            ))}
-                                        </datalist>
-                                        <input
-                                            type="text"
-                                            list={`items-${form.id}`}
-                                            value={form.item}
-                                            onChange={(e) => updateItemForm(form.id, 'item', e.target.value)}
-                                            placeholder="Ej: Bolsas, Camisetas, Afiches..."
-                                            className="w-full bg-gray-800 border-2 border-gray-600 hover:border-cyan-500 focus:border-cyan-400 rounded-lg p-3 text-white text-sm focus:outline-none transition-colors"
-                                        />
-                                    </div>
+                                    {/* Fields Grid */}
+                                    <div className="space-y-4">
+                                        {/* Producto / Item */}
+                                        <div>
+                                            <label className="text-xs text-gray-400 font-semibold uppercase tracking-wide block mb-2">Producto / Item *</label>
+                                            <datalist id={`items-${form.id}`}>
+                                                {itemsHistorico.map(item => (
+                                                    <option key={item} value={item} />
+                                                ))}
+                                            </datalist>
+                                            <input
+                                                type="text"
+                                                list={`items-${form.id}`}
+                                                value={form.item}
+                                                onChange={(e) => updateItemForm(form.id, 'item', e.target.value)}
+                                                placeholder="Ingrese el producto (ej: Bolsas, Camisetas, Afiches)..."
+                                                className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-3 text-white text-sm placeholder-gray-500 focus:border-cyan-500 focus:bg-gray-900 focus:outline-none transition-all"
+                                            />
+                                        </div>
 
-                                    {/* Detalle */}
-                                    <div>
-                                        <label className="text-xs text-gray-400 font-bold uppercase tracking-wide block mb-2">{labels.detalle} *</label>
-                                        <textarea
-                                            value={form.detalle}
-                                            onChange={(e) => updateItemForm(form.id, 'detalle', e.target.value)}
-                                            placeholder={labels.placeholderDetalle}
-                                            className="w-full bg-gray-800 border-2 border-gray-600 hover:border-cyan-500 focus:border-cyan-400 rounded-lg p-3 text-white text-sm focus:outline-none resize-none h-20 transition-colors"
-                                        />
+                                        {/* Detalle - Textarea */}
+                                        <div>
+                                            <label className="text-xs text-gray-400 font-semibold uppercase tracking-wide block mb-2">{labels.detalle} *</label>
+                                            <textarea
+                                                value={form.detalle}
+                                                onChange={(e) => updateItemForm(form.id, 'detalle', e.target.value)}
+                                                placeholder={labels.placeholderDetalle}
+                                                className="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-3 text-white text-sm placeholder-gray-500 focus:border-cyan-500 focus:bg-gray-900 focus:outline-none resize-none h-24 transition-all"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -530,9 +543,12 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                         <button
                             type="button"
                             onClick={() => setItemForms(prev => [...prev, {id: `FORM-${Date.now()}`, item: '', detalle: ''}])}
-                            className="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm font-medium transition-colors"
+                            className="w-full py-3 bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-gray-300 hover:text-cyan-400 rounded-lg text-sm font-semibold transition-all border border-gray-700 hover:border-gray-600 flex items-center justify-center gap-2"
                         >
-                            + Agregar otro Item
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Agregar otra línea
                         </button>
                     </div>
 
