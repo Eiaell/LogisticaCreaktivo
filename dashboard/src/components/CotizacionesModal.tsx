@@ -3,6 +3,7 @@ import { useDatabase } from '../context/DatabaseContext';
 import { PRODUCTOS_BASE, normalizarAProductoBase } from '../config/productosBase';
 import type { HistoricoPrecio } from '../types';
 import { supabase } from '../supabaseClient';
+import { toUpperCase } from '../utils/parsers';
 
 interface CotizacionesModalProps {
   pedidoId: string;
@@ -122,7 +123,12 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
 
   const actualizarVariante = (index: number, campo: keyof VarianteForm, valor: any) => {
     const nuevasVariantes = [...formData.variantes];
-    nuevasVariantes[index] = { ...nuevasVariantes[index], [campo]: valor };
+    // Convertir campos de texto a mayúsculas (excepto booleanos y números)
+    const camposTexto = ['descripcion', 'variante'];
+    const valorProcesado = camposTexto.includes(campo) && typeof valor === 'string'
+      ? toUpperCase(valor)
+      : valor;
+    nuevasVariantes[index] = { ...nuevasVariantes[index], [campo]: valorProcesado };
 
     if (campo === 'cantidad' || campo === 'precio_unitario') {
       const { cantidad, precio_unitario } = nuevasVariantes[index];

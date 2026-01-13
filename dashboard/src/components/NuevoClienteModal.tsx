@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
+import { toUpperCase } from '../utils/parsers';
 
 interface NuevoClienteModalProps {
     isOpen: boolean;
@@ -80,14 +81,18 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
     };
 
     const handleHoldingChange = (field: string, value: string) => {
-        setHoldingData(prev => ({ ...prev, [field]: value }));
+        // No convertir email a mayúsculas
+        const processedValue = field === 'email' ? value : toUpperCase(value);
+        setHoldingData(prev => ({ ...prev, [field]: processedValue }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
     };
 
     const handleSimpleChange = (field: string, value: string) => {
-        setSimpleCliente(prev => ({ ...prev, [field]: value }));
+        // No convertir email a mayúsculas
+        const processedValue = field === 'email' ? value : toUpperCase(value);
+        setSimpleCliente(prev => ({ ...prev, [field]: processedValue }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: '' }));
         }
@@ -111,8 +116,10 @@ export function NuevoClienteModal({ isOpen, onClose }: NuevoClienteModalProps) {
     };
 
     const handleRazonSocialChange = (id: string, field: string, value: string) => {
+        // No convertir email a mayúsculas
+        const processedValue = field === 'email' ? value : toUpperCase(value);
         setRazonesSociales(prev => prev.map(rs =>
-            rs.id === id ? { ...rs, [field]: value } : rs
+            rs.id === id ? { ...rs, [field]: processedValue } : rs
         ));
     };
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
+import { toUpperCase } from '../utils/parsers';
 
 interface Props {
     pedidoId: string;
@@ -77,10 +78,10 @@ export function PaymentsModal({ pedidoId, isOpen, onClose }: Props) {
                     </div>
                     <input
                         type="text"
-                        placeholder="Nota (opcional, ej: Yape, Efectivo)"
+                        placeholder="NOTA (OPCIONAL, EJ: YAPE, EFECTIVO)"
                         value={note}
-                        onChange={e => setNote(e.target.value)}
-                        className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm text-gray-300 focus:border-cyan-500 outline-none"
+                        onChange={e => setNote(toUpperCase(e.target.value))}
+                        className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm text-gray-300 focus:border-cyan-500 outline-none uppercase"
                     />
                 </div>
 

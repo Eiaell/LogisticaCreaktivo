@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import { ConfirmDialog } from './ConfirmDialog';
+import { toUpperCase } from '../utils/parsers';
 
 interface Props {
     nombre: string;
@@ -122,18 +123,18 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                         <div className="space-y-1">
                             <label className="text-xs text-gray-500 uppercase font-bold">RUC / DNI</label>
                             <input
-                                className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none"
+                                className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none uppercase"
                                 value={formData.ruc}
-                                onChange={e => setFormData({ ...formData, ruc: e.target.value })}
+                                onChange={e => setFormData({ ...formData, ruc: toUpperCase(e.target.value) })}
                                 placeholder="1045..."
                             />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs text-gray-500 uppercase font-bold">Teléfono</label>
                             <input
-                                className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none"
+                                className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none uppercase"
                                 value={formData.telefono}
-                                onChange={e => setFormData({ ...formData, telefono: e.target.value })}
+                                onChange={e => setFormData({ ...formData, telefono: toUpperCase(e.target.value) })}
                                 placeholder="+51 9..."
                             />
                         </div>
@@ -142,10 +143,10 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                     <div className="space-y-1">
                         <label className="text-xs text-gray-500 uppercase font-bold">Dirección de Entrega</label>
                         <input
-                            className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none uppercase"
                             value={formData.direccion}
-                            onChange={e => setFormData({ ...formData, direccion: e.target.value })}
-                            placeholder="Av. Principal 123..."
+                            onChange={e => setFormData({ ...formData, direccion: toUpperCase(e.target.value) })}
+                            placeholder="AV. PRINCIPAL 123..."
                         />
                     </div>
 
@@ -153,10 +154,10 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                         <label className="text-xs text-gray-500 uppercase font-bold">Contacto / Email</label>
                         <div className="flex gap-2">
                             <input
-                                className="flex-1 bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none"
+                                className="flex-1 bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none uppercase"
                                 value={formData.contacto}
-                                onChange={e => setFormData({ ...formData, contacto: e.target.value })}
-                                placeholder="Nombre contacto"
+                                onChange={e => setFormData({ ...formData, contacto: toUpperCase(e.target.value) })}
+                                placeholder="NOMBRE CONTACTO"
                             />
                             <input
                                 className="flex-1 bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none"
@@ -170,10 +171,10 @@ export function ClienteModal({ nombre, isOpen, onClose }: Props) {
                     <div className="space-y-1">
                         <label className="text-xs text-gray-500 uppercase font-bold">Notas</label>
                         <textarea
-                            className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none h-20 resize-none"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-2 text-white focus:border-cyan-500 outline-none h-20 resize-none uppercase"
                             value={formData.notas}
-                            onChange={e => setFormData({ ...formData, notas: e.target.value })}
-                            placeholder="Preferencias..."
+                            onChange={e => setFormData({ ...formData, notas: toUpperCase(e.target.value) })}
+                            placeholder="PREFERENCIAS..."
                         />
                     </div>
                 </div>

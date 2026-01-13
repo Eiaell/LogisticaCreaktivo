@@ -28,6 +28,15 @@ export function normalizeText(text: string): string {
     return text.trim().replace(/^\w/, c => c.toUpperCase());
 }
 
+/**
+ * Convierte texto a mayúsculas automáticamente
+ * Para usar en inputs: onChange={(e) => setValue(toUpperCase(e.target.value))}
+ */
+export function toUpperCase(text: string): string {
+    if (!text) return '';
+    return text.toUpperCase();
+}
+
 export function parseEventsToPedidos(events: TraceEvent[]): { pedidos: Pedido[], payments: Payment[] } {
     const casesMap = new Map<string, Pedido>();
     const initialPayments: Payment[] = [];

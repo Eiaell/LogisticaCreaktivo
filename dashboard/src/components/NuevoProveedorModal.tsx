@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import { CATEGORIAS_PROVEEDOR } from '../types';
+import { toUpperCase } from '../utils/parsers';
 
 interface NuevoProveedorModalProps {
     isOpen: boolean;
@@ -43,8 +44,10 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
     if (!isOpen) return null;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target;
+        // No convertir email a mayúsculas ni campos numéricos
+        const processedValue = (name === 'email' || type === 'number') ? value : toUpperCase(value);
+        setFormData(prev => ({ ...prev, [name]: processedValue }));
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
         }
