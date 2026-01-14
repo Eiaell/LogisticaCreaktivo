@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import initSqlJs, { type Database } from 'sql.js';
-import type { Pedido, Payment, Proveedor, Cliente, Cotizacion, LineaPedido, CambioPedido, ItemCotizacion, HistoricoPrecio } from '../types';
+import type { Pedido, Payment, Proveedor, Cliente, Cotizacion, LineaPedido, CambioPedido, ItemCotizacion, HistoricoPrecio, Produccion } from '../types';
 import { supabase } from '../supabaseClient';
 import { type TraceEvent, parseEventsToPedidos } from '../utils/parsers';
 
@@ -61,6 +61,14 @@ interface DatabaseContextType {
     getItemsByNombre: (nombre: string) => ItemCotizacion[];
     getProveedoresPorItem: (item: string) => ItemCotizacion[];
 
+    // CRUD Producciones
+    producciones: Produccion[];
+    createProduccion: (data: Omit<Produccion, 'id' | 'created_at' | 'updated_at'>) => Promise<Produccion>;
+    updateProduccion: (id: string, data: Partial<Produccion>) => Promise<void>;
+    deleteProduccion: (id: string) => Promise<void>;
+    getProduccionesByPedido: (pedidoId: string) => Produccion[];
+    getProduccionesByProveedor: (proveedorId: string) => Produccion[];
+
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
 
@@ -89,6 +97,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [cambiosPedido, setCambiosPedido] = useState<CambioPedido[]>([]);
     const [itemsCotizacion, setItemsCotizacion] = useState<ItemCotizacion[]>([]);
     const [historicoPrecio, setHistoricoPrecio] = useState<HistoricoPrecio[]>([]);
+    const [producciones, setProducciones] = useState<Produccion[]>([]);
     const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -200,15 +209,17 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     setCotizaciones([]);
                 }
 
-                // Cargar líneas de pedido (NUEVA ESTRUCTURA SIMPLIFICADA)
+                // Cargar líneas de pedido (FASE 1: usar nuevas columnas item/detalle/precio)
                 const { data: lineasData } = await supabase.from('lineas_pedido').select('*');
                 if (lineasData) {
                     const lineasParsed = lineasData.map((l: any) => ({
                         id: l.id,
                         pedido_id: l.pedido_id,
-                        item: l.item,
-                        detalle: l.detalle,
-                        precio: l.precio,
+                        // FASE 1: Usar nuevas columnas (item, detalle, precio)
+                        // Columnas legacy (producto, variantes, precio_unitario, subtotal) se eliminan en Fase 3
+                        item: l.item || '',
+                        detalle: l.detalle || '',
+                        precio: l.precio || 0,
                         created_at: l.created_at,
                         updated_at: l.updated_at
                     }));
@@ -231,6 +242,16 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 const { data: historicoPrecioData } = await supabase.from('historico_precios').select('*');
                 if (historicoPrecioData) {
                     setHistoricoPrecio(historicoPrecioData as HistoricoPrecio[]);
+                }
+
+                // Cargar producciones
+                const { data: produccionesData, error: prodError } = await supabase.from('producciones').select('*');
+                if (prodError) {
+                    console.log('ℹ️ Tabla producciones no existe aún o error:', prodError.message);
+                    setProducciones([]);
+                } else if (produccionesData) {
+                    setProducciones(produccionesData as Produccion[]);
+                    console.log(`🏭 ${produccionesData.length} producciones cargadas`);
                 }
 
                 // Sincronizar dataSource SOLO si logramos leer algo o terminar el proceso
@@ -454,6 +475,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const fullData = { ...(proveedores[nombre] || { nombre, especialidad: 'General', factor_demora: 0 }), ...data };
         setProveedores(prev => ({ ...prev, [nombre]: fullData }));
         try {
+            // FASE 1: incluye_igv ahora es tipo igv_policy ('si' | 'no' | 'depende')
+            // Convertir boolean legacy a string si es necesario
+            let incluye_igv_value = fullData.incluye_igv;
+            if (typeof incluye_igv_value === 'boolean') {
+                incluye_igv_value = incluye_igv_value ? 'si' : 'no';
+                console.warn(`⚠️ Convirtiendo incluye_igv de boolean a igv_policy: ${incluye_igv_value}`);
+            }
+
             await supabase.from('proveedores').upsert({
                 nombre: fullData.nombre,
                 razon_social: fullData.razon_social,
@@ -465,7 +494,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 categorias: fullData.categorias,
                 especialidad: fullData.especialidad,
                 emite_factura: fullData.emite_factura,
-                incluye_igv: fullData.incluye_igv,
+                incluye_igv: incluye_igv_value,
                 forma_pago: fullData.forma_pago,
                 tiempo_produccion: fullData.tiempo_produccion,
                 tiempo_entrega: fullData.tiempo_entrega,
@@ -827,6 +856,112 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         return itemsCotizacion.filter(ic => ic.item.toLowerCase() === item.toLowerCase());
     };
 
+    // ============================================
+    // CRUD Producciones
+    // ============================================
+    const createProduccion = async (data: Omit<Produccion, 'id' | 'created_at' | 'updated_at'>): Promise<Produccion> => {
+        const now = new Date().toISOString();
+        const newProduccion: Produccion = {
+            ...data,
+            id: `PROD-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+            created_at: now,
+            updated_at: now,
+        };
+
+        setProducciones(prev => [newProduccion, ...prev]);
+
+        try {
+            const { error } = await supabase.from('producciones').insert({
+                id: newProduccion.id,
+                pedido_id: newProduccion.pedido_id,
+                cotizacion_id: newProduccion.cotizacion_id,
+                proveedor_id: newProduccion.proveedor_id,
+                producto_base: newProduccion.producto_base,
+                variante: newProduccion.variante,
+                descripcion: newProduccion.descripcion,
+                cantidad_aprobada: newProduccion.cantidad_aprobada,
+                precio_unitario: newProduccion.precio_unitario,
+                precio_total: newProduccion.precio_total,
+                incluye_igv: newProduccion.incluye_igv,
+                fecha_aprobacion: newProduccion.fecha_aprobacion,
+                fecha_envio_produccion: newProduccion.fecha_envio_produccion,
+                fecha_compromiso: newProduccion.fecha_compromiso,
+                fecha_entrega_real: newProduccion.fecha_entrega_real,
+                prueba_color: newProduccion.prueba_color,
+                muestra_fisica: newProduccion.muestra_fisica,
+                observaciones_qc: newProduccion.observaciones_qc,
+                estado: newProduccion.estado,
+                responsable: newProduccion.responsable,
+                notas: newProduccion.notas,
+                created_at: now,
+                updated_at: now,
+            });
+            if (error) throw error;
+            console.log("🏭 Producción creada en Supabase:", newProduccion.id);
+
+            // Actualizar estado del pedido a en_produccion si está en cotizacion o aprobado
+            const pedido = pedidos.find(p => p.id === data.pedido_id);
+            if (pedido && (pedido.estado === 'cotizacion' || pedido.estado === 'aprobado')) {
+                await updatePedido(data.pedido_id, { estado: 'en_produccion' });
+                console.log(`📦 Pedido ${data.pedido_id} actualizado a en_produccion`);
+            }
+        } catch (err) {
+            console.error("Error creating produccion:", err);
+        }
+
+        return newProduccion;
+    };
+
+    const updateProduccion = async (id: string, data: Partial<Produccion>) => {
+        const now = new Date().toISOString();
+        setProducciones(prev => prev.map(p => p.id === id ? { ...p, ...data, updated_at: now } : p));
+
+        try {
+            const { error } = await supabase.from('producciones').update({ ...data, updated_at: now }).eq('id', id);
+            if (error) throw error;
+            console.log("🏭 Producción actualizada en Supabase:", id);
+
+            // Si todas las producciones del pedido están entregadas, actualizar pedido
+            const produccion = producciones.find(p => p.id === id);
+            if (produccion && data.estado === 'entregado') {
+                const produccionesPedido = producciones.filter(p => p.pedido_id === produccion.pedido_id);
+                const todasEntregadas = produccionesPedido.every(p =>
+                    p.id === id ? data.estado === 'entregado' : p.estado === 'entregado'
+                );
+                if (todasEntregadas) {
+                    await updatePedido(produccion.pedido_id, { estado: 'entregado' });
+                    console.log(`📦 Pedido ${produccion.pedido_id} actualizado a entregado (todas las producciones completadas)`);
+                }
+            }
+        } catch (err) {
+            console.error("Error updating produccion:", err);
+        }
+    };
+
+    const deleteProduccion = async (id: string) => {
+        setProducciones(prev => prev.filter(p => p.id !== id));
+
+        try {
+            const { error } = await supabase.from('producciones').delete().eq('id', id);
+            if (error) throw error;
+            console.log("🏭 Producción eliminada de Supabase:", id);
+        } catch (err) {
+            console.error("Error deleting produccion:", err);
+        }
+    };
+
+    const getProduccionesByPedido = (pedidoId: string): Produccion[] => {
+        return producciones
+            .filter(p => p.pedido_id === pedidoId)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    };
+
+    const getProduccionesByProveedor = (proveedorId: string): Produccion[] => {
+        return producciones
+            .filter(p => p.proveedor_id === proveedorId)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    };
+
     const exportBackup = () => {
         const backup = {
             meta: { version: 1, date: new Date().toISOString(), type: 'backup' },
@@ -1097,6 +1232,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             createCambioPedido, getCambiosPedido,
             // Búsqueda de Items
             getItemsUnicos, getItemsByNombre, getProveedoresPorItem,
+            // CRUD Producciones
+            producciones, createProduccion, updateProduccion, deleteProduccion, getProduccionesByPedido, getProduccionesByProveedor,
             // Filtros y estado
             selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
             loadDatabase, resetDatabase, exportBackup, uploadLogo

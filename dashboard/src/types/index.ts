@@ -95,7 +95,7 @@ export interface Proveedor {
 
     // Sección 3 - Condiciones comerciales
     emite_factura?: boolean;
-    incluye_igv?: 'si' | 'no' | 'depende';
+    incluye_igv?: 'si' | 'no' | 'depende'; // FASE 1: Migrado de BOOLEAN a ENUM igv_policy
     forma_pago?: string;               // contado / adelanto / contra entrega / otro
     tiempo_produccion?: number;        // días
     tiempo_entrega?: number;           // días
@@ -299,6 +299,63 @@ export interface MovimientoMovilidad {
     tipo_transporte: string;
     proposito: string;
 }
+
+// ============================================
+// PRODUCCIÓN - Registro de decisiones de producción
+// Un pedido puede tener múltiples producciones
+// ============================================
+export interface Produccion {
+    id: string;
+    pedido_id: string;                    // FK a pedidos(id)
+    cotizacion_id?: string;               // FK a cotizaciones(id) - opcional
+    proveedor_id: string;                 // Nombre del proveedor
+
+    // Qué se aprobó
+    producto_base: string;                // "lanyard", "bolsa", etc.
+    variante?: string;                    // "2.5cm sin tip top"
+    descripcion?: string;                 // Descripción libre
+    cantidad_aprobada: number;
+    precio_unitario: number;
+    precio_total: number;
+    incluye_igv: boolean;
+
+    // Tiempos (llenado progresivo)
+    fecha_aprobacion: string;             // Cuando se dio el OK
+    fecha_envio_produccion?: string;      // Cuando se mandó a producir
+    fecha_compromiso?: string;            // Fecha prometida
+    fecha_entrega_real?: string;          // Cuando realmente llegó
+
+    // Control de calidad
+    prueba_color: 'pendiente' | 'aprobada' | 'rechazada' | 'na';
+    muestra_fisica: 'pendiente' | 'aprobada' | 'rechazada' | 'na';
+    observaciones_qc?: string;
+
+    // Seguimiento operativo
+    estado: 'en_proceso' | 'listo' | 'recogido' | 'entregado' | 'problema';
+    responsable?: string;                 // Persona de logística
+    notas?: string;
+
+    // Metadata
+    created_at: string;
+    updated_at: string;
+}
+
+// Estados de producción para UI
+export const ESTADOS_PRODUCCION = [
+    { value: 'en_proceso', label: 'En Proceso', color: 'bg-blue-500', icon: '🔄' },
+    { value: 'listo', label: 'Listo', color: 'bg-green-500', icon: '✅' },
+    { value: 'recogido', label: 'Recogido', color: 'bg-purple-500', icon: '📦' },
+    { value: 'entregado', label: 'Entregado', color: 'bg-emerald-500', icon: '🚚' },
+    { value: 'problema', label: 'Problema', color: 'bg-red-500', icon: '⚠️' },
+] as const;
+
+// Estados de QC para UI
+export const ESTADOS_QC = [
+    { value: 'na', label: 'N/A', color: 'text-gray-400' },
+    { value: 'pendiente', label: 'Pendiente', color: 'text-yellow-400' },
+    { value: 'aprobada', label: 'Aprobada', color: 'text-green-400' },
+    { value: 'rechazada', label: 'Rechazada', color: 'text-red-400' },
+] as const;
 
 export interface KPIs {
     totalPedidos: number;
