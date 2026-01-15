@@ -22,7 +22,7 @@ const getEstadoColor = (estado: string) => {
 
 
 export function NuevoPedidoModal({ isOpen, onClose }: Props) {
-    const { clientes, getItemsUnicos, createPedido, createLineaPedido } = useDatabase();
+    const { clientes, getItemsUnicos, createPedido, createLineaPedido, createCliente } = useDatabase();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
@@ -195,10 +195,25 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                 fechaFinal = fecha.toISOString();
             }
 
+            // Si es cliente nuevo, crearlo primero
+            let clienteParaPedido = clienteFinal || '';
+            if (cliente === '__nuevo__' && nuevoCliente.trim()) {
+                // Crear cliente automáticamente
+                await createCliente({
+                    razon_social: nuevoCliente.trim(),
+                    nombre_comercial: nuevoCliente.trim(),
+                    estado: 'activo',
+                    prioridad: 'medio',
+                    tipo_cliente: 'corporativo',
+                } as any);
+                clienteParaPedido = nuevoCliente.trim();
+                console.log('✅ Cliente nuevo creado:', clienteParaPedido);
+            }
+
             // Create the pedido
             const descripcionItems = itemsACrear.map(f => f.item).join(', ');
             const pedido = await createPedido({
-                cliente: clienteFinal || '', // Cliente es opcional - permitir string vacío
+                cliente: clienteParaPedido,
                 descripcion: descripcionItems,
                 vendedora: vendedora || '',
                 estado,

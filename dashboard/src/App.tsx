@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DataLoader } from './components/DataLoader';
 import { KPICards } from './components/KPICards';
 import { ProcessGraph } from './components/ProcessGraph';
 import { PedidosTable } from './components/PedidosTable';
 import { NuevoClienteModal } from './components/NuevoClienteModal';
 import { NuevoProveedorModal } from './components/NuevoProveedorModal';
+import { NuevoRequerimientoModal, type TipoRequerimiento } from './components/NuevoRequerimientoModal';
+import { NuevoPedidoModal } from './components/NuevoPedidoModal';
 import { Sidebar } from './components/Sidebar';
+import { AppSidebar } from './components/AppSidebar';
 import { ClientesPage } from './components/ClientesPage';
 import { ClienteFichaPage } from './components/ClienteFichaPage';
 import { ProveedoresPage } from './components/ProveedoresPage';
@@ -19,9 +22,10 @@ type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'pr
 
 interface DashboardProps {
   onNavigate: (page: PageView) => void;
+  onNuevoRequerimiento: () => void;
 }
 
-function Dashboard({ onNavigate }: DashboardProps) {
+function Dashboard({ onNavigate, onNuevoRequerimiento }: DashboardProps) {
   const { pedidos, clientes, proveedores, loadDatabase } = useDatabase();
   const { createBackup } = useAutoBackup();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
@@ -55,12 +59,24 @@ function Dashboard({ onNavigate }: DashboardProps) {
   return (
     <div className="min-h-screen p-6">
       {/* Header */}
-      <header className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            CREAKTIVO LOGISTICS
+      <header className="flex items-center mb-8">
+        {/* Título - con margen izquierdo para no taparse con sidebar */}
+        <div className="flex-shrink-0">
+          <p className="text-lg font-bold tracking-widest uppercase">
+            <span className="text-orange-500">I</span><span className="text-blue-800">NTELIGENCIA</span>
+          </p>
+          <h1 className="text-4xl font-black tracking-wider">
+            <span className="text-orange-500">L</span><span className="text-blue-800">OGÍSTICA</span>
           </h1>
-          <p className="text-gray-400">Panel de Inteligencia Logística</p>
+        </div>
+
+        {/* Logo Creaktivo - centrado entre título y botones */}
+        <div className="flex-1 flex justify-center items-center">
+          <img
+            src="/logo-creaktivo.png"
+            alt="Creaktivo"
+            className="h-20 max-w-md w-full object-contain"
+          />
         </div>
         <div className="flex gap-3 relative">
           <input
@@ -70,13 +86,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
             className="hidden"
             onChange={(e) => {
               if (e.target.files) {
-                console.log(`🔥 INPUT CHANGE: ${e.target.files.length} archivo(s) seleccionado(s)`);
-                for (let i = 0; i < e.target.files.length; i++) {
-                  console.log(`  ${i+1}. ${e.target.files[i].name} (${e.target.files[i].size} bytes)`);
-                }
                 loadDatabase(e.target.files);
-              } else {
-                console.warn('❌ No files selected');
               }
             }}
             accept=".json,.jsonl,.db"
@@ -119,15 +129,15 @@ function Dashboard({ onNavigate }: DashboardProps) {
           <button
             onClick={() => createBackup()}
             className="px-4 py-2 bg-green-600 border border-green-500 rounded-lg text-white hover:bg-green-500 transition-colors flex items-center gap-2 shadow-lg shadow-green-900/40 font-medium"
-            title="Descargar backup completo (clientes, proveedores, logos)"
+            title="Descargar backup completo"
           >
-            <span>💾</span> Backup Manual
+            <span>💾</span> Backup
           </button>
           <button
             onClick={() => document.getElementById('header-file-upload')?.click()}
             className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-600 transition-colors flex items-center gap-2"
           >
-            <span>📂</span> Cargar Datos
+            <span>📂</span> Cargar
           </button>
         </div>
       </header>
@@ -146,6 +156,7 @@ function Dashboard({ onNavigate }: DashboardProps) {
             activeSidebar={activeSidebar}
             setActiveSidebar={setActiveSidebar}
             onNewEntity={handleNewEntity}
+            onNuevoRequerimiento={onNuevoRequerimiento}
             recentOrders={recentOrders}
             clientes={clientes}
           />
@@ -169,6 +180,40 @@ function AppContent() {
   const [selectedClienteRazonSocial, setSelectedClienteRazonSocial] = useState<string | null>(null);
   const [selectedProveedorId, setSelectedProveedorId] = useState<string | null>(null);
 
+  // Estado de la sidebar con persistencia en localStorage
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
+    const saved = localStorage.getItem('sidebar-expanded');
+    return saved !== null ? JSON.parse(saved) : false; // Colapsada por defecto
+  });
+
+  // Estado para pedido activo seleccionado
+  const [activePedidoId, setActivePedidoId] = useState<string | null>(null);
+
+  // Estado para modales de requerimiento
+  const [showRequerimientoModal, setShowRequerimientoModal] = useState(false);
+  const [tipoRequerimiento, setTipoRequerimiento] = useState<TipoRequerimiento | null>(null);
+
+  // Persistir estado de sidebar
+  useEffect(() => {
+    localStorage.setItem('sidebar-expanded', JSON.stringify(sidebarExpanded));
+  }, [sidebarExpanded]);
+
+  const handleSelectRequerimiento = (tipo: TipoRequerimiento) => {
+    setShowRequerimientoModal(false);
+    setTipoRequerimiento(tipo);
+  };
+
+  const handleCloseRequerimientoFlow = () => {
+    setTipoRequerimiento(null);
+  };
+
+  const handleSelectPedido = (pedidoId: string) => {
+    setActivePedidoId(pedidoId);
+    // Aquí podrías navegar a una vista de detalle del pedido
+    // Por ahora solo lo marcamos como activo
+    console.log('Pedido seleccionado:', pedidoId);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -183,67 +228,153 @@ function AppContent() {
   const hasData = dataSource === 'supabase' || db || events.length > 0 || Object.keys(clientes).length > 0 || pedidos.length > 0;
   if (!hasData) return <DataLoader />;
 
-  // Renderizar la página actual
-  switch (currentPage) {
-    case 'clientes':
-      return (
-        <ClientesPage
-          onBack={() => setCurrentPage('dashboard')}
-          onSelectCliente={(razonSocial) => {
-            setSelectedClienteRazonSocial(razonSocial);
-            setCurrentPage('cliente_ficha');
-          }}
-        />
-      );
-    case 'cliente_ficha':
-      return selectedClienteRazonSocial ? (
-        <ClienteFichaPage
-          razonSocial={selectedClienteRazonSocial}
-          onBack={() => setCurrentPage('clientes')}
-        />
-      ) : (
-        <ClientesPage
-          onBack={() => setCurrentPage('dashboard')}
-          onSelectCliente={(razonSocial) => {
-            setSelectedClienteRazonSocial(razonSocial);
-            setCurrentPage('cliente_ficha');
-          }}
-        />
-      );
-    case 'proveedores':
-      return <ProveedoresPage
-        onBack={() => setCurrentPage('dashboard')}
-        onSelectProveedor={(proveedorId) => {
-          setSelectedProveedorId(proveedorId);
-          setCurrentPage('proveedor_ficha');
-        }}
-      />;
-    case 'proveedor_ficha':
-      return selectedProveedorId ? (
-        <ProveedorFichaPage
-          proveedorId={selectedProveedorId}
-          onBack={() => setCurrentPage('proveedores')}
-        />
-      ) : (
-        <ProveedoresPage
+  // Función para renderizar el contenido principal
+  const renderMainContent = () => {
+    switch (currentPage) {
+      case 'clientes':
+        return (
+          <ClientesPage
+            onBack={() => setCurrentPage('dashboard')}
+            onSelectCliente={(razonSocial) => {
+              setSelectedClienteRazonSocial(razonSocial);
+              setCurrentPage('cliente_ficha');
+            }}
+          />
+        );
+      case 'cliente_ficha':
+        return selectedClienteRazonSocial ? (
+          <ClienteFichaPage
+            razonSocial={selectedClienteRazonSocial}
+            onBack={() => setCurrentPage('clientes')}
+          />
+        ) : (
+          <ClientesPage
+            onBack={() => setCurrentPage('dashboard')}
+            onSelectCliente={(razonSocial) => {
+              setSelectedClienteRazonSocial(razonSocial);
+              setCurrentPage('cliente_ficha');
+            }}
+          />
+        );
+      case 'proveedores':
+        return <ProveedoresPage
           onBack={() => setCurrentPage('dashboard')}
           onSelectProveedor={(proveedorId) => {
             setSelectedProveedorId(proveedorId);
             setCurrentPage('proveedor_ficha');
           }}
+        />;
+      case 'proveedor_ficha':
+        return selectedProveedorId ? (
+          <ProveedorFichaPage
+            proveedorId={selectedProveedorId}
+            onBack={() => setCurrentPage('proveedores')}
+          />
+        ) : (
+          <ProveedoresPage
+            onBack={() => setCurrentPage('dashboard')}
+            onSelectProveedor={(proveedorId) => {
+              setSelectedProveedorId(proveedorId);
+              setCurrentPage('proveedor_ficha');
+            }}
+          />
+        );
+      case 'catalogo_items':
+        return (
+          <CatalogoItemsPage onBack={() => setCurrentPage('dashboard')} />
+        );
+      case 'cotizaciones':
+        return (
+          <CotizacionesPage onBack={() => setCurrentPage('dashboard')} />
+        );
+      default:
+        return (
+          <Dashboard
+            onNavigate={setCurrentPage}
+            onNuevoRequerimiento={() => setShowRequerimientoModal(true)}
+          />
+        );
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-950">
+      {/* Sidebar Izquierda - Estilo ChatGPT */}
+      <AppSidebar
+        isExpanded={sidebarExpanded}
+        onToggle={() => setSidebarExpanded(!sidebarExpanded)}
+        pedidos={pedidos}
+        clientes={clientes}
+        activePedidoId={activePedidoId}
+        onSelectPedido={handleSelectPedido}
+        onNuevoRequerimiento={() => setShowRequerimientoModal(true)}
+        onNavigate={setCurrentPage}
+        currentPage={currentPage}
+      />
+
+      {/* Contenido Principal con margen para la sidebar */}
+      <main
+        className="flex-1 transition-all duration-300 ease-in-out"
+        style={{ marginLeft: sidebarExpanded ? '320px' : '80px' }}
+      >
+        {renderMainContent()}
+      </main>
+
+      {/* Modal de Nuevo Requerimiento Logístico */}
+      <NuevoRequerimientoModal
+        isOpen={showRequerimientoModal}
+        onClose={() => setShowRequerimientoModal(false)}
+        onSelect={handleSelectRequerimiento}
+      />
+
+      {/* Modales específicos según tipo de requerimiento */}
+      {tipoRequerimiento === 'cotizacion' && (
+        <NuevoPedidoModal
+          isOpen={true}
+          onClose={handleCloseRequerimientoFlow}
         />
-      );
-    case 'catalogo_items':
-      return (
-        <CatalogoItemsPage onBack={() => setCurrentPage('dashboard')} />
-      );
-    case 'cotizaciones':
-      return (
-        <CotizacionesPage onBack={() => setCurrentPage('dashboard')} />
-      );
-    default:
-      return <Dashboard onNavigate={setCurrentPage} />;
-  }
+      )}
+
+      {tipoRequerimiento === 'produccion' && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-blue-500 rounded-2xl p-8 max-w-md text-center">
+            <span className="text-6xl mb-4 block">🏭</span>
+            <h2 className="text-2xl font-bold text-blue-400 mb-2">PRODUCCIÓN</h2>
+            <p className="text-gray-400 mb-6">Próximamente: Formulario para registrar acuerdos de producción con proveedores</p>
+            <button onClick={handleCloseRequerimientoFlow} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-bold">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tipoRequerimiento === 'movimiento' && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-emerald-500 rounded-2xl p-8 max-w-md text-center">
+            <span className="text-6xl mb-4 block">🚚</span>
+            <h2 className="text-2xl font-bold text-emerald-400 mb-2">MOVIENDO / COMPRANDO / RECOGIENDO</h2>
+            <p className="text-gray-400 mb-6">Próximamente: Formulario para registrar movimientos de movilidad y compras</p>
+            <button onClick={handleCloseRequerimientoFlow} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-bold">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tipoRequerimiento === 'pago' && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-purple-500 rounded-2xl p-8 max-w-md text-center">
+            <span className="text-6xl mb-4 block">💰</span>
+            <h2 className="text-2xl font-bold text-purple-400 mb-2">PAGANDO / RINDIENDO</h2>
+            <p className="text-gray-400 mb-6">Próximamente: Formulario para registrar gastos y rendiciones</p>
+            <button onClick={handleCloseRequerimientoFlow} className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-bold">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function App() {
