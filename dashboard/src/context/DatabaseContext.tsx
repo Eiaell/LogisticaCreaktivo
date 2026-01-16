@@ -738,9 +738,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             const { error } = await supabase.from('lineas_pedido').insert({
                 id: newLinea.id,
                 pedido_id: pedidoId,
+                // FASE 1: Usar nuevas columnas
                 item: newLinea.item,
                 detalle: newLinea.detalle,
                 precio: newLinea.precio,
+                // LEGACY: producto es NOT NULL en DB, enviar item para compatibilidad
+                producto: newLinea.item || 'Sin especificar',
                 created_at: now,
                 updated_at: now,
             });
