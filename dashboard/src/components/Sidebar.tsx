@@ -1,4 +1,5 @@
 import type { Cliente, Pedido } from '../types';
+import { GemeloDigitalStatus } from './GemeloDigitalStatus';
 
 interface SidebarProps {
     activeSidebar: 'shortcuts' | 'alerts' | 'recent_orders';
@@ -107,6 +108,11 @@ export function Sidebar({
                             <span className="text-xs text-purple-500/60">Agregar al sistema</span>
                         </div>
                     </button>
+
+                    {/* Gemelo Digital Status */}
+                    <div className="mt-4 pt-4 border-t border-gray-700/50">
+                        <GemeloDigitalStatus />
+                    </div>
                 </div>
             )}
         </div>
