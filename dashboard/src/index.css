@@ -876,3 +876,60 @@ body {
 .light .hover\:from-cyan-600\/40:hover {
   background: linear-gradient(to right, rgba(6, 182, 212, 0.2), rgba(37, 99, 235, 0.2)) !important;
 }
+
+/* ============================================
+   IMPORT JSON MODAL - Light Mode Override
+   ============================================ */
+
+/* Modal background */
+.light .bg-gray-950 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Preview section backgrounds */
+.light .bg-gray-900\/50 {
+  background-color: rgba(241, 245, 249, 0.8) !important;
+}
+
+/* Text area styling */
+.light textarea.bg-gray-950 {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  color: #1f2937 !important;
+}
+
+.light textarea.bg-gray-950::placeholder {
+  color: #9ca3af !important;
+}
+
+.light textarea.bg-gray-950:focus {
+  border-color: #0891b2 !important;
+}
+
+/* Preview text colors */
+.light .bg-gray-950 .text-white {
+  color: #1f2937 !important;
+}
+
+.light .bg-gray-950 .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.light .bg-gray-950 .text-gray-500 {
+  color: #9ca3af !important;
+}
+
+.light .bg-gray-950 .text-gray-600 {
+  color: #d1d5db !important;
+}
+
+/* Event preview items */
+.light .bg-gray-900\/50 .text-white {
+  color: #1f2937 !important;
+}
+
+/* Pre/code blocks in modal */
+.light pre.text-gray-400 {
+  color: #4b5563 !important;
+}
