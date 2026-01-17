@@ -98,6 +98,7 @@ interface DatabaseContextType {
     // Buscar o crear cliente por nombre
     findOrCreateCliente: (nombre: string) => Promise<Cliente | null>;
     getClienteByNombre: (nombre: string) => Cliente | null;
+    getClienteLogo: (nombre: string) => string | null;
 
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
@@ -708,6 +709,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const nombreNormalizado = normalizarNombre(nombre);
         const clientesArray = Object.entries(clientes);
 
+        // DEBUG: Log para identificar problemas de búsqueda
+        // console.log(`[getClienteByNombre] Buscando: "${nombre}" -> normalizado: "${nombreNormalizado}"`);
+        // console.log(`[getClienteByNombre] Total clientes: ${clientesArray.length}`);
+
         // 1. Buscar match exacto primero (razón social, nombre comercial, o grupo empresarial)
         for (const [key, cliente] of clientesArray) {
             if (normalizarNombre(key) === nombreNormalizado) {
@@ -790,6 +795,32 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         if (matches.length > 0) {
             matches.sort((a, b) => a.score - b.score);
             return matches[0].cliente;
+        }
+
+        return null;
+    };
+
+    // Buscar logo de cliente (busca en el cliente, su grupo, o en clientes del mismo grupo)
+    const getClienteLogo = (nombre: string): string | null => {
+        const cliente = getClienteByNombre(nombre);
+        if (!cliente) return null;
+
+        // 1. Logo propio del cliente
+        if (cliente.logo) return cliente.logo;
+
+        // 2. Logo del grupo empresarial
+        if (cliente.grupo_logo_url) return cliente.grupo_logo_url;
+
+        // 3. Buscar logo en otros clientes del mismo grupo empresarial
+        if (cliente.grupo_empresarial) {
+            const grupoNorm = normalizarNombre(cliente.grupo_empresarial);
+            for (const [, otroCliente] of Object.entries(clientes)) {
+                if (otroCliente.grupo_empresarial &&
+                    normalizarNombre(otroCliente.grupo_empresarial) === grupoNorm) {
+                    if (otroCliente.logo) return otroCliente.logo;
+                    if (otroCliente.grupo_logo_url) return otroCliente.grupo_logo_url;
+                }
+            }
         }
 
         return null;
@@ -1671,7 +1702,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             addPayment,
             // CRUD Clientes/Proveedores
             createCliente, createProveedor, updateProveedor, updateCliente, deleteCliente, deleteProveedor,
-            findOrCreateCliente, getClienteByNombre,
+            findOrCreateCliente, getClienteByNombre, getClienteLogo,
             // CRUD Cotizaciones
             createCotizacion, updateCotizacion, deleteCotizacion, getCotizacionesByProveedor,
             // CRUD Histórico de Precios

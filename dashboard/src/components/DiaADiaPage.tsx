@@ -661,7 +661,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     const {
         movimientosLogisticos, rendiciones, eventosProduccion,
         deleteMovimientoLogistico, deleteRendicion, deleteEventoProduccion,
-        getClienteByNombre,
+        getClienteLogo,
         createPedido, updatePedido, addPayment,
         updateMovimientoLogistico, updateRendicion, updateEventoProduccion,
         createProduccion
@@ -1156,21 +1156,16 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                         🚚 Movimientos Logísticos ({diaSeleccionado.movimientos.length})
                                     </h3>
                                     <div className="space-y-3">
-                                        {diaSeleccionado.movimientos.map(m => {
-                                            const cliente = m.cliente ? getClienteByNombre(m.cliente) : null;
-                                            // Usar logo del cliente o del grupo empresarial
-                                            const logoUrl = cliente?.logo || cliente?.grupo_logo_url;
-                                            return (
+                                        {diaSeleccionado.movimientos.map(m => (
                                                 <MovimientoCard
                                                     key={m.id}
                                                     movimiento={m}
                                                     onEdit={() => handleEdit('movimiento', m.id)}
                                                     onDelete={() => handleDeleteMovimiento(m.id)}
                                                     onSync={() => handleSync('movimiento', m)}
-                                                    clienteLogo={logoUrl}
+                                                    clienteLogo={m.cliente ? getClienteLogo(m.cliente) : null}
                                                 />
-                                            );
-                                        })}
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -1182,20 +1177,16 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                         💰 Rendiciones y Pagos ({diaSeleccionado.rendiciones.length})
                                     </h3>
                                     <div className="space-y-3">
-                                        {diaSeleccionado.rendiciones.map(r => {
-                                            const cliente = r.cliente ? getClienteByNombre(r.cliente) : null;
-                                            const logoUrl = cliente?.logo || cliente?.grupo_logo_url;
-                                            return (
+                                        {diaSeleccionado.rendiciones.map(r => (
                                                 <RendicionCard
                                                     key={r.id}
                                                     rendicion={r}
                                                     onEdit={() => handleEdit('rendicion', r.id)}
                                                     onDelete={() => handleDeleteRendicion(r.id)}
                                                     onSync={() => handleSync('rendicion', r)}
-                                                    clienteLogo={logoUrl}
+                                                    clienteLogo={r.cliente ? getClienteLogo(r.cliente) : null}
                                                 />
-                                            );
-                                        })}
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -1207,20 +1198,16 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                         🏭 Producción ({diaSeleccionado.producciones.length})
                                     </h3>
                                     <div className="space-y-3">
-                                        {diaSeleccionado.producciones.map(e => {
-                                            const cliente = e.cliente ? getClienteByNombre(e.cliente) : null;
-                                            const logoUrl = cliente?.logo || cliente?.grupo_logo_url;
-                                            return (
+                                        {diaSeleccionado.producciones.map(e => (
                                                 <ProduccionCard
                                                     key={e.id}
                                                     evento={e}
                                                     onEdit={() => handleEdit('produccion', e.id)}
                                                     onDelete={() => handleDeleteProduccion(e.id)}
                                                     onSync={() => handleSync('produccion', e)}
-                                                    clienteLogo={logoUrl}
+                                                    clienteLogo={e.cliente ? getClienteLogo(e.cliente) : null}
                                                 />
-                                            );
-                                        })}
+                                        ))}
                                     </div>
                                 </div>
                             )}

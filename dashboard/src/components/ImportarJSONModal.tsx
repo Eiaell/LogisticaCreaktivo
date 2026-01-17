@@ -461,7 +461,7 @@ interface PreviewDiaADia {
 type Preview = PreviewCotizacion | PreviewProduccion | PreviewMovimiento | PreviewPago | PreviewDiaADia | null;
 
 export function ImportarJSONModal({ isOpen, onClose }: Props) {
-    const { createPedido, createLineaPedido, createMovimientoLogistico, createRendicion, createEventoProduccion, findOrCreateCliente, getClienteByNombre } = useDatabase();
+    const { createPedido, createLineaPedido, createMovimientoLogistico, createRendicion, createEventoProduccion, findOrCreateCliente, getClienteLogo } = useDatabase();
     const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoImportacion>(null);
     const [jsonInput, setJsonInput] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -1059,9 +1059,8 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
                             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Eventos del día:</p>
                             <div className="max-h-64 overflow-y-auto space-y-2">
                                 {p.eventos.map((evento, idx) => {
-                                    // Buscar cliente para obtener su logo (usar logo del cliente o del grupo)
-                                    const clienteData = evento.cliente && evento.cliente !== '-' ? getClienteByNombre(evento.cliente) : null;
-                                    const logoUrl = clienteData?.logo || clienteData?.grupo_logo_url;
+                                    // Usar getClienteLogo que busca logo, grupo_logo_url, y logos de clientes del mismo grupo
+                                    const logoUrl = evento.cliente && evento.cliente !== '-' ? getClienteLogo(evento.cliente) : null;
 
                                     return (
                                     <div key={idx} className="flex items-center gap-3 bg-gray-900/50 rounded-lg p-2">
