@@ -221,6 +221,21 @@ body {
   animation-name: slideInUp;
 }
 
+@keyframes zoomIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.zoom-in {
+  animation-name: zoomIn;
+}
+
 /* ============================================
    THEME-AWARE UTILITY CLASSES
    ============================================ */

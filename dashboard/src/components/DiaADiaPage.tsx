@@ -687,6 +687,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         items: (MovimientoLogistico | Rendicion | EventoProduccion)[];
     } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [showCalendar, setShowCalendar] = useState(false);
 
     // Agrupar eventos por fecha
     const eventosPorFecha = useMemo(() => {
@@ -1011,31 +1012,65 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
 
             {/* Contenido principal */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Calendario moderno */}
+                {/* Lista de fechas */}
                 <div className="lg:col-span-1">
-                    {fechasOrdenadas.length === 0 ? (
-                        <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
-                            <div className="text-5xl mb-4">📅</div>
-                            <p className="text-gray-500">No hay eventos registrados</p>
-                            <p className="text-gray-600 text-sm mt-2">Importa un JSON de día a día para comenzar</p>
-                        </div>
-                    ) : (
-                        <CalendarioModerno
-                            fechasConEventos={Object.fromEntries(
-                                Object.entries(eventosPorFecha).map(([fecha, grupo]) => [
-                                    fecha,
-                                    {
-                                        movimientos: grupo.movimientos.length,
-                                        rendiciones: grupo.rendiciones.length,
-                                        producciones: grupo.producciones.length,
-                                        totalMonto: grupo.totalMonto
-                                    }
-                                ])
-                            )}
-                            selectedDate={selectedDate}
-                            onSelectDate={setSelectedDate}
-                        />
-                    )}
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                        <h2 className="text-lg font-bold text-white mb-4">Fechas</h2>
+
+                        {fechasOrdenadas.length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-gray-500">No hay eventos registrados</p>
+                                <p className="text-gray-600 text-sm mt-2">Importa un JSON de día a día para comenzar</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                                {fechasOrdenadas.map(fecha => {
+                                    const grupo = eventosPorFecha[fecha];
+                                    const isSelected = selectedDate === fecha;
+                                    const totalEventos = grupo.movimientos.length + grupo.rendiciones.length + grupo.producciones.length;
+
+                                    return (
+                                        <button
+                                            key={fecha}
+                                            onClick={() => setSelectedDate(fecha)}
+                                            className={`w-full text-left p-3 rounded-lg transition-colors ${
+                                                isSelected
+                                                    ? 'bg-cyan-600/20 border border-cyan-500/50'
+                                                    : 'bg-gray-800/50 border border-transparent hover:border-gray-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className={`font-medium ${isSelected ? 'text-cyan-400' : 'text-white'}`}>
+                                                    {fecha}
+                                                </span>
+                                                <span className="text-amber-400 font-mono text-sm">
+                                                    S/. {grupo.totalMonto.toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                                <span className="text-gray-400">{totalEventos} eventos</span>
+                                                {grupo.movimientos.length > 0 && (
+                                                    <span className="flex items-center gap-1">
+                                                        🚚 {grupo.movimientos.length}
+                                                    </span>
+                                                )}
+                                                {grupo.rendiciones.length > 0 && (
+                                                    <span className="flex items-center gap-1">
+                                                        💰 {grupo.rendiciones.length}
+                                                    </span>
+                                                )}
+                                                {grupo.producciones.length > 0 && (
+                                                    <span className="flex items-center gap-1">
+                                                        🏭 {grupo.producciones.length}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Detalle del día seleccionado */}
@@ -1191,13 +1226,16 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                             )}
                         </div>
                     ) : (
-                        <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
-                            <div className="text-6xl mb-4">📅</div>
-                            <h2 className="text-xl font-bold text-white mb-2">Selecciona una fecha</h2>
+                        <button
+                            onClick={() => setShowCalendar(true)}
+                            className="w-full bg-gray-900 border border-gray-800 hover:border-cyan-500/50 rounded-xl p-8 text-center transition-all duration-200 hover:bg-gray-800/50 group cursor-pointer"
+                        >
+                            <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-200">📅</div>
+                            <h2 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">Selecciona una fecha</h2>
                             <p className="text-gray-500">
                                 Haz clic en una fecha de la lista para ver los detalles del día
                             </p>
-                        </div>
+                        </button>
                     )}
                 </div>
             </div>
@@ -1230,6 +1268,42 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     tipo={syncModal.tipo}
                     evento={syncModal.evento}
                 />
+            )}
+
+            {/* Modal del Calendario */}
+            {showCalendar && (
+                <div
+                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+                    onClick={(e) => { if (e.target === e.currentTarget) setShowCalendar(false); }}
+                >
+                    <div className="relative animate-in fade-in zoom-in duration-200">
+                        {/* Botón cerrar */}
+                        <button
+                            onClick={() => setShowCalendar(false)}
+                            className="absolute -top-3 -right-3 z-10 w-8 h-8 bg-gray-800 hover:bg-red-600 border border-gray-700 hover:border-red-500 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-all duration-200"
+                        >
+                            ✕
+                        </button>
+                        <CalendarioModerno
+                            fechasConEventos={Object.fromEntries(
+                                Object.entries(eventosPorFecha).map(([fecha, grupo]) => [
+                                    fecha,
+                                    {
+                                        movimientos: grupo.movimientos.length,
+                                        rendiciones: grupo.rendiciones.length,
+                                        producciones: grupo.producciones.length,
+                                        totalMonto: grupo.totalMonto
+                                    }
+                                ])
+                            )}
+                            selectedDate={selectedDate}
+                            onSelectDate={(date) => {
+                                setSelectedDate(date);
+                                setShowCalendar(false);
+                            }}
+                        />
+                    </div>
+                </div>
             )}
 
             {/* Modal de confirmación de eliminación masiva */}
