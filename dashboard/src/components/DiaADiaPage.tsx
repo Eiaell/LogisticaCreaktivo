@@ -10,18 +10,19 @@ interface DiaADiaPageProps {
 
 // Nombres de días y meses en español
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DIAS_SEMANA_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-// Componente de Calendario Moderno
+// Componente de Calendario Premium - Inspirado en HeroUI y mejores prácticas
 interface CalendarioProps {
     fechasConEventos: Record<string, { movimientos: number; rendiciones: number; producciones: number; totalMonto: number }>;
     selectedDate: string | null;
     onSelectDate: (date: string) => void;
+    onClose?: () => void;
 }
 
-function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate }: CalendarioProps) {
+function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClose }: CalendarioProps) {
     const [currentMonth, setCurrentMonth] = useState(() => {
-        // Empezar en el mes de la primera fecha con eventos, o el mes actual
         const fechas = Object.keys(fechasConEventos).sort().reverse();
         if (fechas.length > 0) {
             const [year, month] = fechas[0].split('-').map(Number);
@@ -29,6 +30,12 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate }: Cal
         }
         return new Date();
     });
+    const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+    const [showYearPicker, setShowYearPicker] = useState(false);
+    const [showMonthPicker, setShowMonthPicker] = useState(false);
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
     // Obtener días del mes
     const getDaysInMonth = useCallback((date: Date) => {
@@ -39,7 +46,7 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate }: Cal
         const daysInMonth = lastDay.getDate();
         const startingDay = firstDay.getDay();
 
-        const days: { date: string; day: number; isCurrentMonth: boolean; isToday: boolean }[] = [];
+        const days: { date: string; day: number; isCurrentMonth: boolean; isToday: boolean; dayOfWeek: number }[] = [];
 
         // Días del mes anterior
         const prevMonthLastDay = new Date(year, month, 0).getDate();
@@ -48,192 +55,392 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate }: Cal
             const prevMonth = month === 0 ? 11 : month - 1;
             const prevYear = month === 0 ? year - 1 : year;
             const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            days.push({ date: dateStr, day, isCurrentMonth: false, isToday: false });
+            days.push({ date: dateStr, day, isCurrentMonth: false, isToday: false, dayOfWeek: (startingDay - i - 1 + 7) % 7 });
         }
 
         // Días del mes actual
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayOfWeek = new Date(year, month, day).getDay();
             days.push({
                 date: dateStr,
                 day,
                 isCurrentMonth: true,
-                isToday: dateStr === todayStr
+                isToday: dateStr === todayStr,
+                dayOfWeek
             });
         }
 
-        // Días del mes siguiente (para completar la grilla)
-        const remainingDays = 42 - days.length; // 6 filas x 7 días
+        // Días del mes siguiente
+        const remainingDays = 42 - days.length;
         for (let day = 1; day <= remainingDays; day++) {
             const nextMonth = month === 11 ? 0 : month + 1;
             const nextYear = month === 11 ? year + 1 : year;
             const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            days.push({ date: dateStr, day, isCurrentMonth: false, isToday: false });
+            const dayOfWeek = new Date(nextYear, nextMonth, day).getDay();
+            days.push({ date: dateStr, day, isCurrentMonth: false, isToday: false, dayOfWeek });
         }
 
         return days;
-    }, []);
+    }, [todayStr]);
 
     const days = getDaysInMonth(currentMonth);
 
-    const goToPrevMonth = () => {
-        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-    };
-
-    const goToNextMonth = () => {
-        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    };
-
+    const goToPrevMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    const goToNextMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
     const goToToday = () => {
         setCurrentMonth(new Date());
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         if (fechasConEventos[todayStr]) {
             onSelectDate(todayStr);
+            onClose?.();
         }
     };
+    const goToPrevYear = () => setCurrentMonth(prev => new Date(prev.getFullYear() - 1, prev.getMonth(), 1));
+    const goToNextYear = () => setCurrentMonth(prev => new Date(prev.getFullYear() + 1, prev.getMonth(), 1));
 
-    // Calcular indicadores de eventos para el mes actual
-    const getEventIndicators = (dateStr: string) => {
-        const eventos = fechasConEventos[dateStr];
-        if (!eventos) return null;
-        return eventos;
-    };
+    const getEventIndicators = (dateStr: string) => fechasConEventos[dateStr] || null;
+
+    // Calcular estadísticas del mes actual
+    const monthStats = useMemo(() => {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        let totalEventos = 0;
+        let totalMonto = 0;
+        let diasConEventos = 0;
+
+        Object.entries(fechasConEventos).forEach(([fecha, data]) => {
+            const [y, m] = fecha.split('-').map(Number);
+            if (y === year && m === month + 1) {
+                totalEventos += data.movimientos + data.rendiciones + data.producciones;
+                totalMonto += data.totalMonto;
+                diasConEventos++;
+            }
+        });
+
+        return { totalEventos, totalMonto, diasConEventos };
+    }, [currentMonth, fechasConEventos]);
+
+    // Información del día hovereado o seleccionado
+    const previewDate = hoveredDate || selectedDate;
+    const previewData = previewDate ? getEventIndicators(previewDate) : null;
 
     return (
-        <div className="bg-gray-900/80 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-5 shadow-2xl">
-            {/* Header del calendario */}
-            <div className="flex items-center justify-between mb-5">
-                <button
-                    onClick={goToPrevMonth}
-                    className="p-2.5 rounded-xl bg-gray-800/80 hover:bg-cyan-600/30 border border-gray-700/50 hover:border-cyan-500/50 text-gray-400 hover:text-cyan-400 transition-all duration-200 hover:scale-105 active:scale-95"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
-
-                <div className="text-center">
-                    <h3 className="text-xl font-bold text-white tracking-wide">
-                        {MESES[currentMonth.getMonth()]}
-                    </h3>
-                    <span className="text-cyan-400 text-sm font-medium">{currentMonth.getFullYear()}</span>
+        <div
+            className="w-full max-w-2xl mx-auto rounded-3xl overflow-hidden shadow-2xl"
+            style={{
+                background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.98) 0%, rgba(31, 41, 55, 0.98) 100%)',
+                border: '1px solid rgba(75, 85, 99, 0.4)',
+                backdropFilter: 'blur(20px)'
+            }}
+        >
+            {/* Header Premium */}
+            <div
+                className="relative p-6 pb-4"
+                style={{
+                    background: 'linear-gradient(135deg, #0891b2 0%, #6366f1 50%, #8b5cf6 100%)'
+                }}
+            >
+                {/* Patrón decorativo */}
+                <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full translate-y-1/2 -translate-x-1/2" />
                 </div>
 
+                {/* Navegación del año */}
+                <div className="relative flex items-center justify-between mb-4">
+                    <button
+                        onClick={goToPrevYear}
+                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all"
+                        title="Año anterior"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                        </svg>
+                    </button>
+
+                    <button
+                        onClick={() => setShowYearPicker(!showYearPicker)}
+                        className="text-white/90 hover:text-white font-bold text-lg tracking-wider transition-colors px-4 py-1 rounded-lg hover:bg-white/10"
+                    >
+                        {currentMonth.getFullYear()}
+                    </button>
+
+                    <button
+                        onClick={goToNextYear}
+                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all"
+                        title="Año siguiente"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Navegación del mes */}
+                <div className="relative flex items-center justify-between">
+                    <button
+                        onClick={goToPrevMonth}
+                        className="p-3 rounded-xl bg-white/10 hover:bg-white/25 text-white transition-all hover:scale-105 active:scale-95"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+
+                    <button
+                        onClick={() => setShowMonthPicker(!showMonthPicker)}
+                        className="text-center group"
+                    >
+                        <h2 className="text-3xl font-black text-white tracking-tight group-hover:scale-105 transition-transform">
+                            {MESES[currentMonth.getMonth()]}
+                        </h2>
+                    </button>
+
+                    <button
+                        onClick={goToNextMonth}
+                        className="p-3 rounded-xl bg-white/10 hover:bg-white/25 text-white transition-all hover:scale-105 active:scale-95"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Estadísticas del mes */}
+                <div className="relative flex justify-center gap-6 mt-4 pt-4 border-t border-white/20">
+                    <div className="text-center">
+                        <div className="text-2xl font-bold text-white">{monthStats.diasConEventos}</div>
+                        <div className="text-xs text-white/70 uppercase tracking-wider">Días activos</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-2xl font-bold text-white">{monthStats.totalEventos}</div>
+                        <div className="text-xs text-white/70 uppercase tracking-wider">Eventos</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-2xl font-bold text-amber-300">S/. {monthStats.totalMonto.toFixed(0)}</div>
+                        <div className="text-xs text-white/70 uppercase tracking-wider">Total</div>
+                    </div>
+                </div>
+
+                {/* Selector de mes */}
+                {showMonthPicker && (
+                    <div className="absolute left-4 right-4 top-full mt-2 p-4 bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl z-50 grid grid-cols-3 gap-2">
+                        {MESES.map((mes, idx) => (
+                            <button
+                                key={mes}
+                                onClick={() => {
+                                    setCurrentMonth(new Date(currentMonth.getFullYear(), idx, 1));
+                                    setShowMonthPicker(false);
+                                }}
+                                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                                    currentMonth.getMonth() === idx
+                                        ? 'bg-cyan-500 text-white'
+                                        : 'text-gray-300 hover:bg-gray-700'
+                                }`}
+                            >
+                                {mes.substring(0, 3)}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Cuerpo del calendario */}
+            <div className="p-6">
+                {/* Botón de hoy */}
                 <button
-                    onClick={goToNextMonth}
-                    className="p-2.5 rounded-xl bg-gray-800/80 hover:bg-cyan-600/30 border border-gray-700/50 hover:border-cyan-500/50 text-gray-400 hover:text-cyan-400 transition-all duration-200 hover:scale-105 active:scale-95"
+                    onClick={goToToday}
+                    className="w-full mb-5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2"
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)',
+                        border: '1px solid rgba(6, 182, 212, 0.3)',
+                        color: '#22d3ee'
+                    }}
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
+                    Ir al día de hoy
                 </button>
-            </div>
 
-            {/* Botón de hoy */}
-            <button
-                onClick={goToToday}
-                className="w-full mb-4 py-2 px-4 rounded-xl bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:from-cyan-600/40 hover:to-blue-600/40 border border-cyan-500/30 hover:border-cyan-500/60 text-cyan-400 text-sm font-medium transition-all duration-200"
-            >
-                Ir a Hoy
-            </button>
-
-            {/* Días de la semana */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-                {DIAS_SEMANA.map(dia => (
-                    <div key={dia} className="text-center text-xs font-bold text-gray-500 uppercase tracking-wider py-2">
-                        {dia}
-                    </div>
-                ))}
-            </div>
-
-            {/* Grilla de días */}
-            <div className="grid grid-cols-7 gap-1">
-                {days.map((dayInfo, index) => {
-                    const eventos = getEventIndicators(dayInfo.date);
-                    const isSelected = selectedDate === dayInfo.date;
-                    const hasEvents = eventos !== null;
-
-                    return (
-                        <button
-                            key={index}
-                            onClick={() => hasEvents && onSelectDate(dayInfo.date)}
-                            disabled={!hasEvents}
-                            className={`
-                                relative aspect-square rounded-xl flex flex-col items-center justify-center
-                                transition-all duration-200 group
-                                ${!dayInfo.isCurrentMonth
-                                    ? 'text-gray-700'
-                                    : hasEvents
-                                        ? 'text-white hover:scale-105 cursor-pointer'
-                                        : 'text-gray-500 cursor-default'
-                                }
-                                ${isSelected
-                                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 scale-105 ring-2 ring-cyan-400/50'
-                                    : hasEvents
-                                        ? 'bg-gray-800/60 hover:bg-gray-700/80 border border-gray-700/50 hover:border-cyan-500/50'
-                                        : 'bg-transparent'
-                                }
-                                ${dayInfo.isToday && !isSelected ? 'ring-2 ring-amber-500/50' : ''}
-                            `}
+                {/* Días de la semana */}
+                <div className="grid grid-cols-7 gap-2 mb-3">
+                    {DIAS_SEMANA.map((dia, idx) => (
+                        <div
+                            key={dia}
+                            className={`text-center text-xs font-bold uppercase tracking-wider py-2 rounded-lg ${
+                                idx === 0 || idx === 6 ? 'text-rose-400/70' : 'text-gray-500'
+                            }`}
                         >
-                            <span className={`text-sm font-semibold ${dayInfo.isToday && !isSelected ? 'text-amber-400' : ''}`}>
-                                {dayInfo.day}
-                            </span>
+                            {dia}
+                        </div>
+                    ))}
+                </div>
 
-                            {/* Indicadores de eventos */}
-                            {hasEvents && (
-                                <div className="flex gap-0.5 mt-1">
-                                    {eventos.movimientos > 0 && (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400" title={`${eventos.movimientos} movimientos`} />
-                                    )}
-                                    {eventos.rendiciones > 0 && (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-orange-400" title={`${eventos.rendiciones} rendiciones`} />
-                                    )}
-                                    {eventos.producciones > 0 && (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" title={`${eventos.producciones} producciones`} />
-                                    )}
+                {/* Grilla de días */}
+                <div className="grid grid-cols-7 gap-2">
+                    {days.map((dayInfo, index) => {
+                        const eventos = getEventIndicators(dayInfo.date);
+                        const isSelected = selectedDate === dayInfo.date;
+                        const hasEvents = eventos !== null;
+                        const isHovered = hoveredDate === dayInfo.date;
+                        const isWeekend = dayInfo.dayOfWeek === 0 || dayInfo.dayOfWeek === 6;
+
+                        return (
+                            <button
+                                key={index}
+                                onClick={() => {
+                                    if (hasEvents) {
+                                        onSelectDate(dayInfo.date);
+                                        onClose?.();
+                                    }
+                                }}
+                                onMouseEnter={() => setHoveredDate(dayInfo.date)}
+                                onMouseLeave={() => setHoveredDate(null)}
+                                disabled={!hasEvents && dayInfo.isCurrentMonth}
+                                className={`
+                                    relative h-14 rounded-xl flex flex-col items-center justify-center
+                                    transition-all duration-200 group
+                                    ${!dayInfo.isCurrentMonth ? 'opacity-30' : ''}
+                                    ${isSelected
+                                        ? 'scale-110 z-10'
+                                        : hasEvents
+                                            ? 'hover:scale-105 cursor-pointer'
+                                            : 'cursor-default'
+                                    }
+                                `}
+                                style={{
+                                    background: isSelected
+                                        ? 'linear-gradient(135deg, #0891b2 0%, #6366f1 100%)'
+                                        : hasEvents
+                                            ? isHovered
+                                                ? 'rgba(75, 85, 99, 0.6)'
+                                                : 'rgba(55, 65, 81, 0.4)'
+                                            : 'transparent',
+                                    border: isSelected
+                                        ? '2px solid rgba(34, 211, 238, 0.6)'
+                                        : dayInfo.isToday
+                                            ? '2px solid rgba(251, 191, 36, 0.6)'
+                                            : hasEvents
+                                                ? '1px solid rgba(75, 85, 99, 0.5)'
+                                                : '1px solid transparent',
+                                    boxShadow: isSelected
+                                        ? '0 8px 25px rgba(6, 182, 212, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3)'
+                                        : hasEvents && isHovered
+                                            ? '0 4px 15px rgba(0, 0, 0, 0.3)'
+                                            : 'none'
+                                }}
+                            >
+                                <span
+                                    className={`text-base font-semibold ${
+                                        isSelected
+                                            ? 'text-white'
+                                            : dayInfo.isToday
+                                                ? 'text-amber-400'
+                                                : hasEvents
+                                                    ? 'text-white'
+                                                    : isWeekend && dayInfo.isCurrentMonth
+                                                        ? 'text-rose-400/50'
+                                                        : 'text-gray-600'
+                                    }`}
+                                >
+                                    {dayInfo.day}
+                                </span>
+
+                                {/* Indicadores de eventos */}
+                                {hasEvents && (
+                                    <div className="flex gap-1 mt-1">
+                                        {eventos.movimientos > 0 && (
+                                            <div
+                                                className="w-2 h-2 rounded-full"
+                                                style={{ backgroundColor: '#3b82f6' }}
+                                                title={`${eventos.movimientos} movimientos`}
+                                            />
+                                        )}
+                                        {eventos.rendiciones > 0 && (
+                                            <div
+                                                className="w-2 h-2 rounded-full"
+                                                style={{ backgroundColor: '#f97316' }}
+                                                title={`${eventos.rendiciones} rendiciones`}
+                                            />
+                                        )}
+                                        {eventos.producciones > 0 && (
+                                            <div
+                                                className="w-2 h-2 rounded-full"
+                                                style={{ backgroundColor: '#8b5cf6' }}
+                                                title={`${eventos.producciones} producciones`}
+                                            />
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Badge de hoy */}
+                                {dayInfo.isToday && !isSelected && (
+                                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-pulse" />
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Preview del día hover/seleccionado */}
+                {previewData && previewDate && (
+                    <div
+                        className="mt-5 p-4 rounded-xl"
+                        style={{
+                            background: 'linear-gradient(135deg, rgba(55, 65, 81, 0.5) 0%, rgba(31, 41, 55, 0.5) 100%)',
+                            border: '1px solid rgba(75, 85, 99, 0.5)'
+                        }}
+                    >
+                        <div className="flex items-center justify-between mb-3">
+                            <div>
+                                <p className="text-white font-semibold">
+                                    {DIAS_SEMANA_FULL[new Date(previewDate + 'T12:00:00').getDay()]}
+                                </p>
+                                <p className="text-gray-400 text-sm">{previewDate}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-2xl font-bold text-amber-400">S/. {previewData.totalMonto.toFixed(2)}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-4">
+                            {previewData.movimientos > 0 && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
+                                    <span>🚚</span>
+                                    <span className="text-blue-400 font-medium">{previewData.movimientos}</span>
                                 </div>
                             )}
-
-                            {/* Tooltip en hover */}
-                            {hasEvents && !isSelected && (
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20 whitespace-nowrap">
-                                    <div className="text-xs font-bold text-white mb-1">
-                                        S/. {eventos.totalMonto.toFixed(2)}
-                                    </div>
-                                    <div className="flex gap-2 text-[10px]">
-                                        {eventos.movimientos > 0 && <span className="text-blue-400">🚚 {eventos.movimientos}</span>}
-                                        {eventos.rendiciones > 0 && <span className="text-orange-400">💰 {eventos.rendiciones}</span>}
-                                        {eventos.producciones > 0 && <span className="text-indigo-400">🏭 {eventos.producciones}</span>}
-                                    </div>
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
-                                        <div className="border-4 border-transparent border-t-gray-800"></div>
-                                    </div>
+                            {previewData.rendiciones > 0 && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(249, 115, 22, 0.2)' }}>
+                                    <span>💰</span>
+                                    <span className="text-orange-400 font-medium">{previewData.rendiciones}</span>
                                 </div>
                             )}
-                        </button>
-                    );
-                })}
-            </div>
+                            {previewData.producciones > 0 && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)' }}>
+                                    <span>🏭</span>
+                                    <span className="text-violet-400 font-medium">{previewData.producciones}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
-            {/* Leyenda */}
-            <div className="mt-4 pt-4 border-t border-gray-800/50">
-                <div className="flex items-center justify-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-400"></div>
-                        <span className="text-gray-500">Movimientos</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-orange-400"></div>
-                        <span className="text-gray-500">Rendiciones</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
-                        <span className="text-gray-500">Producción</span>
+                {/* Leyenda */}
+                <div className="mt-5 pt-4 border-t border-gray-700/50">
+                    <div className="flex items-center justify-center gap-6 text-xs">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#3b82f6' }}></div>
+                            <span className="text-gray-400">Movimientos</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f97316' }}></div>
+                            <span className="text-gray-400">Rendiciones</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></div>
+                            <span className="text-gray-400">Producción</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1284,10 +1491,8 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                 ])
                             )}
                             selectedDate={selectedDate}
-                            onSelectDate={(date) => {
-                                setSelectedDate(date);
-                                setShowCalendar(false);
-                            }}
+                            onSelectDate={setSelectedDate}
+                            onClose={() => setShowCalendar(false)}
                         />
                     </div>
                 </div>
