@@ -771,6 +771,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     matches.push({ cliente, score: nombreNormalizado.length - nombreComNorm.length });
                 }
             }
+
+            // También revisar grupo empresarial (para buscar "Grupo Lar" y encontrar clientes de ese grupo)
+            if (cliente.grupo_empresarial) {
+                const grupoNorm = normalizarNombre(cliente.grupo_empresarial);
+                if (grupoNorm === nombreNormalizado) {
+                    // Match exacto con grupo empresarial - alta prioridad
+                    matches.push({ cliente, score: 0 });
+                } else if (grupoNorm.includes(nombreNormalizado)) {
+                    matches.push({ cliente, score: grupoNorm.length - nombreNormalizado.length });
+                } else if (nombreNormalizado.includes(grupoNorm)) {
+                    matches.push({ cliente, score: nombreNormalizado.length - grupoNorm.length });
+                }
+            }
         }
 
         // Retornar el match más específico (menor score)
