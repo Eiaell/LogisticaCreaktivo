@@ -15,10 +15,13 @@ import { ProveedoresPage } from './components/ProveedoresPage';
 import { ProveedorFichaPage } from './components/ProveedorFichaPage';
 import { CatalogoItemsPage } from './components/CatalogoItemsPage';
 import { CotizacionesPage } from './components/CotizacionesPage';
+import { DiaADiaPage } from './components/DiaADiaPage';
+import { ActividadReciente } from './components/ActividadReciente';
 import { useDatabase, DatabaseProvider } from './context/DatabaseContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { useAutoBackup } from './hooks/useAutoBackup';
 
-type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'proveedor_ficha' | 'catalogo_items' | 'cotizaciones';
+type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'proveedor_ficha' | 'catalogo_items' | 'cotizaciones' | 'dia_a_dia';
 
 interface DashboardProps {
   onNavigate: (page: PageView) => void;
@@ -166,6 +169,14 @@ function Dashboard({ onNavigate, onNuevoRequerimiento }: DashboardProps) {
         <div className="col-span-1 lg:col-span-4">
           <PedidosTable />
         </div>
+
+        {/* Actividad Reciente - Día a Día */}
+        <div className="col-span-1 lg:col-span-4">
+          <ActividadReciente
+            onVerDiaADia={() => onNavigate('dia_a_dia')}
+            maxItems={15}
+          />
+        </div>
       </div>
 
       {modalType === 'nuevo_cliente' && <NuevoClienteModal isOpen={true} onClose={() => setModalType(null)} />}
@@ -216,10 +227,10 @@ function AppContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
-          <p className="text-cyan-500 font-mono text-xs animate-pulse">Sincronizando con la nube...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: 'var(--accent-cyan)' }}></div>
+          <p className="font-mono text-xs animate-pulse" style={{ color: 'var(--accent-cyan)' }}>Sincronizando con la nube...</p>
         </div>
       </div>
     );
@@ -287,6 +298,10 @@ function AppContent() {
         return (
           <CotizacionesPage onBack={() => setCurrentPage('dashboard')} />
         );
+      case 'dia_a_dia':
+        return (
+          <DiaADiaPage onBack={() => setCurrentPage('dashboard')} />
+        );
       default:
         return (
           <Dashboard
@@ -298,7 +313,7 @@ function AppContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Sidebar Izquierda - Estilo ChatGPT */}
       <AppSidebar
         isExpanded={sidebarExpanded}
@@ -379,8 +394,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <DatabaseProvider>
-      <AppContent />
-    </DatabaseProvider>
+    <ThemeProvider>
+      <DatabaseProvider>
+        <AppContent />
+      </DatabaseProvider>
+    </ThemeProvider>
   );
 }

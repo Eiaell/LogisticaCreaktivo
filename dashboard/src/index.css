@@ -1,20 +1,104 @@
 @import "tailwindcss";
 
-/* Celonis-inspired Dark Theme */
-:root {
+/* ============================================
+   THEME SYSTEM - Dark/Light Mode
+   ============================================ */
+
+/* Dark Theme (Default) */
+:root,
+.dark {
   --bg-primary: #0a0e17;
   --bg-secondary: #111827;
   --bg-card: #1f2937;
+  --bg-card-hover: #374151;
   --text-primary: #f9fafb;
   --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
   --accent-cyan: #06b6d4;
   --accent-blue: #3b82f6;
   --accent-purple: #8b5cf6;
+  --accent-orange: #f97316;
   --border-color: #374151;
+  --border-light: #4b5563;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --glass-bg: rgba(31, 41, 55, 0.7);
+  --glass-border: rgba(55, 65, 81, 0.8);
+  --input-bg: #1f2937;
+  --input-border: #374151;
+  --input-focus: #06b6d4;
+  --modal-overlay: rgba(0, 0, 0, 0.8);
+  --scrollbar-track: #111827;
+  --scrollbar-thumb: #374151;
+  --scrollbar-hover: #06b6d4;
 }
+
+/* Light Theme - Elegant & Professional */
+.light {
+  /* Backgrounds - Clean whites with subtle warmth */
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fafafa;
+  --bg-tertiary: #f0f0f2;
+
+  /* Text - High contrast, professional */
+  --text-primary: #1d1d1f;
+  --text-secondary: #424245;
+  --text-muted: #6e6e73;
+
+  /* Accent colors - Refined, not too saturated */
+  --accent-cyan: #0071e3;
+  --accent-blue: #0066cc;
+  --accent-purple: #5856d6;
+  --accent-orange: #ff6b35;
+
+  /* Borders - Subtle but visible */
+  --border-color: #d2d2d7;
+  --border-light: #e5e5e7;
+
+  /* Status colors - Vibrant but elegant */
+  --success: #34c759;
+  --warning: #ff9500;
+  --danger: #ff3b30;
+
+  /* Shadows - Soft, professional */
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.12);
+
+  /* Glass effect - Clean */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #d2d2d7;
+  --input-focus: #0071e3;
+
+  /* Overlays */
+  --modal-overlay: rgba(0, 0, 0, 0.4);
+
+  /* Scrollbar */
+  --scrollbar-track: #f5f5f7;
+  --scrollbar-thumb: #c7c7cc;
+  --scrollbar-hover: #8e8e93;
+
+  /* Sidebar specific */
+  --sidebar-bg: #ffffff;
+  --sidebar-hover: #f5f5f7;
+  --sidebar-active: #e8e8ed;
+
+  /* Table specific */
+  --table-header-bg: #fafafa;
+  --table-row-hover: #f5f5f7;
+  --table-border: #e5e5e7;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
 
 * {
   margin: 0;
@@ -27,42 +111,64 @@ body {
   color: var(--text-primary);
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Glassmorphism Cards */
+/* ============================================
+   GLASSMORPHISM CARDS
+   ============================================ */
+
 .glass-card {
-  background: rgba(31, 41, 55, 0.7);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 6px -1px var(--shadow-color),
+              0 2px 4px -1px var(--shadow-color),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Gradient Accents */
+.light .glass-card {
+  box-shadow: 0 4px 6px -1px var(--shadow-color),
+              0 2px 4px -1px var(--shadow-color);
+}
+
+/* ============================================
+   GRADIENT ACCENTS
+   ============================================ */
+
 .gradient-accent {
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
 }
 
-/* Scrollbar Styling */
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-cyan);
+  background: var(--scrollbar-hover);
 }
 
-/* Animations */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -85,6 +191,18 @@ body {
   }
 }
 
+@keyframes slideInUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .animate-in {
   animation-duration: 0.3s;
   animation-fill-mode: forwards;
@@ -97,4 +215,576 @@ body {
 
 .slide-in-from-right {
   animation-name: slideInRight;
+}
+
+.slide-in-from-bottom {
+  animation-name: slideInUp;
+}
+
+/* ============================================
+   THEME-AWARE UTILITY CLASSES
+   ============================================ */
+
+/* Background utilities */
+.bg-theme-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-theme-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.bg-theme-card {
+  background-color: var(--bg-card);
+}
+
+/* Text utilities */
+.text-theme-primary {
+  color: var(--text-primary);
+}
+
+.text-theme-secondary {
+  color: var(--text-secondary);
+}
+
+.text-theme-muted {
+  color: var(--text-muted);
+}
+
+/* Border utilities */
+.border-theme {
+  border-color: var(--border-color);
+}
+
+/* Input styling */
+.input-theme {
+  background-color: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--text-primary);
+}
+
+.input-theme:focus {
+  border-color: var(--input-focus);
+  outline: none;
+}
+
+/* ============================================
+   THEME TOGGLE BUTTON
+   ============================================ */
+
+.theme-toggle {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-toggle::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  transition: transform 0.3s ease;
+}
+
+.light .theme-toggle::before {
+  transform: translateX(24px);
+  background: var(--accent-orange);
+}
+
+/* ============================================
+   LIGHT MODE SPECIFIC STYLES
+   ============================================ */
+
+/* Sidebar in light mode */
+.light .sidebar-item {
+  color: var(--text-secondary);
+}
+
+.light .sidebar-item:hover {
+  background-color: var(--sidebar-hover);
+  color: var(--text-primary);
+}
+
+.light .sidebar-item.active {
+  background-color: var(--sidebar-active);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Cards and containers in light mode */
+.light .glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Buttons in light mode - more subtle */
+.light button {
+  transition: all 0.2s ease;
+}
+
+/* Tables in light mode */
+.light table {
+  border-color: var(--table-border);
+}
+
+.light th {
+  background-color: var(--table-header-bg);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.light tr:hover {
+  background-color: var(--table-row-hover);
+}
+
+/* Inputs in light mode */
+.light input,
+.light select,
+.light textarea {
+  background-color: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--text-primary);
+}
+
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+}
+
+/* Dropdowns and menus in light mode */
+.light .dropdown-menu {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Status badges - more vibrant in light mode */
+.light .badge-success {
+  background-color: #e8f8ed;
+  color: #1a7f37;
+}
+
+.light .badge-warning {
+  background-color: #fff4e5;
+  color: #9a6700;
+}
+
+.light .badge-danger {
+  background-color: #ffebe9;
+  color: #cf222e;
+}
+
+.light .badge-info {
+  background-color: #ddf4ff;
+  color: #0969da;
+}
+
+/* KPI Cards in light mode */
+.light .kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Header styling in light mode */
+.light header {
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Process graph nodes in light mode */
+.light .process-node {
+  border: 2px solid var(--border-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
+   STATUS BADGE COLORS - Light Mode Override
+   ============================================ */
+
+/* Cotización - Yellow/Amber */
+.light .bg-yellow-600\/30,
+.light .bg-yellow-600\/40 {
+  background-color: #fef3c7 !important;
+}
+.light .text-yellow-300 {
+  color: #92400e !important;
+}
+.light .border-yellow-500\/50 {
+  border-color: #d97706 !important;
+}
+
+/* Aprobado - Green */
+.light .bg-green-600\/30,
+.light .bg-green-600\/40 {
+  background-color: #d1fae5 !important;
+}
+.light .text-green-300 {
+  color: #065f46 !important;
+}
+.light .border-green-500\/50 {
+  border-color: #059669 !important;
+}
+
+/* En Producción - Blue */
+.light .bg-blue-600\/30,
+.light .bg-blue-600\/40 {
+  background-color: #dbeafe !important;
+}
+.light .text-blue-300 {
+  color: #1e40af !important;
+}
+.light .border-blue-500\/50 {
+  border-color: #3b82f6 !important;
+}
+
+/* Listo - Cyan */
+.light .bg-cyan-600\/30,
+.light .bg-cyan-600\/40 {
+  background-color: #cffafe !important;
+}
+.light .text-cyan-300,
+.light .text-cyan-400 {
+  color: #0e7490 !important;
+}
+.light .border-cyan-500\/50 {
+  border-color: #06b6d4 !important;
+}
+
+/* Entregado - Teal */
+.light .bg-teal-600\/30,
+.light .bg-teal-600\/40 {
+  background-color: #ccfbf1 !important;
+}
+.light .text-teal-300 {
+  color: #0f766e !important;
+}
+.light .border-teal-500\/50 {
+  border-color: #14b8a6 !important;
+}
+
+/* Cerrado - Emerald/Gray */
+.light .bg-emerald-600\/30,
+.light .bg-emerald-600\/40 {
+  background-color: #d1fae5 !important;
+}
+.light .text-emerald-300 {
+  color: #047857 !important;
+}
+.light .border-emerald-500\/50 {
+  border-color: #10b981 !important;
+}
+
+/* Gray badges */
+.light .bg-gray-600\/30,
+.light .bg-gray-600\/40 {
+  background-color: #f3f4f6 !important;
+}
+.light .text-gray-300 {
+  color: #374151 !important;
+}
+.light .border-gray-500\/50 {
+  border-color: #6b7280 !important;
+}
+
+/* Orange badges (for warnings/special) */
+.light .bg-orange-600\/30,
+.light .bg-orange-600\/40 {
+  background-color: #ffedd5 !important;
+}
+.light .text-orange-300,
+.light .text-orange-400 {
+  color: #c2410c !important;
+}
+.light .border-orange-500\/50 {
+  border-color: #f97316 !important;
+}
+
+/* ============================================
+   TABLE & UI ELEMENTS - Light Mode Override
+   ============================================ */
+
+/* Table rows */
+.light .border-gray-800\/50 {
+  border-color: var(--border-light) !important;
+}
+
+.light .hover\:bg-gray-800\/20:hover {
+  background-color: var(--table-row-hover) !important;
+}
+
+.light .bg-blue-950\/20 {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+.light .bg-cyan-950\/20 {
+  background-color: rgba(6, 182, 212, 0.08) !important;
+}
+
+/* Input fields in light mode */
+.light .bg-gray-950 {
+  background-color: var(--bg-card) !important;
+}
+
+.light .border-gray-700 {
+  border-color: var(--border-color) !important;
+}
+
+.light .border-cyan-500 {
+  border-color: #0891b2 !important;
+}
+
+/* Text colors - Full override for light mode */
+.light .text-white {
+  color: var(--text-primary) !important;
+}
+
+.light .text-gray-100 {
+  color: var(--text-primary) !important;
+}
+
+.light .text-gray-200 {
+  color: #1f2937 !important;
+}
+
+.light .text-gray-300 {
+  color: #374151 !important;
+}
+
+.light .text-gray-400 {
+  color: var(--text-secondary) !important;
+}
+
+.light .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+.light .text-gray-600 {
+  color: #9ca3af !important;
+}
+
+/* Dropdown menus */
+.light .bg-gray-800 {
+  background-color: var(--bg-card) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.light .hover\:bg-gray-700:hover {
+  background-color: var(--bg-card-hover) !important;
+}
+
+/* Button backgrounds */
+.light .bg-cyan-600 {
+  background-color: #0891b2 !important;
+}
+
+.light .hover\:bg-cyan-500:hover {
+  background-color: #06b6d4 !important;
+}
+
+.light .bg-emerald-600 {
+  background-color: #059669 !important;
+}
+
+.light .hover\:bg-emerald-500:hover {
+  background-color: #10b981 !important;
+}
+
+/* ============================================
+   ACCENT TEXT COLORS - Light Mode Override
+   ============================================ */
+
+/* Blue text */
+.light .text-blue-300,
+.light .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+.light .text-blue-400\/70 {
+  color: rgba(29, 78, 216, 0.8) !important;
+}
+
+/* Cyan text */
+.light .text-cyan-300,
+.light .text-cyan-400 {
+  color: #0e7490 !important;
+}
+
+.light .text-cyan-400\/60 {
+  color: rgba(14, 116, 144, 0.7) !important;
+}
+
+/* Orange text */
+.light .text-orange-300,
+.light .text-orange-400 {
+  color: #c2410c !important;
+}
+
+.light .text-orange-400\/70 {
+  color: rgba(194, 65, 12, 0.8) !important;
+}
+
+.light .text-orange-500 {
+  color: #ea580c !important;
+}
+
+/* Amber text */
+.light .text-amber-300,
+.light .text-amber-400 {
+  color: #b45309 !important;
+}
+
+.light .text-amber-400\/70 {
+  color: rgba(180, 83, 9, 0.8) !important;
+}
+
+/* Purple text */
+.light .text-purple-300,
+.light .text-purple-400 {
+  color: #7c3aed !important;
+}
+
+.light .text-purple-400\/60 {
+  color: rgba(124, 58, 237, 0.7) !important;
+}
+
+/* Green text */
+.light .text-green-300,
+.light .text-green-400 {
+  color: #15803d !important;
+}
+
+/* Emerald text */
+.light .text-emerald-300,
+.light .text-emerald-400 {
+  color: #047857 !important;
+}
+
+/* Yellow text */
+.light .text-yellow-300,
+.light .text-yellow-400 {
+  color: #a16207 !important;
+}
+
+/* Teal text */
+.light .text-teal-300,
+.light .text-teal-400 {
+  color: #0f766e !important;
+}
+
+/* Pink text */
+.light .text-pink-300,
+.light .text-pink-400 {
+  color: #be185d !important;
+}
+
+/* ============================================
+   BACKGROUND COLORS - Light Mode Override
+   ============================================ */
+
+/* Green backgrounds */
+.light .bg-green-500\/20,
+.light .bg-green-500\/30 {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+}
+
+.light .border-green-500\/30 {
+  border-color: rgba(34, 197, 94, 0.4) !important;
+}
+
+/* Yellow backgrounds */
+.light .bg-yellow-500\/20,
+.light .bg-yellow-500\/30 {
+  background-color: rgba(234, 179, 8, 0.15) !important;
+}
+
+.light .border-yellow-500\/30 {
+  border-color: rgba(234, 179, 8, 0.4) !important;
+}
+
+/* Blue backgrounds */
+.light .bg-blue-500\/20,
+.light .bg-blue-500\/30 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.light .border-blue-500\/30 {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Orange backgrounds */
+.light .bg-orange-500\/20,
+.light .bg-orange-500\/30 {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+}
+
+.light .border-orange-500\/30 {
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+
+/* Amber backgrounds */
+.light .bg-amber-500\/20,
+.light .bg-amber-500\/30 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+.light .border-amber-500\/30 {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Purple backgrounds */
+.light .bg-purple-500\/20,
+.light .bg-purple-500\/30 {
+  background-color: rgba(168, 85, 247, 0.15) !important;
+}
+
+.light .border-purple-500\/30 {
+  border-color: rgba(168, 85, 247, 0.4) !important;
+}
+
+/* Emerald backgrounds */
+.light .bg-emerald-500\/20,
+.light .bg-emerald-500\/30 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.light .border-emerald-500\/30 {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Cyan backgrounds */
+.light .bg-cyan-500\/20,
+.light .bg-cyan-500\/30 {
+  background-color: rgba(6, 182, 212, 0.15) !important;
+}
+
+.light .border-cyan-500\/30 {
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+
+/* Gray backgrounds */
+.light .bg-gray-900 {
+  background-color: var(--bg-card) !important;
+}
+
+.light .bg-gray-800\/50,
+.light .bg-gray-800\/30,
+.light .bg-gray-800\/20 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+.light .border-gray-800,
+.light .border-gray-900 {
+  border-color: var(--border-color) !important;
 }

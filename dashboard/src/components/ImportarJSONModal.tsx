@@ -8,9 +8,16 @@ interface Props {
 }
 
 // Tipos de importación
-type TipoImportacion = 'cotizacion' | 'produccion' | 'movimiento' | 'pago' | null;
+type TipoImportacion = 'dia_a_dia' | 'cotizacion' | 'produccion' | 'movimiento' | 'pago' | null;
 
 const TIPOS_IMPORTACION = [
+    {
+        id: 'dia_a_dia' as const,
+        nombre: 'Día a Día (Resumen)',
+        descripcion: 'Importa tu resumen diario completo: entregas, recojos, pagos y producción',
+        color: 'from-cyan-500 to-blue-600',
+        icon: '📅'
+    },
     {
         id: 'cotizacion' as const,
         nombre: 'Cotización / Propuesta',
@@ -129,6 +136,165 @@ interface JSONPago {
     notas?: string;
 }
 
+// 5. Día a Día (Resumen Diario) - Acepta formato flexible
+interface JSONDiaADia {
+    fecha: string;
+    eventos_dia: Array<Record<string, unknown>>;
+}
+
+// Tipos de eventos que el parser puede detectar
+type SeccionDetectada = 'MOVIMIENTO_LOGISTICO' | 'RENDICION_PAGO' | 'PRODUCCION' | 'IGNORAR';
+
+// Parser inteligente que convierte formato flexible al formato estándar
+function detectarSeccionYTipo(evento: Record<string, unknown>): { seccion: SeccionDetectada; tipo: string; } {
+    const tipoOriginal = String(evento.tipo || '').toLowerCase();
+    const descripcion = String(evento.descripcion || '').toLowerCase();
+    const estado = String(evento.estado || '').toLowerCase();
+
+    // Si solo tiene estado "ok" sin más info, ignorar
+    if (estado === 'ok' && Object.keys(evento).length <= 2) {
+        return { seccion: 'IGNORAR', tipo: '' };
+    }
+
+    // Detectar PRODUCCION
+    const keywordsProduccion = ['produccion', 'prueba_color', 'orden_produccion', 'pedido_produccion', 'fabricacion', 'manufactura'];
+    if (keywordsProduccion.some(k => tipoOriginal.includes(k)) ||
+        tipoOriginal.includes('produccion') ||
+        (evento.producto && (evento.proveedor || tipoOriginal.includes('orden')))) {
+        return { seccion: 'PRODUCCION', tipo: 'orden_produccion' };
+    }
+
+    // Detectar RENDICION_PAGO (costos, gastos, movilidad)
+    const keywordsCosto = ['costo', 'gasto', 'pago', 'movilidad', 'taxi', 'motorizado', 'rendicion', 'adelanto'];
+    if (keywordsCosto.some(k => tipoOriginal.includes(k)) ||
+        evento.costo_soles || evento.monto ||
+        (evento.detalle && typeof evento.detalle === 'object' && (evento.detalle as any).costo_soles)) {
+        return { seccion: 'RENDICION_PAGO', tipo: 'movilidad' };
+    }
+
+    // Detectar MOVIMIENTO_LOGISTICO (entregas, recojos, pedidos de materiales)
+    const keywordsEntrega = ['entrega', 'delivery', 'despacho', 'implementacion'];
+    const keywordsRecojo = ['recojo', 'pickup', 'recoger', 'pedido_materiales'];
+
+    if (keywordsEntrega.some(k => tipoOriginal.includes(k))) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'entrega' };
+    }
+    if (keywordsRecojo.some(k => tipoOriginal.includes(k)) || evento.materiales) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'recojo' };
+    }
+
+    // Si tiene cliente y proyecto, probablemente es entrega
+    if (evento.cliente && evento.proyecto) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'entrega' };
+    }
+
+    // Si tiene contacto y descripcion de entrega
+    if (evento.contacto && descripcion.includes('entrega')) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'entrega' };
+    }
+
+    // Default: si tiene cliente, es movimiento
+    if (evento.cliente) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'entrega' };
+    }
+
+    // Si no se puede clasificar, ignorar
+    return { seccion: 'IGNORAR', tipo: '' };
+}
+
+// Convierte un evento de formato flexible al formato estándar
+function convertirEventoFlexible(evento: Record<string, unknown>, _fecha: string): {
+    seccion: SeccionDetectada;
+    tipo: string;
+    cliente: string;
+    proveedor: string;
+    detalle: Record<string, unknown>;
+    estado: string;
+    observaciones: string;
+    monto?: number;
+    producto?: string;
+    cantidad?: number;
+    especificaciones?: Record<string, unknown>;
+} | null {
+    const { seccion, tipo } = detectarSeccionYTipo(evento);
+
+    if (seccion === 'IGNORAR') return null;
+
+    // Extraer cliente
+    let cliente = String(evento.cliente || evento.contacto || '');
+
+    // Extraer proveedor
+    let proveedor = String(evento.proveedor || '');
+
+    // Extraer estado
+    let estado = String(evento.estado || 'pendiente').toLowerCase();
+    if (estado === 'ok' || estado === 'realizado') estado = 'completado';
+    if (estado === 'gestionado') estado = 'completado';
+    if (estado === 'orden_emitida') estado = 'en_produccion';
+
+    // Construir observaciones
+    const observaciones: string[] = [];
+    if (evento.descripcion) observaciones.push(String(evento.descripcion));
+    if (evento.proyecto) observaciones.push(`Proyecto: ${evento.proyecto}`);
+    if (evento.contacto && evento.cliente) observaciones.push(`Contacto: ${evento.contacto}`);
+    if (evento.medio) observaciones.push(`Medio: ${evento.medio}`);
+
+    // Construir detalle según sección
+    let detalle: Record<string, unknown> = {};
+    let monto: number | undefined;
+    let producto: string | undefined;
+    let cantidad: number | undefined;
+    let especificaciones: Record<string, unknown> | undefined;
+
+    switch (seccion) {
+        case 'MOVIMIENTO_LOGISTICO':
+            if (evento.materiales && Array.isArray(evento.materiales)) {
+                detalle.items = (evento.materiales as string[]).map(m => ({ producto: m, cantidad: 1 }));
+            }
+            if (evento.proyecto) {
+                detalle.destino = `Proyecto ${evento.proyecto}`;
+            }
+            if (evento.origen) detalle.origen = evento.origen;
+            if (evento.destino) detalle.destino = evento.destino;
+            break;
+
+        case 'RENDICION_PAGO':
+            const detalleEvento = evento.detalle as Record<string, unknown> | undefined;
+            monto = Number(evento.costo_soles || evento.monto || detalleEvento?.costo_soles || detalleEvento?.monto || 0);
+            detalle.concepto = evento.descripcion || detalleEvento?.concepto || tipo;
+            detalle.monto = monto;
+            detalle.moneda = 'PEN';
+            estado = 'registrado';
+            break;
+
+        case 'PRODUCCION':
+            const detalleP = evento.detalle as Record<string, unknown> | undefined;
+            producto = String(evento.producto || detalleP?.producto || 'Sin especificar');
+            cantidad = Number(evento.cantidad || detalleP?.cantidad || 1);
+            if (detalleP) {
+                especificaciones = { ...detalleP };
+                delete especificaciones.producto;
+                delete especificaciones.cantidad;
+            }
+            if (!proveedor) proveedor = 'Por definir';
+            break;
+    }
+
+    return {
+        seccion,
+        tipo,
+        cliente,
+        proveedor,
+        detalle,
+        estado,
+        observaciones: observaciones.join(' | '),
+        monto,
+        producto,
+        cantidad,
+        especificaciones
+    };
+}
+
 // ====== Ejemplos de JSON para cada tipo ======
 
 const EJEMPLO_COTIZACION = `{
@@ -200,6 +366,48 @@ const EJEMPLO_PAGO = `{
   "notas": "50% adelanto lanyards"
 }`;
 
+const EJEMPLO_DIA_A_DIA = `{
+  "fecha": "2026-01-15",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "LIEN",
+      "detalle": {
+        "items": [
+          { "producto": "Lanyards", "cantidad": 50 },
+          { "producto": "Notebooks", "cantidad": 50 }
+        ]
+      },
+      "estado": "completado",
+      "observaciones": "Entrega directa al cliente"
+    },
+    {
+      "seccion": "RENDICION_PAGO",
+      "tipo": "movilidad",
+      "cliente": "Grupo Lar",
+      "detalle": {
+        "concepto": "Movilidad por recojo de materiales",
+        "monto": 12.00,
+        "moneda": "PEN"
+      },
+      "estado": "registrado"
+    },
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "Grupo Lar",
+      "proveedor": "Imprenta Cuche",
+      "detalle": {
+        "producto": "Volantes A5",
+        "cantidad_total": 4000,
+        "precio_por_millar_sin_igv": 105.00
+      },
+      "estado": "en_produccion"
+    }
+  ]
+}`;
+
 // ====== Interfaces de Preview ======
 
 interface PreviewCotizacion {
@@ -227,10 +435,33 @@ interface PreviewPago {
     tipo: string;
 }
 
-type Preview = PreviewCotizacion | PreviewProduccion | PreviewMovimiento | PreviewPago | null;
+// Preview para día a día
+interface EventoPreview {
+    seccion: string;
+    seccionIcon: string;
+    seccionColor: string;
+    tipo: string;
+    cliente: string;
+    proveedor: string;
+    estado: string;
+    resumen: string;
+    monto?: number;
+}
+
+interface PreviewDiaADia {
+    fecha: string;
+    totalEventos: number;
+    movimientos: number;
+    rendiciones: number;
+    producciones: number;
+    montoTotal: number;
+    eventos: EventoPreview[];
+}
+
+type Preview = PreviewCotizacion | PreviewProduccion | PreviewMovimiento | PreviewPago | PreviewDiaADia | null;
 
 export function ImportarJSONModal({ isOpen, onClose }: Props) {
-    const { createPedido, createLineaPedido } = useDatabase();
+    const { createPedido, createLineaPedido, createMovimientoLogistico, createRendicion, createEventoProduccion, findOrCreateCliente, getClienteByNombre } = useDatabase();
     const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoImportacion>(null);
     const [jsonInput, setJsonInput] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -367,6 +598,121 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
         }
     };
 
+    const parseDiaADia = (input: string): PreviewDiaADia | null => {
+        try {
+            const data: JSONDiaADia = JSON.parse(input);
+            if (!data.fecha) throw new Error('Falta la fecha');
+            if (!data.eventos_dia || !Array.isArray(data.eventos_dia)) {
+                throw new Error('Falta el array eventos_dia');
+            }
+
+            let movimientos = 0;
+            let rendiciones = 0;
+            let producciones = 0;
+            let montoTotal = 0;
+
+            // Detectar si es formato flexible (sin campo 'seccion')
+            const esFormatoFlexible = data.eventos_dia.length > 0 && !data.eventos_dia[0].seccion;
+
+            const eventos: EventoPreview[] = [];
+
+            for (const eventoOriginal of data.eventos_dia) {
+                let evento: Record<string, unknown>;
+
+                // Si es formato flexible, convertir primero
+                if (esFormatoFlexible) {
+                    const convertido = convertirEventoFlexible(eventoOriginal, data.fecha);
+                    if (!convertido) continue; // Ignorar eventos no clasificables
+                    evento = {
+                        seccion: convertido.seccion,
+                        tipo: convertido.tipo,
+                        cliente: convertido.cliente,
+                        proveedor: convertido.proveedor,
+                        detalle: convertido.detalle,
+                        estado: convertido.estado,
+                        observaciones: convertido.observaciones,
+                        // Campos adicionales para producción
+                        producto: convertido.producto,
+                        cantidad: convertido.cantidad,
+                        especificaciones: convertido.especificaciones,
+                    };
+                } else {
+                    evento = eventoOriginal;
+                }
+
+                let seccionIcon = '📋';
+                let seccionColor = 'bg-gray-500';
+                let resumen = '';
+                let monto: number | undefined;
+
+                switch (evento.seccion) {
+                    case 'MOVIMIENTO_LOGISTICO':
+                        movimientos++;
+                        seccionIcon = evento.tipo === 'entrega' ? '📦' : '🚚';
+                        seccionColor = evento.tipo === 'entrega' ? 'bg-green-500' : 'bg-blue-500';
+                        const detalleM = evento.detalle as any;
+                        if (detalleM && detalleM.items && Array.isArray(detalleM.items)) {
+                            resumen = detalleM.items.map((i: any) => `${i.cantidad} ${i.producto}`).join(', ');
+                        } else if (detalleM && detalleM.origen) {
+                            resumen = `${detalleM.origen} → ${detalleM.destino || 'Oficina'}`;
+                        } else if (evento.observaciones) {
+                            resumen = String(evento.observaciones).substring(0, 60);
+                        }
+                        break;
+
+                    case 'RENDICION_PAGO':
+                        rendiciones++;
+                        seccionIcon = evento.tipo === 'movilidad' ? '🚕' : '💰';
+                        seccionColor = evento.tipo === 'movilidad' ? 'bg-cyan-500' : 'bg-orange-500';
+                        const detalleR = evento.detalle as any;
+                        const montoRendicion = detalleR?.monto || detalleR?.monto_pagado || 0;
+                        monto = montoRendicion;
+                        montoTotal += montoRendicion;
+                        resumen = detalleR?.concepto || `${evento.tipo} - S/. ${montoRendicion.toFixed(2)}`;
+                        break;
+
+                    case 'PRODUCCION':
+                        producciones++;
+                        seccionIcon = '🏭';
+                        seccionColor = 'bg-indigo-500';
+                        const detalleP = evento.detalle as any;
+                        const productoNombre = evento.producto || detalleP?.producto || 'Producto';
+                        const cantidad = evento.cantidad || detalleP?.cantidad_total || detalleP?.cantidad || 0;
+                        resumen = `${productoNombre} x ${cantidad}`;
+                        if (detalleP?.precio_por_millar_sin_igv) {
+                            monto = (Number(cantidad) / 1000) * detalleP.precio_por_millar_sin_igv;
+                            montoTotal += monto;
+                        }
+                        break;
+                }
+
+                eventos.push({
+                    seccion: String(evento.seccion),
+                    seccionIcon,
+                    seccionColor,
+                    tipo: String(evento.tipo),
+                    cliente: String(evento.cliente || '-'),
+                    proveedor: String(evento.proveedor || '-'),
+                    estado: String(evento.estado),
+                    resumen,
+                    monto
+                });
+            }
+
+            return {
+                fecha: data.fecha,
+                totalEventos: eventos.length,
+                movimientos,
+                rendiciones,
+                producciones,
+                montoTotal,
+                eventos
+            };
+        } catch (err) {
+            throw new Error(err instanceof Error ? err.message : 'JSON inválido para día a día');
+        }
+    };
+
     const handleInputChange = (value: string) => {
         setJsonInput(value);
         setError(null);
@@ -377,6 +723,9 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
         try {
             let parsed: Preview = null;
             switch (tipoSeleccionado) {
+                case 'dia_a_dia':
+                    parsed = parseDiaADia(value);
+                    break;
                 case 'cotizacion':
                     parsed = parseCotizacion(value);
                     break;
@@ -402,14 +751,137 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
         setIsSubmitting(true);
         try {
             switch (tipoSeleccionado) {
+                case 'dia_a_dia': {
+                    const diaPreview = preview as PreviewDiaADia;
+                    console.log(`📅 Procesando día ${diaPreview.fecha} con ${diaPreview.totalEventos} eventos`);
+
+                    // Procesar cada evento según su sección
+                    const jsonData: JSONDiaADia = JSON.parse(jsonInput);
+                    let movimientosCreados = 0;
+                    let rendicionesCreadas = 0;
+                    let produccionesCreadas = 0;
+
+                    // Detectar si es formato flexible
+                    const esFormatoFlexible = jsonData.eventos_dia.length > 0 && !jsonData.eventos_dia[0].seccion;
+
+                    for (const eventoOriginal of jsonData.eventos_dia) {
+                        const now = new Date().toISOString();
+                        const baseId = `${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+                        // Si es formato flexible, convertir primero
+                        let evento: Record<string, unknown>;
+                        if (esFormatoFlexible) {
+                            const convertido = convertirEventoFlexible(eventoOriginal, jsonData.fecha);
+                            if (!convertido) continue; // Ignorar eventos no clasificables
+                            evento = {
+                                seccion: convertido.seccion,
+                                tipo: convertido.tipo,
+                                cliente: convertido.cliente,
+                                proveedor: convertido.proveedor,
+                                detalle: convertido.detalle,
+                                estado: convertido.estado,
+                                observaciones: convertido.observaciones,
+                                producto: convertido.producto,
+                                cantidad: convertido.cantidad,
+                                especificaciones: convertido.especificaciones,
+                                monto: convertido.monto,
+                            };
+                        } else {
+                            evento = eventoOriginal;
+                        }
+
+                        // Buscar o crear cliente si existe nombre
+                        const nombreCliente = String(evento.cliente || '');
+                        if (nombreCliente) {
+                            await findOrCreateCliente(nombreCliente);
+                        }
+
+                        switch (evento.seccion) {
+                            case 'MOVIMIENTO_LOGISTICO':
+                                await createMovimientoLogistico({
+                                    id: `MOV-${baseId}`,
+                                    fecha: jsonData.fecha,
+                                    tipo: String(evento.tipo) as any,
+                                    cliente: nombreCliente.toUpperCase(),
+                                    proveedor: String(evento.proveedor || ''),
+                                    detalle: evento.detalle as any,
+                                    estado: String(evento.estado) as any,
+                                    observaciones: String(evento.observaciones || ''),
+                                    created_at: now,
+                                    updated_at: now,
+                                });
+                                movimientosCreados++;
+                                break;
+
+                            case 'RENDICION_PAGO':
+                                const detalleR = evento.detalle as any;
+                                const montoR = evento.monto || detalleR?.monto || detalleR?.monto_pagado || 0;
+                                await createRendicion({
+                                    id: `REND-${baseId}`,
+                                    fecha: jsonData.fecha,
+                                    tipo: String(evento.tipo) as any,
+                                    cliente: nombreCliente.toUpperCase(),
+                                    proveedor: String(evento.proveedor || ''),
+                                    monto: Number(montoR),
+                                    moneda: detalleR?.moneda || 'PEN',
+                                    detalle: evento.detalle as any,
+                                    estado: String(evento.estado) as any,
+                                    observaciones: String(evento.observaciones || ''),
+                                    tiene_comprobante: !!detalleR?.comprobante && detalleR.comprobante !== 'Pendiente / no especificado',
+                                    created_at: now,
+                                    updated_at: now,
+                                });
+                                rendicionesCreadas++;
+                                break;
+
+                            case 'PRODUCCION':
+                                const detalleP = evento.detalle as any;
+                                const cantidadProd = evento.cantidad || detalleP?.cantidad_total || detalleP?.cantidad || 0;
+                                let precioTotal: number | undefined;
+
+                                if (detalleP?.precio_por_millar_sin_igv) {
+                                    precioTotal = (Number(cantidadProd) / 1000) * detalleP.precio_por_millar_sin_igv;
+                                } else if (detalleP?.precio_unitario) {
+                                    precioTotal = Number(cantidadProd) * detalleP.precio_unitario;
+                                }
+
+                                await createEventoProduccion({
+                                    id: `PROD-${baseId}`,
+                                    fecha: jsonData.fecha,
+                                    tipo: 'orden_produccion',
+                                    cliente: nombreCliente.toUpperCase(),
+                                    proveedor: String(evento.proveedor || ''),
+                                    producto: String(evento.producto || detalleP?.producto || ''),
+                                    cantidad: Number(cantidadProd),
+                                    especificaciones: evento.especificaciones || detalleP?.especificaciones,
+                                    precio_unitario: detalleP?.precio_por_millar_sin_igv || detalleP?.precio_unitario,
+                                    precio_total: precioTotal,
+                                    estado: String(evento.estado) as any,
+                                    observaciones: String(evento.observaciones || ''),
+                                    created_at: now,
+                                    updated_at: now,
+                                });
+                                produccionesCreadas++;
+                                break;
+                        }
+                    }
+
+                    console.log(`✅ Día importado: ${movimientosCreados} movimientos, ${rendicionesCreadas} rendiciones, ${produccionesCreadas} producciones`);
+                    break;
+                }
                 case 'cotizacion': {
                     const cotPreview = preview as PreviewCotizacion;
-                    const descripcionResumen = cotPreview.lineas.slice(0, 3).map(l => l.item).join(', ') +
-                        (cotPreview.lineas.length > 3 ? ` (+${cotPreview.lineas.length - 3} más)` : '');
+                    // Descripción completa con todos los items
+                    const descripcionCompleta = cotPreview.lineas.map(l => l.item).join(', ');
+                    // Descripción corta para mostrar en tabla (máx 3 items)
+                    const descripcionCorta = cotPreview.lineas.length > 3
+                        ? cotPreview.lineas.slice(0, 3).map(l => l.item).join(', ') + ` (+${cotPreview.lineas.length - 3} más)`
+                        : undefined;
 
                     const pedido = await createPedido({
                         cliente: cotPreview.cliente,
-                        descripcion: descripcionResumen,
+                        descripcion: descripcionCompleta,
+                        descripcion_corta: descripcionCorta,
                         vendedora: '',
                         estado: 'cotizacion',
                         precio: cotPreview.total,
@@ -458,6 +930,8 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
 
     const getEjemplos = () => {
         switch (tipoSeleccionado) {
+            case 'dia_a_dia':
+                return [{ id: 'dia_a_dia', nombre: 'Resumen diario completo', json: EJEMPLO_DIA_A_DIA }];
             case 'cotizacion':
                 return [
                     { id: 'formal', nombre: 'Cotización formal', json: EJEMPLO_COTIZACION },
@@ -482,6 +956,9 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
             <div
                 className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
                 onClick={(e) => e.target === e.currentTarget && handleClose()}
+                onKeyDown={(e) => { if (e.key === 'Escape') handleClose(); }}
+                tabIndex={0}
+                ref={(el) => el?.focus()}
             >
                 <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl shadow-2xl">
                     <div className="flex items-center justify-between p-6 border-b border-gray-800">
@@ -536,6 +1013,99 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
         if (!preview) return null;
 
         switch (tipoSeleccionado) {
+            case 'dia_a_dia': {
+                const p = preview as PreviewDiaADia;
+                return (
+                    <div className="bg-gray-950 border border-green-500/30 rounded-lg p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
+                                ✓ JSON válido - Vista previa del día
+                            </div>
+                            <span className="text-cyan-400 font-mono text-sm">{p.fecha}</span>
+                        </div>
+
+                        {/* Resumen de contadores */}
+                        <div className="grid grid-cols-4 gap-3">
+                            <div className="bg-gray-900 rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-white">{p.totalEventos}</div>
+                                <div className="text-xs text-gray-500">Total Eventos</div>
+                            </div>
+                            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-blue-400">{p.movimientos}</div>
+                                <div className="text-xs text-blue-400/70">Movimientos</div>
+                            </div>
+                            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-cyan-400">{p.rendiciones}</div>
+                                <div className="text-xs text-cyan-400/70">Rendiciones</div>
+                            </div>
+                            <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-3 text-center">
+                                <div className="text-2xl font-bold text-indigo-400">{p.producciones}</div>
+                                <div className="text-xs text-indigo-400/70">Producciones</div>
+                            </div>
+                        </div>
+
+                        {/* Monto total */}
+                        {p.montoTotal > 0 && (
+                            <div className="flex justify-end">
+                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2">
+                                    <span className="text-gray-400 text-sm mr-2">Monto Total:</span>
+                                    <span className="text-amber-400 font-bold text-lg">S/. {p.montoTotal.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Lista de eventos */}
+                        <div className="border-t border-gray-800 pt-3">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Eventos del día:</p>
+                            <div className="max-h-64 overflow-y-auto space-y-2">
+                                {p.eventos.map((evento, idx) => {
+                                    // Buscar cliente para obtener su logo (usar logo del cliente o del grupo)
+                                    const clienteData = evento.cliente && evento.cliente !== '-' ? getClienteByNombre(evento.cliente) : null;
+                                    const logoUrl = clienteData?.logo || clienteData?.grupo_logo_url;
+
+                                    return (
+                                    <div key={idx} className="flex items-center gap-3 bg-gray-900/50 rounded-lg p-2">
+                                        <div className={`w-8 h-8 ${evento.seccionColor} rounded-full flex items-center justify-center text-sm`}>
+                                            {evento.seccionIcon}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-white font-medium text-sm">{evento.tipo}</span>
+                                                <span className="text-gray-600">•</span>
+                                                {/* Logo del cliente */}
+                                                {logoUrl ? (
+                                                    <img src={logoUrl} alt={evento.cliente} className="w-5 h-5 rounded object-cover" />
+                                                ) : evento.cliente !== '-' && (
+                                                    <div className="w-5 h-5 rounded bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-400">
+                                                        {evento.cliente.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <span className="text-cyan-400 text-xs">{evento.cliente}</span>
+                                                {evento.proveedor !== '-' && (
+                                                    <>
+                                                        <span className="text-gray-600">→</span>
+                                                        <span className="text-orange-400 text-xs">{evento.proveedor}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div className="text-gray-500 text-xs truncate">{evento.resumen}</div>
+                                        </div>
+                                        <div className="text-right">
+                                            {evento.monto !== undefined && (
+                                                <div className="text-amber-400 font-mono text-xs">S/. {evento.monto.toFixed(2)}</div>
+                                            )}
+                                            <div className={`text-xs ${evento.estado === 'completado' || evento.estado === 'pagado' ? 'text-green-400' : 'text-yellow-400'}`}>
+                                                {evento.estado}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
             case 'cotizacion': {
                 const p = preview as PreviewCotizacion;
                 return (
@@ -661,6 +1231,9 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
         <div
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
             onClick={(e) => e.target === e.currentTarget && handleClose()}
+            onKeyDown={(e) => { if (e.key === 'Escape') handleClose(); }}
+            tabIndex={0}
+            ref={(el) => el?.focus()}
         >
             <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
                 {/* Header */}

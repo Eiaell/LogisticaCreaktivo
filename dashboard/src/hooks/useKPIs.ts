@@ -2,11 +2,16 @@ import { useCallback } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import type { KPIs, Pedido } from '../types';
 
+// Helper para obtener fecha de hoy en formato YYYY-MM-DD
+function getTodayKey(): string {
+    return new Date().toISOString().split('T')[0];
+}
+
 // =============================================================================
 // KPIs HOOK - Uses centralized 'pedidos' state for consistency
 // =============================================================================
 export function useKPIs(): KPIs | null {
-    const { db, pedidos, dataSource } = useDatabase();
+    const { db, pedidos, dataSource, movimientosLogisticos, rendiciones } = useDatabase();
 
     if (dataSource === 'db' && db) {
         // Legacy DB logic
@@ -30,8 +35,28 @@ export function useKPIs(): KPIs | null {
             .filter(p => p.estado === 'en_produccion' || p.estado === 'cotizacion' || p.estado === 'aprobado' || p.estado === 'listo')
             .reduce((sum, p) => sum + (p.precio || 0), 0);
 
-        const alertas = 0;
-        const movilidadHoy = 0;
+        // Calcular alertas (pedidos con fecha de compromiso vencida)
+        const today = new Date();
+        const alertas = pedidos.filter(p => {
+            if (!p.fecha_compromiso) return false;
+            const fechaCompromiso = new Date(p.fecha_compromiso);
+            return fechaCompromiso < today && !['entregado', 'cerrado', 'cancelado'].includes(p.estado);
+        }).length;
+
+        // Calcular movilidad de hoy desde movimientos y rendiciones
+        const todayKey = getTodayKey();
+
+        // Sumar costos de movilidad de movimientos logísticos de hoy
+        const costoMovimientosHoy = movimientosLogisticos
+            .filter(m => m.fecha === todayKey)
+            .reduce((sum, m) => sum + (Number(m.costo_movilidad) || 0), 0);
+
+        // Sumar rendiciones de tipo movilidad de hoy
+        const costoRendicionesHoy = rendiciones
+            .filter(r => r.fecha === todayKey && r.tipo === 'movilidad')
+            .reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
+
+        const movilidadHoy = costoMovimientosHoy + costoRendicionesHoy;
 
         // New KPIs
         // Valor Pipeline: Sum of prices of active orders

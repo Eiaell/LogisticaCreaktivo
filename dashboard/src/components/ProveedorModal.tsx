@@ -79,7 +79,12 @@ export function ProveedorModal({ nombre, isOpen, onClose }: Props) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+            tabIndex={0}
+            ref={(el) => el?.focus()}
+        >
             <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
                 <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">

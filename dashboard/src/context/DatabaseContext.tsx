@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import initSqlJs, { type Database } from 'sql.js';
-import type { Pedido, Payment, Proveedor, Cliente, Cotizacion, LineaPedido, CambioPedido, ItemCotizacion, HistoricoPrecio, Produccion } from '../types';
+import type { Pedido, Payment, Proveedor, Cliente, Cotizacion, LineaPedido, CambioPedido, ItemCotizacion, HistoricoPrecio, Produccion, MovimientoLogistico, Rendicion, EventoProduccion } from '../types';
 import { supabase } from '../supabaseClient';
 import { type TraceEvent, parseEventsToPedidos } from '../utils/parsers';
+import { generateRL } from '../utils/rqGenerator';
 
 interface DatabaseContextType {
     db: Database | null;
@@ -69,6 +70,35 @@ interface DatabaseContextType {
     getProduccionesByPedido: (pedidoId: string) => Produccion[];
     getProduccionesByProveedor: (proveedorId: string) => Produccion[];
 
+    // CRUD Movimientos Logísticos
+    movimientosLogisticos: MovimientoLogistico[];
+    createMovimientoLogistico: (data: Omit<MovimientoLogistico, 'seccion'>) => Promise<MovimientoLogistico>;
+    getMovimientosByFecha: (fecha: string) => MovimientoLogistico[];
+    getMovimientosByCliente: (cliente: string) => MovimientoLogistico[];
+
+    // CRUD Rendiciones
+    rendiciones: Rendicion[];
+    createRendicion: (data: Omit<Rendicion, 'seccion'>) => Promise<Rendicion>;
+    updateRendicion: (id: string, data: Partial<Rendicion>) => Promise<void>;
+    deleteRendicion: (id: string) => Promise<void>;
+    getRendicionesByFecha: (fecha: string) => Rendicion[];
+    getRendicionesByCliente: (cliente: string) => Rendicion[];
+
+    // CRUD Eventos de Producción
+    eventosProduccion: EventoProduccion[];
+    createEventoProduccion: (data: Omit<EventoProduccion, 'seccion'>) => Promise<EventoProduccion>;
+    updateEventoProduccion: (id: string, data: Partial<EventoProduccion>) => Promise<void>;
+    deleteEventoProduccion: (id: string) => Promise<void>;
+    getEventosProduccionByFecha: (fecha: string) => EventoProduccion[];
+
+    // CRUD Movimientos (update/delete)
+    updateMovimientoLogistico: (id: string, data: Partial<MovimientoLogistico>) => Promise<void>;
+    deleteMovimientoLogistico: (id: string) => Promise<void>;
+
+    // Buscar o crear cliente por nombre
+    findOrCreateCliente: (nombre: string) => Promise<Cliente | null>;
+    getClienteByNombre: (nombre: string) => Cliente | null;
+
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
 
@@ -98,6 +128,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [itemsCotizacion, setItemsCotizacion] = useState<ItemCotizacion[]>([]);
     const [historicoPrecio, setHistoricoPrecio] = useState<HistoricoPrecio[]>([]);
     const [producciones, setProducciones] = useState<Produccion[]>([]);
+    const [movimientosLogisticos, setMovimientosLogisticos] = useState<MovimientoLogistico[]>([]);
+    const [rendiciones, setRendiciones] = useState<Rendicion[]>([]);
+    const [eventosProduccion, setEventosProduccion] = useState<EventoProduccion[]>([]);
     const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -161,7 +194,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                         ...p,
                         cliente: p.cliente_nombre,
                         vendedora: p.vendedora || '',
-                        rq_numero: p.rq_numero || '',
+                        rq_numero: p.rq_numero || null,   // Código interno empresa (manual)
+                        rl_numero: p.rl_numero || null,   // Requisito logístico sistema (auto)
                         precio: p.precio || 0,
                         pagado: p.pagado || 0
                     }));
@@ -254,6 +288,48 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     console.log(`🏭 ${produccionesData.length} producciones cargadas`);
                 }
 
+                // Cargar movimientos logísticos
+                const { data: movimientosData, error: movError } = await supabase.from('movimientos_logisticos').select('*');
+                if (movError) {
+                    console.log('ℹ️ Tabla movimientos_logisticos no existe aún o error:', movError.message);
+                    setMovimientosLogisticos([]);
+                } else if (movimientosData) {
+                    const movimientosParsed = movimientosData.map((m: any) => ({
+                        ...m,
+                        seccion: 'MOVIMIENTO_LOGISTICO' as const,
+                    }));
+                    setMovimientosLogisticos(movimientosParsed);
+                    console.log(`🚚 ${movimientosData.length} movimientos logísticos cargados`);
+                }
+
+                // Cargar rendiciones
+                const { data: rendicionesData, error: rendError } = await supabase.from('rendiciones').select('*');
+                if (rendError) {
+                    console.log('ℹ️ Tabla rendiciones no existe aún o error:', rendError.message);
+                    setRendiciones([]);
+                } else if (rendicionesData) {
+                    const rendicionesParsed = rendicionesData.map((r: any) => ({
+                        ...r,
+                        seccion: 'RENDICION_PAGO' as const,
+                    }));
+                    setRendiciones(rendicionesParsed);
+                    console.log(`💰 ${rendicionesData.length} rendiciones cargadas`);
+                }
+
+                // Cargar eventos de producción
+                const { data: eventosData, error: eventosError } = await supabase.from('eventos_produccion').select('*');
+                if (eventosError) {
+                    console.log('ℹ️ Tabla eventos_produccion no existe aún o error:', eventosError.message);
+                    setEventosProduccion([]);
+                } else if (eventosData) {
+                    const eventosParsed = eventosData.map((e: any) => ({
+                        ...e,
+                        seccion: 'PRODUCCION' as const,
+                    }));
+                    setEventosProduccion(eventosParsed);
+                    console.log(`🏭 ${eventosData.length} eventos de producción cargados`);
+                }
+
                 // Sincronizar dataSource SOLO si logramos leer algo o terminar el proceso
                 setDataSource('supabase');
                 console.log("Supabase Sync Complete. Pedidos:", ordersData?.length || 0);
@@ -280,9 +356,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     const createPedido = async (data: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>): Promise<Pedido> => {
         const now = new Date().toISOString();
+
+        // Auto-generar RL (Requisito Logístico del sistema)
+        const rlNumero = generateRL(pedidos);
+
         const newPedido: Pedido = {
             ...data,
             id: `PED-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
+            rl_numero: rlNumero,
+            // rq_numero viene del formulario (código interno empresa, manual)
             created_at: now,
             updated_at: now,
         };
@@ -298,7 +380,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 estado: newPedido.estado,
                 precio: newPedido.precio || 0,
                 pagado: newPedido.pagado || 0,
-                rq_numero: newPedido.rq_numero,
+                rq_numero: newPedido.rq_numero || null,    // Código interno (manual)
+                rl_numero: newPedido.rl_numero,            // Requisito logístico (auto)
                 fecha_compromiso: newPedido.fecha_compromiso,
                 created_at: newPedido.created_at,
                 updated_at: newPedido.updated_at,
@@ -603,6 +686,126 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             console.log("Proveedor eliminado de Supabase:", nombre);
         } catch (err) {
             console.error("Error deleting proveedor:", err);
+        }
+    };
+
+    // Normalizar nombre de cliente para búsqueda flexible
+    const normalizarNombre = (nombre: string): string => {
+        return nombre
+            .toUpperCase()
+            .trim()
+            .replace(/\s+/g, ' ')
+            .replace(/[.,]/g, '')
+            .replace(/\bS\.?A\.?C\.?\b/gi, 'SAC')
+            .replace(/\bS\.?A\.?\b/gi, 'SA')
+            .replace(/\bE\.?I\.?R\.?L\.?\b/gi, 'EIRL');
+    };
+
+    // Buscar cliente por nombre (match flexible)
+    const getClienteByNombre = (nombre: string): Cliente | null => {
+        if (!nombre || nombre.trim() === '') return null;
+
+        const nombreNormalizado = normalizarNombre(nombre);
+        const clientesArray = Object.entries(clientes);
+
+        // 1. Buscar match exacto primero (razón social, nombre comercial, o grupo empresarial)
+        for (const [key, cliente] of clientesArray) {
+            if (normalizarNombre(key) === nombreNormalizado) {
+                return cliente;
+            }
+            // También buscar por nombre comercial
+            if (cliente.nombre_comercial && normalizarNombre(cliente.nombre_comercial) === nombreNormalizado) {
+                return cliente;
+            }
+            // También buscar por grupo empresarial
+            if (cliente.grupo_empresarial && normalizarNombre(cliente.grupo_empresarial) === nombreNormalizado) {
+                return cliente;
+            }
+        }
+
+        // 2. Buscar donde la razón social EMPIEZA con el nombre buscado
+        // Ej: buscar "DHL" encuentra "DHL SUPPLY CHAIN..."
+        for (const [key, cliente] of clientesArray) {
+            const keyNorm = normalizarNombre(key);
+            if (keyNorm.startsWith(nombreNormalizado)) {
+                return cliente;
+            }
+            if (cliente.nombre_comercial) {
+                const nombreComNorm = normalizarNombre(cliente.nombre_comercial);
+                if (nombreComNorm.startsWith(nombreNormalizado)) {
+                    return cliente;
+                }
+            }
+            // También buscar por grupo empresarial
+            if (cliente.grupo_empresarial) {
+                const grupoNorm = normalizarNombre(cliente.grupo_empresarial);
+                if (grupoNorm.startsWith(nombreNormalizado) || nombreNormalizado.startsWith(grupoNorm)) {
+                    return cliente;
+                }
+            }
+        }
+
+        // 3. Buscar match parcial, priorizando el match más específico
+        // Ordenar por longitud de nombre (más corto = más específico)
+        const matches: { cliente: Cliente; score: number }[] = [];
+
+        for (const [key, cliente] of clientesArray) {
+            const keyNorm = normalizarNombre(key);
+
+            // El nombre buscado está contenido en la razón social
+            if (keyNorm.includes(nombreNormalizado)) {
+                // Score más bajo = mejor match (diferencia de longitud menor)
+                matches.push({ cliente, score: keyNorm.length - nombreNormalizado.length });
+            }
+            // La razón social está contenida en el nombre buscado
+            else if (nombreNormalizado.includes(keyNorm)) {
+                matches.push({ cliente, score: nombreNormalizado.length - keyNorm.length });
+            }
+
+            // También revisar nombre comercial
+            if (cliente.nombre_comercial) {
+                const nombreComNorm = normalizarNombre(cliente.nombre_comercial);
+                if (nombreComNorm.includes(nombreNormalizado)) {
+                    matches.push({ cliente, score: nombreComNorm.length - nombreNormalizado.length });
+                } else if (nombreNormalizado.includes(nombreComNorm)) {
+                    matches.push({ cliente, score: nombreNormalizado.length - nombreComNorm.length });
+                }
+            }
+        }
+
+        // Retornar el match más específico (menor score)
+        if (matches.length > 0) {
+            matches.sort((a, b) => a.score - b.score);
+            return matches[0].cliente;
+        }
+
+        return null;
+    };
+
+    // Buscar o crear cliente
+    const findOrCreateCliente = async (nombre: string): Promise<Cliente | null> => {
+        if (!nombre || nombre.trim() === '') return null;
+
+        // Primero buscar si existe
+        const clienteExistente = getClienteByNombre(nombre);
+        if (clienteExistente) {
+            console.log(`✅ Cliente encontrado: ${clienteExistente.razon_social}`);
+            return clienteExistente;
+        }
+
+        // Si no existe, crear nuevo
+        console.log(`📝 Creando nuevo cliente: ${nombre.toUpperCase()}`);
+        try {
+            const nuevoCliente = await createCliente({
+                razon_social: nombre.toUpperCase(),
+                estado: 'activo',
+                prioridad: 'medio',
+                tipo_cliente: 'corporativo',
+            });
+            return nuevoCliente;
+        } catch (err) {
+            console.error("Error creando cliente:", err);
+            return null;
         }
     };
 
@@ -965,6 +1168,236 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     };
 
+    // ============================================
+    // CRUD Movimientos Logísticos
+    // ============================================
+    const createMovimientoLogistico = async (data: Omit<MovimientoLogistico, 'seccion'>): Promise<MovimientoLogistico> => {
+        const newMovimiento: MovimientoLogistico = {
+            ...data,
+            seccion: 'MOVIMIENTO_LOGISTICO',
+        };
+
+        setMovimientosLogisticos(prev => [newMovimiento, ...prev]);
+
+        try {
+            const { error } = await supabase.from('movimientos_logisticos').insert({
+                id: newMovimiento.id,
+                fecha: newMovimiento.fecha,
+                tipo: newMovimiento.tipo,
+                cliente: newMovimiento.cliente,
+                proveedor: newMovimiento.proveedor,
+                pedido_id: newMovimiento.pedido_id,
+                detalle: newMovimiento.detalle,
+                estado: newMovimiento.estado,
+                observaciones: newMovimiento.observaciones,
+                costo_movilidad: newMovimiento.costo_movilidad || 0,
+                created_at: newMovimiento.created_at,
+                updated_at: newMovimiento.updated_at,
+            });
+            if (error) {
+                console.warn("⚠️ Error guardando movimiento en Supabase (tabla puede no existir aún):", error.message);
+            } else {
+                console.log("🚚 Movimiento logístico creado:", newMovimiento.id);
+            }
+        } catch (err) {
+            console.error("Error creating movimiento logístico:", err);
+        }
+
+        return newMovimiento;
+    };
+
+    const getMovimientosByFecha = (fecha: string): MovimientoLogistico[] => {
+        return movimientosLogisticos
+            .filter(m => m.fecha === fecha)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    };
+
+    const getMovimientosByCliente = (cliente: string): MovimientoLogistico[] => {
+        return movimientosLogisticos
+            .filter(m => m.cliente?.toLowerCase() === cliente.toLowerCase())
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    };
+
+    // ============================================
+    // CRUD Rendiciones
+    // ============================================
+    const createRendicion = async (data: Omit<Rendicion, 'seccion'>): Promise<Rendicion> => {
+        const newRendicion: Rendicion = {
+            ...data,
+            seccion: 'RENDICION_PAGO',
+        };
+
+        setRendiciones(prev => [newRendicion, ...prev]);
+
+        try {
+            const { error } = await supabase.from('rendiciones').insert({
+                id: newRendicion.id,
+                fecha: newRendicion.fecha,
+                tipo: newRendicion.tipo,
+                cliente: newRendicion.cliente,
+                proveedor: newRendicion.proveedor,
+                pedido_id: newRendicion.pedido_id,
+                produccion_id: newRendicion.produccion_id,
+                monto: newRendicion.monto,
+                moneda: newRendicion.moneda,
+                detalle: newRendicion.detalle,
+                estado: newRendicion.estado,
+                observaciones: newRendicion.observaciones,
+                tiene_comprobante: newRendicion.tiene_comprobante,
+                tipo_comprobante: newRendicion.tipo_comprobante,
+                numero_comprobante: newRendicion.numero_comprobante,
+                created_at: newRendicion.created_at,
+                updated_at: newRendicion.updated_at,
+            });
+            if (error) {
+                console.warn("⚠️ Error guardando rendición en Supabase (tabla puede no existir aún):", error.message);
+            } else {
+                console.log("💰 Rendición creada:", newRendicion.id);
+            }
+        } catch (err) {
+            console.error("Error creating rendición:", err);
+        }
+
+        return newRendicion;
+    };
+
+    const getRendicionesByFecha = (fecha: string): Rendicion[] => {
+        return rendiciones
+            .filter(r => r.fecha === fecha)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    };
+
+    const getRendicionesByCliente = (cliente: string): Rendicion[] => {
+        return rendiciones
+            .filter(r => r.cliente?.toLowerCase() === cliente.toLowerCase())
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    };
+
+    const updateRendicion = async (id: string, data: Partial<Rendicion>): Promise<void> => {
+        const updatedData = { ...data, updated_at: new Date().toISOString() };
+        setRendiciones(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+
+        try {
+            const { error } = await supabase.from('rendiciones').update(updatedData).eq('id', id);
+            if (error) console.warn("Error actualizando rendición:", error.message);
+            else console.log("💰 Rendición actualizada:", id);
+        } catch (err) {
+            console.error("Error updating rendición:", err);
+        }
+    };
+
+    const deleteRendicion = async (id: string): Promise<void> => {
+        setRendiciones(prev => prev.filter(r => r.id !== id));
+
+        try {
+            const { error } = await supabase.from('rendiciones').delete().eq('id', id);
+            if (error) console.warn("Error eliminando rendición:", error.message);
+            else console.log("🗑️ Rendición eliminada:", id);
+        } catch (err) {
+            console.error("Error deleting rendición:", err);
+        }
+    };
+
+    // ============================================
+    // CRUD Movimientos Logísticos (update/delete)
+    // ============================================
+    const updateMovimientoLogistico = async (id: string, data: Partial<MovimientoLogistico>): Promise<void> => {
+        const updatedData = { ...data, updated_at: new Date().toISOString() };
+        setMovimientosLogisticos(prev => prev.map(m => m.id === id ? { ...m, ...updatedData } : m));
+
+        try {
+            const { error } = await supabase.from('movimientos_logisticos').update(updatedData).eq('id', id);
+            if (error) console.warn("Error actualizando movimiento:", error.message);
+            else console.log("🚚 Movimiento actualizado:", id);
+        } catch (err) {
+            console.error("Error updating movimiento:", err);
+        }
+    };
+
+    const deleteMovimientoLogistico = async (id: string): Promise<void> => {
+        setMovimientosLogisticos(prev => prev.filter(m => m.id !== id));
+
+        try {
+            const { error } = await supabase.from('movimientos_logisticos').delete().eq('id', id);
+            if (error) console.warn("Error eliminando movimiento:", error.message);
+            else console.log("🗑️ Movimiento eliminado:", id);
+        } catch (err) {
+            console.error("Error deleting movimiento:", err);
+        }
+    };
+
+    // ============================================
+    // CRUD Eventos de Producción
+    // ============================================
+    const createEventoProduccion = async (data: Omit<EventoProduccion, 'seccion'>): Promise<EventoProduccion> => {
+        const newEvento: EventoProduccion = {
+            ...data,
+            seccion: 'PRODUCCION',
+        };
+
+        setEventosProduccion(prev => [newEvento, ...prev]);
+
+        try {
+            const { error } = await supabase.from('eventos_produccion').insert({
+                id: newEvento.id,
+                fecha: newEvento.fecha,
+                tipo: newEvento.tipo,
+                cliente: newEvento.cliente,
+                proveedor: newEvento.proveedor,
+                pedido_id: newEvento.pedido_id,
+                producto: newEvento.producto,
+                cantidad: newEvento.cantidad,
+                especificaciones: newEvento.especificaciones,
+                precio_unitario: newEvento.precio_unitario,
+                precio_total: newEvento.precio_total,
+                estado: newEvento.estado,
+                observaciones: newEvento.observaciones,
+                created_at: newEvento.created_at,
+                updated_at: newEvento.updated_at,
+            });
+            if (error) {
+                console.warn("⚠️ Error guardando evento producción en Supabase:", error.message);
+            } else {
+                console.log("🏭 Evento producción creado:", newEvento.id);
+            }
+        } catch (err) {
+            console.error("Error creating evento producción:", err);
+        }
+
+        return newEvento;
+    };
+
+    const updateEventoProduccion = async (id: string, data: Partial<EventoProduccion>): Promise<void> => {
+        const updatedData = { ...data, updated_at: new Date().toISOString() };
+        setEventosProduccion(prev => prev.map(e => e.id === id ? { ...e, ...updatedData } : e));
+
+        try {
+            const { error } = await supabase.from('eventos_produccion').update(updatedData).eq('id', id);
+            if (error) console.warn("Error actualizando evento producción:", error.message);
+            else console.log("🏭 Evento producción actualizado:", id);
+        } catch (err) {
+            console.error("Error updating evento producción:", err);
+        }
+    };
+
+    const deleteEventoProduccion = async (id: string): Promise<void> => {
+        setEventosProduccion(prev => prev.filter(e => e.id !== id));
+
+        try {
+            const { error } = await supabase.from('eventos_produccion').delete().eq('id', id);
+            if (error) console.warn("Error eliminando evento producción:", error.message);
+            else console.log("🗑️ Evento producción eliminado:", id);
+        } catch (err) {
+            console.error("Error deleting evento producción:", err);
+        }
+    };
+
+    const getEventosProduccionByFecha = (fecha: string): EventoProduccion[] => {
+        return eventosProduccion
+            .filter(e => e.fecha === fecha)
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    };
+
     const exportBackup = () => {
         const backup = {
             meta: { version: 1, date: new Date().toISOString(), type: 'backup' },
@@ -1225,6 +1658,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             addPayment,
             // CRUD Clientes/Proveedores
             createCliente, createProveedor, updateProveedor, updateCliente, deleteCliente, deleteProveedor,
+            findOrCreateCliente, getClienteByNombre,
             // CRUD Cotizaciones
             createCotizacion, updateCotizacion, deleteCotizacion, getCotizacionesByProveedor,
             // CRUD Histórico de Precios
@@ -1237,6 +1671,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             getItemsUnicos, getItemsByNombre, getProveedoresPorItem,
             // CRUD Producciones
             producciones, createProduccion, updateProduccion, deleteProduccion, getProduccionesByPedido, getProduccionesByProveedor,
+            // CRUD Movimientos Logísticos
+            movimientosLogisticos, createMovimientoLogistico, updateMovimientoLogistico, deleteMovimientoLogistico, getMovimientosByFecha, getMovimientosByCliente,
+            // CRUD Rendiciones
+            rendiciones, createRendicion, updateRendicion, deleteRendicion, getRendicionesByFecha, getRendicionesByCliente,
+            // CRUD Eventos de Producción
+            eventosProduccion, createEventoProduccion, updateEventoProduccion, deleteEventoProduccion, getEventosProduccionByFecha,
             // Filtros y estado
             selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
             loadDatabase, resetDatabase, exportBackup, uploadLogo

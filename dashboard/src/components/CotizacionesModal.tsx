@@ -289,7 +289,12 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+      tabIndex={0}
+      ref={(el) => el?.focus()}
+    >
       <div className="bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-700">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">

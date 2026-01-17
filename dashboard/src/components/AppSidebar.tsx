@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Pedido, Cliente } from '../types';
 import { ImportarJSONModal } from './ImportarJSONModal';
+import { useTheme } from '../context/ThemeContext';
 
 interface AppSidebarProps {
     isExpanded: boolean;
@@ -10,7 +11,7 @@ interface AppSidebarProps {
     activePedidoId: string | null;
     onSelectPedido: (pedidoId: string) => void;
     onNuevoRequerimiento: () => void;
-    onNavigate: (page: 'dashboard' | 'clientes' | 'proveedores' | 'catalogo_items' | 'cotizaciones') => void;
+    onNavigate: (page: 'dashboard' | 'clientes' | 'proveedores' | 'catalogo_items' | 'cotizaciones' | 'dia_a_dia') => void;
     currentPage: string;
 }
 
@@ -44,6 +45,24 @@ const IconMoreVertical = () => (
         <circle cx="12" cy="5" r="1.5" />
         <circle cx="12" cy="12" r="1.5" />
         <circle cx="12" cy="19" r="1.5" />
+    </svg>
+);
+
+const IconCalendar = () => (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+);
+
+const IconSun = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+);
+
+const IconMoon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
     </svg>
 );
 
@@ -144,8 +163,13 @@ function ContextMenu({ x, y, pedido, onClose, onAction }: ContextMenuProps) {
     return (
         <div
             ref={menuRef}
-            className="fixed bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 z-[9999] min-w-[180px]"
-            style={{ left: x, top: y }}
+            className="fixed rounded-lg shadow-xl py-1 z-[9999] min-w-[180px]"
+            style={{
+                left: x,
+                top: y,
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-color)'
+            }}
         >
             {menuItems.map((item, index) => (
                 <button
@@ -154,11 +178,13 @@ function ContextMenu({ x, y, pedido, onClose, onAction }: ContextMenuProps) {
                         onAction(item.action, pedido);
                         onClose();
                     }}
-                    className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors ${
-                        item.danger
-                            ? 'text-red-400 hover:bg-red-500/20'
-                            : 'text-gray-300 hover:bg-gray-700'
-                    } ${index === menuItems.length - 1 ? 'border-t border-gray-700 mt-1 pt-2' : ''}`}
+                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors"
+                    style={{
+                        color: item.danger ? 'var(--danger)' : 'var(--text-secondary)',
+                        borderTop: index === menuItems.length - 1 ? '1px solid var(--border-color)' : 'none',
+                        marginTop: index === menuItems.length - 1 ? '4px' : '0',
+                        paddingTop: index === menuItems.length - 1 ? '8px' : undefined
+                    }}
                 >
                     <span>{item.icon}</span>
                     {item.label}
@@ -179,6 +205,7 @@ export function AppSidebar({
     onNavigate,
     currentPage
 }: AppSidebarProps) {
+    const { theme, toggleTheme } = useTheme();
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; pedido: Pedido } | null>(null);
     const [hoveredPedidoId, setHoveredPedidoId] = useState<string | null>(null);
     const [showImportarJSON, setShowImportarJSON] = useState(false);
@@ -218,18 +245,24 @@ export function AppSidebar({
     // Navegación items
     const navItems = [
         { id: 'dashboard', icon: <IconHome />, label: 'Dashboard', page: 'dashboard' as const },
+        { id: 'dia_a_dia', icon: <IconCalendar />, label: 'Día a Día', page: 'dia_a_dia' as const },
         { id: 'requerimientos', icon: <IconDocument />, label: 'Requerimientos', page: 'dashboard' as const },
     ];
 
     return (
         <>
             <aside
-                className={`fixed left-0 top-0 h-full bg-gray-950 border-r border-gray-800 z-50 flex flex-col transition-all duration-300 ease-in-out ${
+                className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ease-in-out ${
                     isExpanded ? 'w-72' : 'w-16'
                 }`}
+                style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderRight: '1px solid var(--border-color)'
+                }}
             >
                 {/* Header con Logo */}
-                <div className={`flex items-center border-b border-gray-800 ${isExpanded ? 'p-4' : 'py-4 justify-center'}`}>
+                <div className={`flex items-center ${isExpanded ? 'p-4' : 'py-4 justify-center'}`}
+                     style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <button
                         onClick={onToggle}
                         className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -253,7 +286,8 @@ export function AppSidebar({
                     {isExpanded && (
                         <button
                             onClick={onToggle}
-                            className="ml-auto p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-white transition-colors"
+                            className="ml-auto p-1.5 rounded-lg transition-colors"
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             <IconChevronLeft />
                         </button>
@@ -312,9 +346,10 @@ export function AppSidebar({
 
                 {/* Historial de Requerimientos (solo expandido) */}
                 {isExpanded && (
-                    <div className="flex-1 overflow-y-auto border-t border-gray-800">
+                    <div className="overflow-y-auto min-h-0" style={{ borderTop: '1px solid var(--border-color)', flex: '1 1 0' }}>
                         <div className="p-3">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-3 px-1">
+                            <p className="text-xs uppercase tracking-wider font-bold mb-3 px-1"
+                               style={{ color: 'var(--text-muted)' }}>
                                 Historial
                             </p>
 
@@ -323,7 +358,7 @@ export function AppSidebar({
 
                                 return (
                                     <div key={group} className="mb-4">
-                                        <p className="text-xs text-gray-600 font-medium mb-2 px-1">{group}</p>
+                                        <p className="text-xs font-medium mb-2 px-1" style={{ color: 'var(--text-muted)' }}>{group}</p>
                                         <div className="space-y-0.5">
                                             {items.map(pedido => {
                                                 const cliente = clientes[pedido.cliente];
@@ -333,11 +368,11 @@ export function AppSidebar({
                                                 return (
                                                     <div
                                                         key={pedido.id}
-                                                        className={`group relative flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors ${
-                                                            isActive
-                                                                ? 'bg-gray-800 text-white'
-                                                                : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'
-                                                        }`}
+                                                        className="group relative flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors"
+                                                        style={{
+                                                            backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
+                                                            color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)'
+                                                        }}
                                                         onClick={() => onSelectPedido(pedido.id)}
                                                         onContextMenu={(e) => handleContextMenu(e, pedido)}
                                                         onMouseEnter={() => setHoveredPedidoId(pedido.id)}
@@ -351,7 +386,7 @@ export function AppSidebar({
                                                             <p className="text-sm truncate font-medium">
                                                                 {getPedidoTitle(pedido)}
                                                             </p>
-                                                            <p className="text-xs text-gray-500 truncate">
+                                                            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
                                                                 {cliente?.nombre_comercial || pedido.cliente || 'Sin cliente'}
                                                             </p>
                                                         </div>
@@ -360,7 +395,8 @@ export function AppSidebar({
                                                         {(isHovered || isActive) && (
                                                             <button
                                                                 onClick={(e) => handleContextMenu(e, pedido)}
-                                                                className="p-1 rounded hover:bg-gray-700 text-gray-500 hover:text-white transition-colors flex-shrink-0"
+                                                                className="p-1 rounded transition-colors flex-shrink-0"
+                                                                style={{ color: 'var(--text-muted)' }}
                                                             >
                                                                 <IconMoreVertical />
                                                             </button>
@@ -375,10 +411,11 @@ export function AppSidebar({
 
                             {pedidos.length === 0 && (
                                 <div className="text-center py-8">
-                                    <p className="text-gray-600 text-sm">No hay requerimientos</p>
+                                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No hay requerimientos</p>
                                     <button
                                         onClick={onNuevoRequerimiento}
-                                        className="mt-2 text-orange-500 hover:text-orange-400 text-sm font-medium"
+                                        className="mt-2 text-sm font-medium"
+                                        style={{ color: 'var(--accent-orange)' }}
                                     >
                                         + Crear el primero
                                     </button>
@@ -388,15 +425,45 @@ export function AppSidebar({
                     </div>
                 )}
 
-                {/* Footer colapsado - mostrar indicador de cantidad */}
-                {!isExpanded && pedidos.length > 0 && (
-                    <div className="mt-auto p-2 border-t border-gray-800">
-                        <div className="flex flex-col items-center gap-1 text-gray-500">
-                            <IconDocument />
-                            <span className="text-xs font-bold">{pedidos.length}</span>
-                        </div>
-                    </div>
-                )}
+                {/* Spacer to push theme toggle to bottom (only when collapsed) */}
+                {!isExpanded && <div className="flex-1" />}
+
+                {/* Theme Toggle - ALWAYS at absolute bottom */}
+                <div className={`${isExpanded ? 'p-3' : 'p-2'}`}
+                     style={{ borderTop: '1px solid var(--border-color)' }}>
+                    <button
+                        onClick={toggleTheme}
+                        className={`group relative flex items-center gap-3 rounded-lg transition-all w-full ${
+                            isExpanded ? 'px-3 py-2.5' : 'p-2.5 justify-center'
+                        }`}
+                        style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                            color: 'var(--text-secondary)'
+                        }}
+                        title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                    >
+                        <span className="transition-transform duration-300">
+                            {theme === 'dark' ? <IconSun /> : <IconMoon />}
+                        </span>
+                        {isExpanded && (
+                            <span className="text-sm">
+                                {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+                            </span>
+                        )}
+
+                        {/* Tooltip para estado colapsado */}
+                        {!isExpanded && (
+                            <div className="absolute left-full ml-3 px-3 py-1.5 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg"
+                                 style={{
+                                     backgroundColor: 'var(--bg-card)',
+                                     color: 'var(--text-primary)',
+                                     border: '1px solid var(--border-color)'
+                                 }}>
+                                {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+                            </div>
+                        )}
+                    </button>
+                </div>
             </aside>
 
             {/* Context Menu */}

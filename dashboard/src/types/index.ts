@@ -126,9 +126,11 @@ export interface Pedido {
     cliente: string;
     vendedora: string;
     descripcion: string;
+    descripcion_corta?: string;      // Título corto opcional para mostrar en tabla
     estado: 'cotizacion' | 'aprobado' | 'aprobado_pendiente_cambios' | 'en_produccion' | 'listo' | 'entregado' | 'cerrado';
     fecha_compromiso?: string;
-    rq_numero?: string | null;
+    rq_numero?: string | null;       // Código INTERNO de la empresa (manual, ej: RQ-123)
+    rl_numero?: string | null;       // Requisito Logístico del SISTEMA (auto, ej: RL-2026-0001)
     created_at: string;
     updated_at: string;
     precio?: number;
@@ -215,6 +217,7 @@ export interface VarianteCotizacion {
 // Cotización de proveedor (puede tener una o más variantes)
 export interface Cotizacion {
     id: string;
+    rl_numero?: string;              // Requisito Logístico del sistema (RL-YYYY-XXXX)
     pedido_id?: string;              // FK al pedido (para relación)
     proveedor_id: string;            // ID del proveedor (nombre)
     fecha: string;                   // Fecha de la cotización
@@ -306,6 +309,7 @@ export interface MovimientoMovilidad {
 // ============================================
 export interface Produccion {
     id: string;
+    rl_numero?: string;                   // Requisito Logístico del sistema (RL-YYYY-XXXX)
     pedido_id: string;                    // FK a pedidos(id)
     cotizacion_id?: string;               // FK a cotizaciones(id) - opcional
     proveedor_id: string;                 // Nombre del proveedor
@@ -368,3 +372,185 @@ export interface KPIs {
     tasaConversion: number;     // % of closed orders vs total
     saldoPendiente: number;     // Total price - total paid
 }
+
+// ============================================
+// EVENTOS DIARIOS (JSON día a día)
+// Estructura para importar resumen de actividades diarias
+// ============================================
+
+// Secciones disponibles en el JSON de día a día
+export type SeccionEvento = 'MOVIMIENTO_LOGISTICO' | 'RENDICION_PAGO' | 'PRODUCCION';
+
+// Estados posibles de un evento
+export type EstadoEvento = 'completado' | 'pendiente' | 'registrado' | 'pagado' | 'en_produccion';
+
+// ============================================
+// MOVIMIENTOS LOGÍSTICOS
+// ============================================
+export type TipoMovimientoLogistico = 'entrega' | 'recojo' | 'compra' | 'traslado';
+
+export interface ItemMovimiento {
+    producto: string;
+    cantidad: number;
+    proveedor?: string;
+}
+
+export interface DetalleMovimientoEntrega {
+    items: ItemMovimiento[];
+}
+
+export interface DetalleMovimientoRecojo {
+    origen: string;
+    destino?: string;
+    item?: string;
+    motivo?: string;
+    fecha_evento?: string;
+}
+
+export interface MovimientoLogistico {
+    id: string;
+    rl_numero?: string;                     // Requisito Logístico del sistema (RL-YYYY-XXXX)
+    fecha: string;                          // Fecha del movimiento
+    seccion: 'MOVIMIENTO_LOGISTICO';
+    tipo: TipoMovimientoLogistico;
+    cliente?: string;                       // Cliente asociado
+    proveedor?: string;                     // Proveedor asociado
+    pedido_id?: string;                     // FK a pedidos (si aplica)
+
+    // Detalle flexible según tipo
+    detalle: DetalleMovimientoEntrega | DetalleMovimientoRecojo | Record<string, unknown>;
+
+    estado: EstadoEvento;
+    observaciones?: string;
+
+    // Costos asociados
+    costo_movilidad?: number;
+
+    // Metadata
+    created_at: string;
+    updated_at: string;
+}
+
+// ============================================
+// RENDICIONES Y PAGOS
+// ============================================
+export type TipoRendicion = 'movilidad' | 'adelanto_produccion' | 'pago_saldo' | 'gasto_extra' | 'compra_material';
+
+export interface DetalleRendicionMovilidad {
+    concepto: string;
+    monto: number;
+    moneda: 'PEN' | 'USD';
+    comprobante?: string;
+}
+
+export interface DetalleRendicionAdelanto {
+    porcentaje: number;
+    monto_pagado: number;
+    moneda: 'PEN' | 'USD';
+    incluye_igv: boolean;
+    factura_requerida: boolean;
+}
+
+export interface Rendicion {
+    id: string;
+    rl_numero?: string;                     // Requisito Logístico del sistema (RL-YYYY-XXXX)
+    fecha: string;                          // Fecha de la rendición
+    seccion: 'RENDICION_PAGO';
+    tipo: TipoRendicion;
+    cliente?: string;                       // Cliente asociado
+    proveedor?: string;                     // Proveedor asociado
+    pedido_id?: string;                     // FK a pedidos (si aplica)
+    produccion_id?: string;                 // FK a producciones (si aplica)
+
+    // Detalle flexible según tipo
+    detalle: DetalleRendicionMovilidad | DetalleRendicionAdelanto | Record<string, unknown>;
+
+    // Montos
+    monto: number;
+    moneda: 'PEN' | 'USD';
+
+    estado: EstadoEvento;
+    observaciones?: string;
+
+    // Comprobantes
+    tiene_comprobante: boolean;
+    tipo_comprobante?: 'boleta' | 'factura' | 'recibo' | 'ninguno';
+    numero_comprobante?: string;
+
+    // Metadata
+    created_at: string;
+    updated_at: string;
+}
+
+// ============================================
+// EVENTOS DE PRODUCCIÓN (del JSON día a día)
+// Se vincula con la tabla producciones existente
+// ============================================
+export interface DetalleProduccion {
+    producto: string;
+    cantidad_total?: number;
+    cantidad?: number;
+    especificaciones?: Record<string, unknown>;
+    precio_por_millar_sin_igv?: number;
+    precio_unitario?: number;
+}
+
+export interface EventoProduccion {
+    id: string;
+    rl_numero?: string;                     // Requisito Logístico del sistema (RL-YYYY-XXXX)
+    fecha: string;
+    seccion: 'PRODUCCION';
+    tipo: 'orden_produccion';
+    cliente: string;
+    proveedor: string;
+    pedido_id?: string;                     // FK a pedidos (si aplica)
+
+    // Detalle del producto (campos directos para la DB)
+    producto: string;
+    cantidad?: number;
+    especificaciones?: Record<string, unknown>;
+    precio_unitario?: number;
+    precio_total?: number;
+
+    estado: EstadoEvento;
+    observaciones?: string;
+
+    // Metadata
+    created_at: string;
+    updated_at: string;
+}
+
+// ============================================
+// RESUMEN DIARIO (JSON completo)
+// ============================================
+export interface EventoDiaGenerico {
+    seccion: SeccionEvento;
+    tipo: string;
+    cliente?: string;
+    proveedor?: string;
+    detalle: Record<string, unknown>;
+    estado: string;
+    observaciones?: string;
+}
+
+export interface ResumenDiario {
+    fecha: string;
+    eventos_dia: EventoDiaGenerico[];
+}
+
+// Estados para UI de movimientos logísticos
+export const TIPOS_MOVIMIENTO = [
+    { value: 'entrega', label: 'Entrega', color: 'bg-green-500', icon: '📦' },
+    { value: 'recojo', label: 'Recojo', color: 'bg-blue-500', icon: '🚚' },
+    { value: 'compra', label: 'Compra', color: 'bg-amber-500', icon: '🛒' },
+    { value: 'traslado', label: 'Traslado', color: 'bg-purple-500', icon: '🔄' },
+] as const;
+
+// Estados para UI de rendiciones
+export const TIPOS_RENDICION = [
+    { value: 'movilidad', label: 'Movilidad', color: 'bg-cyan-500', icon: '🚕' },
+    { value: 'adelanto_produccion', label: 'Adelanto Producción', color: 'bg-orange-500', icon: '💰' },
+    { value: 'pago_saldo', label: 'Pago Saldo', color: 'bg-emerald-500', icon: '✅' },
+    { value: 'gasto_extra', label: 'Gasto Extra', color: 'bg-red-500', icon: '📋' },
+    { value: 'compra_material', label: 'Compra Material', color: 'bg-indigo-500', icon: '🛍️' },
+] as const;

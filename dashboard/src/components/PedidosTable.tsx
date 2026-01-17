@@ -45,6 +45,11 @@ export function PedidosTable() {
     const [showNuevoPedidoModal, setShowNuevoPedidoModal] = useState(false);
     const [cotizacionesModalPedidoId, setCotizacionesModalPedidoId] = useState<string | null>(null);
 
+    // Modal de edición de descripción
+    const [descripcionModalPedidoId, setDescripcionModalPedidoId] = useState<string | null>(null);
+    const [descripcionModalValue, setDescripcionModalValue] = useState('');
+    const [descripcionCortaModalValue, setDescripcionCortaModalValue] = useState('');
+
     // Selection state
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [confirmDelete, setConfirmDelete] = useState<{ type: 'single' | 'batch', ids: string[] } | null>(null);
@@ -81,6 +86,16 @@ export function PedidosTable() {
             let val: string | number = editValue;
             if (['precio'].includes(editingCell.field)) {
                 val = Number(val.toString().replace(/[^\d.]/g, ''));
+            }
+            // Auto-formatear RL: si es solo número, convertir a RL-YYYY-XXXX
+            if (editingCell.field === 'rl_numero' && val) {
+                const valStr = val.toString().trim();
+                // Si es solo dígitos, formatear como RL-YYYY-XXXX
+                if (/^\d+$/.test(valStr)) {
+                    const year = new Date().getFullYear();
+                    const num = valStr.padStart(4, '0');
+                    val = `RL-${year}-${num}`;
+                }
             }
             updatePedido(editingCell.id, { [editingCell.field]: val });
             setEditingCell(null);
@@ -296,13 +311,8 @@ export function PedidosTable() {
                                 { label: 'Descripción', w: 'w-64' },
                                 { label: 'Vendedor/a', w: 'w-32' },
                                 { label: 'Estado', w: 'w-40' },
-                                { label: 'RQ', w: 'w-24' },
-                                // Mostrar Precio/Pagado/Saldo solo si hay algún pedido que NO sea cotización
-                                ...(filteredPedidos.some(p => p.estado !== 'cotizacion') ? [
-                                    { label: 'Precio', w: 'w-32' },
-                                    { label: 'Pagado', w: 'w-32' },
-                                    { label: 'Saldo', w: 'w-32' }
-                                ] : []),
+                                { label: 'RL', w: 'w-32' },     // RL: Requisito Logístico (auto, editable)
+                                { label: 'RQ', w: 'w-28' },     // RQ: Código interno (manual)
                                 { label: '', w: 'w-10' }
                             ].map((col, idx) => (
                                 <th key={idx} className={`p-4 text-left font-medium ${col.w}`}>{col.label}</th>
@@ -336,7 +346,7 @@ export function PedidosTable() {
                                                 value={editValue}
                                                 onChange={e => setEditValue(e.target.value)}
                                                 onBlur={handleEditSave}
-                                                onKeyDown={e => e.key === 'Enter' && handleEditSave()}
+                                                onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
                                                 className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-sm"
                                             />
                                         ) : (
@@ -354,6 +364,12 @@ export function PedidosTable() {
                                                         type="text"
                                                         value={editValue}
                                                         onChange={(e) => setEditValue(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Escape') {
+                                                                setEditingCell(null);
+                                                                setEditValue('');
+                                                            }
+                                                        }}
                                                         placeholder="Buscar cliente..."
                                                         className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white text-xs focus:border-cyan-500 outline-none"
                                                     />
@@ -404,9 +420,9 @@ export function PedidosTable() {
                                                 onClick={() => handleEditStart(pedido.id, 'cliente', pedido.cliente)}
                                             >
                                                 <div className="relative w-8 h-8 flex-shrink-0 bg-gray-900 rounded-full border border-gray-800 overflow-hidden shadow-inner">
-                                                    {pedido.cliente && clientes[pedido.cliente]?.logo ? (
+                                                    {pedido.cliente && (clientes[pedido.cliente]?.logo || clientes[pedido.cliente]?.grupo_logo_url) ? (
                                                         <img
-                                                            src={clientes[pedido.cliente].logo}
+                                                            src={clientes[pedido.cliente].logo || clientes[pedido.cliente].grupo_logo_url}
                                                             alt=""
                                                             className="w-full h-full object-cover"
                                                             onError={(e) => {
@@ -422,26 +438,29 @@ export function PedidosTable() {
                                                 </div>
                                                 <div className="flex flex-col leading-tight">
                                                     <span className={pedido.cliente ? 'text-gray-100' : 'text-gray-500 italic'}>
-                                                        {pedido.cliente || 'Sin cliente'}
+                                                        {pedido.cliente
+                                                            ? (clientes[pedido.cliente]?.nombre_comercial && clientes[pedido.cliente]?.nombre_comercial?.trim()
+                                                                ? clientes[pedido.cliente].nombre_comercial
+                                                                : pedido.cliente)
+                                                            : 'Sin cliente'}
                                                     </span>
                                                     <span className="text-[10px] text-gray-500 font-mono font-normal">{pedido.id}</span>
                                                 </div>
                                             </div>
                                         )}
                                     </td>
-                                    <td className="p-4 align-middle hover:text-cyan-400 cursor-pointer transition-colors" onClick={() => handleEditStart(pedido.id, 'descripcion', pedido.descripcion)}>
-                                        {editingCell?.id === pedido.id && editingCell?.field === 'descripcion' ? (
-                                            <input
-                                                autoFocus
-                                                value={editValue}
-                                                onChange={e => setEditValue(e.target.value)}
-                                                onBlur={handleEditSave}
-                                                onKeyDown={e => e.key === 'Enter' && handleEditSave()}
-                                                className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none"
-                                            />
-                                        ) : (
-                                            <div className="truncate max-w-[240px]" title={pedido.descripcion}>{pedido.descripcion}</div>
-                                        )}
+                                    <td
+                                        className="p-4 align-middle hover:text-cyan-400 cursor-pointer transition-colors"
+                                        onClick={() => {
+                                            setDescripcionModalPedidoId(pedido.id);
+                                            setDescripcionModalValue(pedido.descripcion);
+                                            setDescripcionCortaModalValue(pedido.descripcion_corta || '');
+                                        }}
+                                        title={pedido.descripcion}
+                                    >
+                                        <div className="truncate max-w-[240px]">
+                                            {pedido.descripcion_corta || pedido.descripcion}
+                                        </div>
                                     </td>
                                     <td
                                         className="p-4 align-middle cursor-pointer transition-colors group/seller"
@@ -454,7 +473,7 @@ export function PedidosTable() {
                                                 value={editValue}
                                                 onChange={e => setEditValue(e.target.value)}
                                                 onBlur={handleEditSave}
-                                                onKeyDown={e => e.key === 'Enter' && handleEditSave()}
+                                                onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
                                                 className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-cyan-400"
                                             />
                                         ) : (
@@ -465,7 +484,13 @@ export function PedidosTable() {
                                     </td>
                                     <td className="p-4 align-middle">
                                         {editingCell?.id === pedido.id && editingCell?.field === 'estado' ? (
-                                            <div className="absolute z-50">
+                                            <div
+                                                className="absolute z-50"
+                                                tabIndex={0}
+                                                autoFocus
+                                                onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
+                                                ref={(el) => el?.focus()}
+                                            >
                                                 <div className="bg-gray-950 border border-gray-700 rounded-lg shadow-lg">
                                                     {['cotizacion', 'aprobado', 'en_produccion', 'listo', 'entregado', 'cerrado'].map(estadoOpt => {
                                                         const colors: Record<string, string> = {
@@ -485,6 +510,7 @@ export function PedidosTable() {
                                                                     updatePedido(pedido.id, { estado: newVal });
                                                                     setEditingCell(null);
                                                                 }}
+                                                                onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
                                                                 className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs font-semibold uppercase tracking-wide transition-colors ${colors[estadoOpt]}`}
                                                             >
                                                                 {estadoOpt === 'cotizacion' ? 'Cotización' :
@@ -510,48 +536,50 @@ export function PedidosTable() {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="p-4 align-middle font-mono text-gray-500 italic">
-                                        {pedido.rq_numero || '-'}
+                                    {/* RL - Requisito Logístico (editable) */}
+                                    <td
+                                        className="p-4 align-middle cursor-pointer transition-colors group/rl"
+                                        onClick={() => handleEditStart(pedido.id, 'rl_numero', pedido.rl_numero || '')}
+                                        title="Click para editar RL"
+                                    >
+                                        {editingCell?.id === pedido.id && editingCell?.field === 'rl_numero' ? (
+                                            <input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value.toUpperCase())}
+                                                onBlur={handleEditSave}
+                                                onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
+                                                placeholder="Ej: 25"
+                                                className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-20 outline-none text-cyan-400 font-mono text-xs"
+                                            />
+                                        ) : (
+                                            <span className={`font-mono text-xs group-hover/rl:text-cyan-300 transition-colors ${pedido.rl_numero ? 'text-cyan-400 font-semibold' : 'text-gray-600 italic'}`}>
+                                                {pedido.rl_numero || '-'}
+                                            </span>
+                                        )}
                                     </td>
-                                    {/* Mostrar Precio/Pagado/Saldo solo si estado !== 'cotizacion' */}
-                                    {pedido.estado !== 'cotizacion' && (
-                                        <>
-                                            <td className="p-4 align-middle font-mono text-gray-100 group/price">
-                                                <div className="flex items-center gap-2">
-                                                    {editingCell?.id === pedido.id && editingCell?.field === 'precio' ? (
-                                                        <input
-                                                            autoFocus
-                                                            value={editValue}
-                                                            onChange={e => setEditValue(e.target.value)}
-                                                            onBlur={handleEditSave}
-                                                            onKeyDown={e => e.key === 'Enter' && handleEditSave()}
-                                                            className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-24 outline-none font-mono"
-                                                        />
-                                                    ) : (
-                                                        <div
-                                                            className="flex items-center gap-1 cursor-pointer hover:text-cyan-400 transition-colors"
-                                                            onClick={() => handleEditStart(pedido.id, 'precio', pedido.precio)}
-                                                        >
-                                                            <span className="text-gray-500">S/.</span>
-                                                            {(pedido.precio || 0).toFixed(2)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 align-middle font-mono text-emerald-400">
-                                                <span className="flex items-center gap-1">
-                                                    <span className="text-emerald-900">S/.</span>
-                                                    {(pedido.pagado || 0).toFixed(2)}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 align-middle font-mono font-bold">
-                                                <span className={`flex items-center gap-1 ${(pedido.precio || 0) - (pedido.pagado || 0) > 0 ? 'text-red-400' : 'text-gray-500'}`}>
-                                                    <span className="opacity-30">S/.</span>
-                                                    {((pedido.precio || 0) - (pedido.pagado || 0)).toFixed(2)}
-                                                </span>
-                                            </td>
-                                        </>
-                                    )}
+                                    {/* RQ - Código interno empresa (manual, editable) */}
+                                    <td
+                                        className="p-4 align-middle cursor-pointer transition-colors group/rq"
+                                        onClick={() => handleEditStart(pedido.id, 'rq_numero', pedido.rq_numero || '')}
+                                        title="Click para editar RQ"
+                                    >
+                                        {editingCell?.id === pedido.id && editingCell?.field === 'rq_numero' ? (
+                                            <input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value.toUpperCase())}
+                                                onBlur={handleEditSave}
+                                                onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
+                                                placeholder="RQ-123"
+                                                className="bg-gray-950 border border-amber-500 rounded px-2 py-1 w-20 outline-none text-amber-400 font-mono text-xs"
+                                            />
+                                        ) : (
+                                            <span className={`font-mono text-xs group-hover/rq:text-amber-400 transition-colors ${pedido.rq_numero ? 'text-amber-400' : 'text-gray-600 italic'}`}>
+                                                {pedido.rq_numero || '-'}
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="p-4 align-middle">
                                         <button
                                             onClick={() => toggleExpand(pedido.id)}
@@ -565,9 +593,52 @@ export function PedidosTable() {
                                 {/* Expanded Row: Payments Detail */}
                                 {expandedRowId === pedido.id && (
                                     <tr className="bg-gray-900/30">
-                                        <td colSpan={11} className="p-0 border-b border-gray-800">
+                                        <td colSpan={9} className="p-0 border-b border-gray-800">
                                             <div className="p-6 flex flex-col md:flex-row gap-8 animate-in slide-in-from-top-2 duration-200">
-                                                {/* Left: Payment List */}
+                                                {/* Resumen Financiero */}
+                                                <div className="w-full md:w-56 bg-gradient-to-br from-gray-950 to-gray-900 p-4 rounded-xl border border-gray-700 space-y-4">
+                                                    <h4 className="text-xs uppercase font-bold text-gray-400 tracking-widest flex items-center gap-2">
+                                                        <span>💰</span> Resumen Financiero
+                                                    </h4>
+                                                    {/* Precio - Editable */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-gray-500 font-bold">PRECIO TOTAL</label>
+                                                        {editingCell?.id === pedido.id && editingCell?.field === 'precio' ? (
+                                                            <input
+                                                                autoFocus
+                                                                type="number"
+                                                                value={editValue}
+                                                                onChange={e => setEditValue(e.target.value)}
+                                                                onBlur={handleEditSave}
+                                                                onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
+                                                                className="w-full bg-gray-950 border border-cyan-500 rounded p-2 text-white font-mono text-lg outline-none"
+                                                            />
+                                                        ) : (
+                                                            <div
+                                                                onClick={() => handleEditStart(pedido.id, 'precio', pedido.precio || 0)}
+                                                                className="text-2xl font-bold text-white font-mono cursor-pointer hover:text-cyan-400 transition-colors"
+                                                            >
+                                                                S/. {(pedido.precio || 0).toFixed(2)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {/* Pagado */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-gray-500 font-bold">PAGADO</label>
+                                                        <div className="text-lg font-bold text-emerald-400 font-mono">
+                                                            S/. {(pedido.pagado || 0).toFixed(2)}
+                                                        </div>
+                                                    </div>
+                                                    {/* Saldo */}
+                                                    <div className="space-y-1 pt-2 border-t border-gray-700">
+                                                        <label className="text-[10px] text-gray-500 font-bold">SALDO PENDIENTE</label>
+                                                        <div className={`text-xl font-bold font-mono ${(pedido.precio || 0) - (pedido.pagado || 0) > 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                                                            S/. {((pedido.precio || 0) - (pedido.pagado || 0)).toFixed(2)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Payment List */}
                                                 <div className="flex-1 space-y-4">
                                                     <h4 className="text-xs uppercase font-bold text-gray-500 tracking-widest flex items-center gap-2">
                                                         <span>💳</span> Historial de Pagos
@@ -701,6 +772,92 @@ export function PedidosTable() {
                 onConfirm={handleDeleteConfirm}
                 onCancel={() => setConfirmDelete(null)}
             />
+
+            {/* Modal Editar Descripción */}
+            {descripcionModalPedidoId && (
+                <div
+                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+                    onKeyDown={(e) => { if (e.key === 'Escape') setDescripcionModalPedidoId(null); }}
+                    tabIndex={0}
+                    ref={(el) => el?.focus()}
+                >
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <span className="text-xl">📝</span>
+                                Editar Descripción
+                            </h2>
+                            <button
+                                onClick={() => setDescripcionModalPedidoId(null)}
+                                className="w-8 h-8 rounded-full hover:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-white transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-5 space-y-4">
+                            {/* Título corto (opcional) */}
+                            <div className="space-y-2">
+                                <label className="text-xs text-gray-400 font-bold uppercase tracking-wide flex items-center gap-2">
+                                    Título corto
+                                    <span className="text-gray-600 font-normal normal-case">(opcional - se muestra en tabla)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={descripcionCortaModalValue}
+                                    onChange={(e) => setDescripcionCortaModalValue(e.target.value.toUpperCase())}
+                                    placeholder="Ej: LANYARDS EVENTO, POLOS CAMPAÑA..."
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none transition-colors"
+                                    autoFocus
+                                />
+                                <p className="text-[10px] text-gray-600">
+                                    Si lo dejas vacío, se mostrará la descripción completa truncada
+                                </p>
+                            </div>
+
+                            {/* Descripción completa */}
+                            <div className="space-y-2">
+                                <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
+                                    Descripción completa
+                                </label>
+                                <textarea
+                                    value={descripcionModalValue}
+                                    onChange={(e) => setDescripcionModalValue(e.target.value.toUpperCase())}
+                                    rows={4}
+                                    placeholder="Descripción detallada del pedido..."
+                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none transition-colors resize-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex justify-end gap-3 p-5 border-t border-gray-800">
+                            <button
+                                onClick={() => setDescripcionModalPedidoId(null)}
+                                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (descripcionModalPedidoId) {
+                                        updatePedido(descripcionModalPedidoId, {
+                                            descripcion: descripcionModalValue,
+                                            descripcion_corta: descripcionCortaModalValue || undefined
+                                        });
+                                        setDescripcionModalPedidoId(null);
+                                    }
+                                }}
+                                className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold transition-colors"
+                            >
+                                Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

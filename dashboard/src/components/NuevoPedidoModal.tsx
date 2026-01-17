@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useDatabase } from '../context/DatabaseContext';
 import { toUpperCase } from '../utils/parsers';
+import { generateRL } from '../utils/rqGenerator';
 
 interface Props {
     isOpen: boolean;
@@ -22,7 +23,7 @@ const getEstadoColor = (estado: string) => {
 
 
 export function NuevoPedidoModal({ isOpen, onClose }: Props) {
-    const { clientes, getItemsUnicos, createPedido, createLineaPedido, createCliente } = useDatabase();
+    const { clientes, pedidos, getItemsUnicos, createPedido, createLineaPedido, createCliente } = useDatabase();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
@@ -35,6 +36,9 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     const [isEstadoDropdownOpen, setIsEstadoDropdownOpen] = useState(false);
     const [rqNumero, setRqNumero] = useState('');
     const [fechaCompromiso, setFechaCompromiso] = useState('');
+
+    // Auto-generate next RL for preview
+    const nextRL = useMemo(() => generateRL(pedidos), [pedidos]);
 
     // Form para cada item (como un object con múltiples entradas)
     const [itemForms, setItemForms] = useState<Array<{id: string; item: string; detalle: string}>>([{id: `FORM-${Date.now()}`, item: '', detalle: ''}]);
@@ -211,6 +215,9 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
             }
 
             // Create the pedido
+            // RQ es el código interno de la empresa (texto libre, manual)
+            // RL se auto-genera en DatabaseContext
+
             const descripcionItems = itemsACrear.map(f => f.item).join(', ');
             const pedido = await createPedido({
                 cliente: clienteParaPedido,
@@ -219,7 +226,8 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                 estado,
                 precio: 0, // En cotización siempre es 0
                 pagado: 0,
-                rq_numero: rqNumero || null,
+                rq_numero: rqNumero.trim() || null,  // Código interno empresa (manual)
+                // rl_numero se auto-genera en createPedido
                 fecha_compromiso: fechaFinal,
             });
 
@@ -246,7 +254,10 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
     if (!isOpen) return null;
 
     const modalContent = (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+        <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            onKeyDown={(e) => { if (e.key === 'Escape' && !isDropdownOpen && !isEstadoDropdownOpen) onClose(); }}
+        >
             <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-800">
@@ -288,7 +299,12 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
 
                             {/* Dropdown Content */}
                             {isDropdownOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border border-gray-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                                <div
+                                    className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border border-gray-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto"
+                                    tabIndex={0}
+                                    ref={(el) => el?.focus()}
+                                    onKeyDown={(e) => { if (e.key === 'Escape') setIsDropdownOpen(false); }}
+                                >
                                     {mainEntities.map((entity) => {
                                         if (!entity.isGroup) {
                                             // Independent client
@@ -436,7 +452,12 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
 
                             {/* Dropdown menu */}
                             {isEstadoDropdownOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border-2 border-gray-700 rounded-lg shadow-lg z-50">
+                                <div
+                                    className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border-2 border-gray-700 rounded-lg shadow-lg z-50"
+                                    tabIndex={0}
+                                    ref={(el) => el?.focus()}
+                                    onKeyDown={(e) => { if (e.key === 'Escape') setIsEstadoDropdownOpen(false); }}
+                                >
                                     {ESTADOS_INICIALES.map(e => (
                                         <button
                                             key={e.value}
@@ -460,19 +481,32 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                         </div>
                     </div>
 
-                    {/* RQ + Fecha Compromiso */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* RL (auto) + RQ (manual) + Fecha Compromiso */}
+                    <div className="grid grid-cols-3 gap-4">
+                        {/* RL - Auto generado por sistema */}
                         <div className="space-y-1">
                             <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
-                                RQ / Referencia
+                                RL Sistema
+                            </label>
+                            <div className="w-full bg-gray-950/50 border border-gray-800 rounded-lg p-3 text-cyan-400 font-mono text-sm">
+                                {nextRL}
+                            </div>
+                            <p className="text-[10px] text-gray-500">Auto-generado</p>
+                        </div>
+
+                        {/* RQ - Código interno de la empresa (manual) */}
+                        <div className="space-y-1">
+                            <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
+                                RQ Interno
                             </label>
                             <input
                                 type="text"
                                 value={rqNumero}
                                 onChange={(e) => setRqNumero(toUpperCase(e.target.value))}
-                                placeholder="EJ: RQ-2024-001"
+                                placeholder="Ej: RQ-123"
                                 className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none text-sm uppercase"
                             />
+                            <p className="text-[10px] text-gray-500">Código empresa (opcional)</p>
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">

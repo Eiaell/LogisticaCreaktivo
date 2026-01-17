@@ -47,6 +47,12 @@ export function KPICards({ onCardClick }: Props) {
             color: 'from-amber-500 to-orange-600',
         },
         {
+            title: 'Movilidad Hoy',
+            value: `S/. ${kpis.movilidadHoy.toLocaleString()}`,
+            icon: '🚕',
+            color: 'from-cyan-500 to-teal-600',
+        },
+        {
             title: 'Alertas',
             value: kpis.alertas,
             icon: '⚠️',
@@ -56,7 +62,7 @@ export function KPICards({ onCardClick }: Props) {
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
             {cards.map((card) => (
                 <div
                     key={card.title}
