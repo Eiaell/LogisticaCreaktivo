@@ -1032,7 +1032,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                     return (
                                         <button
                                             key={fecha}
-                                            onClick={() => setSelectedDate(fecha)}
+                                            onClick={() => setSelectedDate(isSelected ? null : fecha)}
                                             className={`w-full text-left p-3 rounded-lg transition-colors ${
                                                 isSelected
                                                     ? 'bg-cyan-600/20 border border-cyan-500/50'
