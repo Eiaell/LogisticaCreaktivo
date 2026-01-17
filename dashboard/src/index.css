@@ -788,3 +788,76 @@ body {
 .light .border-gray-900 {
   border-color: var(--border-color) !important;
 }
+
+/* ============================================
+   MODERN CALENDAR - Light Mode Override
+   ============================================ */
+
+/* Calendar container */
+.light .bg-gray-900\/80 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Calendar navigation buttons */
+.light .bg-gray-800\/80 {
+  background-color: rgba(243, 244, 246, 0.8) !important;
+}
+
+.light .hover\:bg-cyan-600\/30:hover {
+  background-color: rgba(6, 182, 212, 0.15) !important;
+}
+
+/* Calendar day cells */
+.light .bg-gray-800\/60 {
+  background-color: rgba(243, 244, 246, 0.7) !important;
+}
+
+.light .hover\:bg-gray-700\/80:hover {
+  background-color: rgba(229, 231, 235, 0.9) !important;
+}
+
+/* Calendar selected day gradient */
+.light .bg-gradient-to-br.from-cyan-500.to-blue-600 {
+  background: linear-gradient(135deg, #06b6d4, #2563eb) !important;
+  color: white !important;
+}
+
+/* Calendar today ring */
+.light .ring-amber-500\/50 {
+  --tw-ring-color: rgba(245, 158, 11, 0.6) !important;
+}
+
+/* Calendar hover border */
+.light .hover\:border-cyan-500\/50:hover {
+  border-color: rgba(6, 182, 212, 0.5) !important;
+}
+
+/* Calendar tooltip */
+.light .bg-gray-800.border.border-gray-700 {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+/* Gray text in calendar */
+.light .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+/* Border colors in calendar */
+.light .border-gray-700\/50 {
+  border-color: rgba(229, 231, 235, 1) !important;
+}
+
+.light .border-gray-800\/50 {
+  border-color: rgba(229, 231, 235, 0.5) !important;
+}
+
+/* Calendar "Go to Today" button */
+.light .bg-gradient-to-r.from-cyan-600\/20.to-blue-600\/20 {
+  background: linear-gradient(to right, rgba(6, 182, 212, 0.1), rgba(37, 99, 235, 0.1)) !important;
+}
+
+.light .hover\:from-cyan-600\/40:hover {
+  background: linear-gradient(to right, rgba(6, 182, 212, 0.2), rgba(37, 99, 235, 0.2)) !important;
+}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import type { MovimientoLogistico, Rendicion, EventoProduccion } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
@@ -6,6 +6,239 @@ import { SincronizarEventoModal } from './SincronizarEventoModal';
 
 interface DiaADiaPageProps {
     onBack: () => void;
+}
+
+// Nombres de días y meses en español
+const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+// Componente de Calendario Moderno
+interface CalendarioProps {
+    fechasConEventos: Record<string, { movimientos: number; rendiciones: number; producciones: number; totalMonto: number }>;
+    selectedDate: string | null;
+    onSelectDate: (date: string) => void;
+}
+
+function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate }: CalendarioProps) {
+    const [currentMonth, setCurrentMonth] = useState(() => {
+        // Empezar en el mes de la primera fecha con eventos, o el mes actual
+        const fechas = Object.keys(fechasConEventos).sort().reverse();
+        if (fechas.length > 0) {
+            const [year, month] = fechas[0].split('-').map(Number);
+            return new Date(year, month - 1, 1);
+        }
+        return new Date();
+    });
+
+    // Obtener días del mes
+    const getDaysInMonth = useCallback((date: Date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDay = firstDay.getDay();
+
+        const days: { date: string; day: number; isCurrentMonth: boolean; isToday: boolean }[] = [];
+
+        // Días del mes anterior
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+        for (let i = startingDay - 1; i >= 0; i--) {
+            const day = prevMonthLastDay - i;
+            const prevMonth = month === 0 ? 11 : month - 1;
+            const prevYear = month === 0 ? year - 1 : year;
+            const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            days.push({ date: dateStr, day, isCurrentMonth: false, isToday: false });
+        }
+
+        // Días del mes actual
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            days.push({
+                date: dateStr,
+                day,
+                isCurrentMonth: true,
+                isToday: dateStr === todayStr
+            });
+        }
+
+        // Días del mes siguiente (para completar la grilla)
+        const remainingDays = 42 - days.length; // 6 filas x 7 días
+        for (let day = 1; day <= remainingDays; day++) {
+            const nextMonth = month === 11 ? 0 : month + 1;
+            const nextYear = month === 11 ? year + 1 : year;
+            const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            days.push({ date: dateStr, day, isCurrentMonth: false, isToday: false });
+        }
+
+        return days;
+    }, []);
+
+    const days = getDaysInMonth(currentMonth);
+
+    const goToPrevMonth = () => {
+        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    };
+
+    const goToNextMonth = () => {
+        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    };
+
+    const goToToday = () => {
+        setCurrentMonth(new Date());
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        if (fechasConEventos[todayStr]) {
+            onSelectDate(todayStr);
+        }
+    };
+
+    // Calcular indicadores de eventos para el mes actual
+    const getEventIndicators = (dateStr: string) => {
+        const eventos = fechasConEventos[dateStr];
+        if (!eventos) return null;
+        return eventos;
+    };
+
+    return (
+        <div className="bg-gray-900/80 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-5 shadow-2xl">
+            {/* Header del calendario */}
+            <div className="flex items-center justify-between mb-5">
+                <button
+                    onClick={goToPrevMonth}
+                    className="p-2.5 rounded-xl bg-gray-800/80 hover:bg-cyan-600/30 border border-gray-700/50 hover:border-cyan-500/50 text-gray-400 hover:text-cyan-400 transition-all duration-200 hover:scale-105 active:scale-95"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+
+                <div className="text-center">
+                    <h3 className="text-xl font-bold text-white tracking-wide">
+                        {MESES[currentMonth.getMonth()]}
+                    </h3>
+                    <span className="text-cyan-400 text-sm font-medium">{currentMonth.getFullYear()}</span>
+                </div>
+
+                <button
+                    onClick={goToNextMonth}
+                    className="p-2.5 rounded-xl bg-gray-800/80 hover:bg-cyan-600/30 border border-gray-700/50 hover:border-cyan-500/50 text-gray-400 hover:text-cyan-400 transition-all duration-200 hover:scale-105 active:scale-95"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Botón de hoy */}
+            <button
+                onClick={goToToday}
+                className="w-full mb-4 py-2 px-4 rounded-xl bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:from-cyan-600/40 hover:to-blue-600/40 border border-cyan-500/30 hover:border-cyan-500/60 text-cyan-400 text-sm font-medium transition-all duration-200"
+            >
+                Ir a Hoy
+            </button>
+
+            {/* Días de la semana */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+                {DIAS_SEMANA.map(dia => (
+                    <div key={dia} className="text-center text-xs font-bold text-gray-500 uppercase tracking-wider py-2">
+                        {dia}
+                    </div>
+                ))}
+            </div>
+
+            {/* Grilla de días */}
+            <div className="grid grid-cols-7 gap-1">
+                {days.map((dayInfo, index) => {
+                    const eventos = getEventIndicators(dayInfo.date);
+                    const isSelected = selectedDate === dayInfo.date;
+                    const hasEvents = eventos !== null;
+
+                    return (
+                        <button
+                            key={index}
+                            onClick={() => hasEvents && onSelectDate(dayInfo.date)}
+                            disabled={!hasEvents}
+                            className={`
+                                relative aspect-square rounded-xl flex flex-col items-center justify-center
+                                transition-all duration-200 group
+                                ${!dayInfo.isCurrentMonth
+                                    ? 'text-gray-700'
+                                    : hasEvents
+                                        ? 'text-white hover:scale-105 cursor-pointer'
+                                        : 'text-gray-500 cursor-default'
+                                }
+                                ${isSelected
+                                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 scale-105 ring-2 ring-cyan-400/50'
+                                    : hasEvents
+                                        ? 'bg-gray-800/60 hover:bg-gray-700/80 border border-gray-700/50 hover:border-cyan-500/50'
+                                        : 'bg-transparent'
+                                }
+                                ${dayInfo.isToday && !isSelected ? 'ring-2 ring-amber-500/50' : ''}
+                            `}
+                        >
+                            <span className={`text-sm font-semibold ${dayInfo.isToday && !isSelected ? 'text-amber-400' : ''}`}>
+                                {dayInfo.day}
+                            </span>
+
+                            {/* Indicadores de eventos */}
+                            {hasEvents && (
+                                <div className="flex gap-0.5 mt-1">
+                                    {eventos.movimientos > 0 && (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400" title={`${eventos.movimientos} movimientos`} />
+                                    )}
+                                    {eventos.rendiciones > 0 && (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-orange-400" title={`${eventos.rendiciones} rendiciones`} />
+                                    )}
+                                    {eventos.producciones > 0 && (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" title={`${eventos.producciones} producciones`} />
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tooltip en hover */}
+                            {hasEvents && !isSelected && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20 whitespace-nowrap">
+                                    <div className="text-xs font-bold text-white mb-1">
+                                        S/. {eventos.totalMonto.toFixed(2)}
+                                    </div>
+                                    <div className="flex gap-2 text-[10px]">
+                                        {eventos.movimientos > 0 && <span className="text-blue-400">🚚 {eventos.movimientos}</span>}
+                                        {eventos.rendiciones > 0 && <span className="text-orange-400">💰 {eventos.rendiciones}</span>}
+                                        {eventos.producciones > 0 && <span className="text-indigo-400">🏭 {eventos.producciones}</span>}
+                                    </div>
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+                                        <div className="border-4 border-transparent border-t-gray-800"></div>
+                                    </div>
+                                </div>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Leyenda */}
+            <div className="mt-4 pt-4 border-t border-gray-800/50">
+                <div className="flex items-center justify-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-400"></div>
+                        <span className="text-gray-500">Movimientos</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-orange-400"></div>
+                        <span className="text-gray-500">Rendiciones</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
+                        <span className="text-gray-500">Producción</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 // Función para formatear fecha
@@ -778,65 +1011,31 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
 
             {/* Contenido principal */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Lista de fechas */}
+                {/* Calendario moderno */}
                 <div className="lg:col-span-1">
-                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                        <h2 className="text-lg font-bold text-white mb-4">Fechas</h2>
-
-                        {fechasOrdenadas.length === 0 ? (
-                            <div className="text-center py-8">
-                                <p className="text-gray-500">No hay eventos registrados</p>
-                                <p className="text-gray-600 text-sm mt-2">Importa un JSON de día a día para comenzar</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                                {fechasOrdenadas.map(fecha => {
-                                    const grupo = eventosPorFecha[fecha];
-                                    const isSelected = selectedDate === fecha;
-                                    const totalEventos = grupo.movimientos.length + grupo.rendiciones.length + grupo.producciones.length;
-
-                                    return (
-                                        <button
-                                            key={fecha}
-                                            onClick={() => setSelectedDate(fecha)}
-                                            className={`w-full text-left p-3 rounded-lg transition-colors ${
-                                                isSelected
-                                                    ? 'bg-cyan-600/20 border border-cyan-500/50'
-                                                    : 'bg-gray-800/50 border border-transparent hover:border-gray-700'
-                                            }`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className={`font-medium ${isSelected ? 'text-cyan-400' : 'text-white'}`}>
-                                                    {fecha}
-                                                </span>
-                                                <span className="text-amber-400 font-mono text-sm">
-                                                    S/. {grupo.totalMonto.toFixed(2)}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                                                <span className="text-gray-400">{totalEventos} eventos</span>
-                                                {grupo.movimientos.length > 0 && (
-                                                    <span className="flex items-center gap-1">
-                                                        🚚 {grupo.movimientos.length}
-                                                    </span>
-                                                )}
-                                                {grupo.rendiciones.length > 0 && (
-                                                    <span className="flex items-center gap-1">
-                                                        💰 {grupo.rendiciones.length}
-                                                    </span>
-                                                )}
-                                                {grupo.producciones.length > 0 && (
-                                                    <span className="flex items-center gap-1">
-                                                        🏭 {grupo.producciones.length}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                    {fechasOrdenadas.length === 0 ? (
+                        <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
+                            <div className="text-5xl mb-4">📅</div>
+                            <p className="text-gray-500">No hay eventos registrados</p>
+                            <p className="text-gray-600 text-sm mt-2">Importa un JSON de día a día para comenzar</p>
+                        </div>
+                    ) : (
+                        <CalendarioModerno
+                            fechasConEventos={Object.fromEntries(
+                                Object.entries(eventosPorFecha).map(([fecha, grupo]) => [
+                                    fecha,
+                                    {
+                                        movimientos: grupo.movimientos.length,
+                                        rendiciones: grupo.rendiciones.length,
+                                        producciones: grupo.producciones.length,
+                                        totalMonto: grupo.totalMonto
+                                    }
+                                ])
+                            )}
+                            selectedDate={selectedDate}
+                            onSelectDate={setSelectedDate}
+                        />
+                    )}
                 </div>
 
                 {/* Detalle del día seleccionado */}
