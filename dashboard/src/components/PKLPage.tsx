@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { PKL, EstadoPKL, TipoOperacionPKL, TipoTaskPKL } from '../types';
 import { ESTADOS_PKL, TIPOS_OPERACION_PKL, TIPOS_TASK_PKL } from '../types';
 import { useDatabase } from '../context/DatabaseContext';
@@ -18,12 +18,23 @@ const getTaskTypeConfig = (tipo: string) => {
     return TIPOS_TASK_PKL.find(t => t.value === tipo);
 };
 
-export default function PKLPage() {
+interface PKLPageProps {
+    initialSelectedPKLId?: string | null;
+}
+
+export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
     const { pkls, updatePKLTask } = useDatabase();
-    const [selectedPKLId, setSelectedPKLId] = useState<string | null>(null);
+    const [selectedPKLId, setSelectedPKLId] = useState<string | null>(initialSelectedPKLId || null);
     const [filterEstado, setFilterEstado] = useState<EstadoPKL | 'todos'>('todos');
     const [filterTipo, setFilterTipo] = useState<TipoOperacionPKL | 'todos'>('todos');
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Update selection when initialSelectedPKLId changes (from navigation)
+    useEffect(() => {
+        if (initialSelectedPKLId) {
+            setSelectedPKLId(initialSelectedPKLId);
+        }
+    }, [initialSelectedPKLId]);
 
     // Get selected PKL from state (so it updates when edited)
     const selectedPKL = selectedPKLId ? pkls.find(p => p.pkl_id === selectedPKLId) || null : null;

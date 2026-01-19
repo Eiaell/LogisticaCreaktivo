@@ -63,7 +63,11 @@ interface TableRow {
     tasksCompletadas?: number;
 }
 
-export function PedidosTable() {
+interface PedidosTableProps {
+    onNavigateToPKL?: (pklId: string) => void;
+}
+
+export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     // Get shared state
     const pedidos = usePedidos();
     const pkls = usePKLs();
@@ -741,11 +745,18 @@ export function PedidosTable() {
                                             </span>
                                         )}
                                     </td>
-                                    {/* RL - Requisito Logístico (editable for pedidos, show PKL ID for PKLs) */}
+                                    {/* RL - Requisito Logístico (editable for pedidos, clickable for PKLs to navigate) */}
                                     <td
-                                        className={`p-4 align-middle transition-colors group/rl ${!isPKL ? 'cursor-pointer' : ''}`}
-                                        onClick={() => !isPKL && handleEditStart(row.id, 'rl_numero', row.rl_numero || '')}
-                                        title={!isPKL ? "Click para editar RL" : undefined}
+                                        className={`p-4 align-middle transition-colors group/rl cursor-pointer`}
+                                        onClick={() => {
+                                            if (isPKL) {
+                                                // Navigate to PKL page with this PKL selected
+                                                onNavigateToPKL?.(row.id);
+                                            } else {
+                                                handleEditStart(row.id, 'rl_numero', row.rl_numero || '');
+                                            }
+                                        }}
+                                        title={isPKL ? "Click para ver detalles del PKL" : "Click para editar RL"}
                                     >
                                         {!isPKL && editingCell?.id === row.id && editingCell?.field === 'rl_numero' ? (
                                             <input
@@ -758,7 +769,7 @@ export function PedidosTable() {
                                                 className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-20 outline-none text-cyan-400 font-mono text-xs"
                                             />
                                         ) : (
-                                            <span className={`font-mono text-xs transition-colors ${isPKL ? 'text-cyan-400 font-semibold' : row.rl_numero ? 'text-cyan-400 font-semibold group-hover/rl:text-cyan-300' : 'text-gray-600 italic'}`}>
+                                            <span className={`font-mono text-xs transition-colors ${isPKL ? 'text-cyan-400 font-semibold hover:text-cyan-300 hover:underline' : row.rl_numero ? 'text-cyan-400 font-semibold group-hover/rl:text-cyan-300' : 'text-gray-600 italic'}`}>
                                                 {row.rl_numero || '-'}
                                             </span>
                                         )}

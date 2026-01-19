@@ -247,7 +247,6 @@ export function AppSidebar({
         { id: 'dashboard', icon: <IconHome />, label: 'Dashboard', page: 'dashboard' as const },
         { id: 'dia_a_dia', icon: <IconCalendar />, label: 'Dia a Dia', page: 'dia_a_dia' as const },
         { id: 'pkl', icon: <IconDocument />, label: 'PKL Logistica', page: 'pkl' as const },
-        { id: 'requerimientos', icon: <IconDocument />, label: 'Requerimientos', page: 'dashboard' as const },
     ];
 
     return (

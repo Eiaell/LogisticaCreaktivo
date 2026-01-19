@@ -27,12 +27,13 @@ type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'pr
 interface DashboardProps {
   onNavigate: (page: PageView) => void;
   onNuevoRequerimiento: () => void;
+  onNavigateToPKL: (pklId: string) => void;
 }
 
 // Re-export PageView for child components
 export type { PageView };
 
-function Dashboard({ onNavigate, onNuevoRequerimiento }: DashboardProps) {
+function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: DashboardProps) {
   const { pedidos, clientes, proveedores, loadDatabase } = useDatabase();
   const { createBackup } = useAutoBackup();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
@@ -179,7 +180,7 @@ function Dashboard({ onNavigate, onNuevoRequerimiento }: DashboardProps) {
 
         {/* Full Width Table */}
         <div className="col-span-1 lg:col-span-4">
-          <PedidosTable />
+          <PedidosTable onNavigateToPKL={onNavigateToPKL} />
         </div>
 
         {/* Actividad Reciente - Día a Día */}
@@ -202,6 +203,7 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState<PageView>('dashboard');
   const [selectedClienteRazonSocial, setSelectedClienteRazonSocial] = useState<string | null>(null);
   const [selectedProveedorId, setSelectedProveedorId] = useState<string | null>(null);
+  const [selectedPKLId, setSelectedPKLId] = useState<string | null>(null);
 
   // Estado de la sidebar con persistencia en localStorage
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
@@ -316,13 +318,17 @@ function AppContent() {
         );
       case 'pkl':
         return (
-          <PKLPage />
+          <PKLPage initialSelectedPKLId={selectedPKLId} />
         );
       default:
         return (
           <Dashboard
             onNavigate={setCurrentPage}
             onNuevoRequerimiento={() => setShowRequerimientoModal(true)}
+            onNavigateToPKL={(pklId) => {
+              setSelectedPKLId(pklId);
+              setCurrentPage('pkl');
+            }}
           />
         );
     }
