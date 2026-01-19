@@ -11,7 +11,7 @@ interface AppSidebarProps {
     activePedidoId: string | null;
     onSelectPedido: (pedidoId: string) => void;
     onNuevoRequerimiento: () => void;
-    onNavigate: (page: 'dashboard' | 'clientes' | 'proveedores' | 'catalogo_items' | 'cotizaciones' | 'dia_a_dia') => void;
+    onNavigate: (page: 'dashboard' | 'clientes' | 'proveedores' | 'catalogo_items' | 'cotizaciones' | 'dia_a_dia' | 'pkl') => void;
     currentPage: string;
 }
 
@@ -245,7 +245,8 @@ export function AppSidebar({
     // Navegación items
     const navItems = [
         { id: 'dashboard', icon: <IconHome />, label: 'Dashboard', page: 'dashboard' as const },
-        { id: 'dia_a_dia', icon: <IconCalendar />, label: 'Día a Día', page: 'dia_a_dia' as const },
+        { id: 'dia_a_dia', icon: <IconCalendar />, label: 'Dia a Dia', page: 'dia_a_dia' as const },
+        { id: 'pkl', icon: <IconDocument />, label: 'PKL Logistica', page: 'pkl' as const },
         { id: 'requerimientos', icon: <IconDocument />, label: 'Requerimientos', page: 'dashboard' as const },
     ];
 

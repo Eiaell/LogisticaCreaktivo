@@ -1,11 +1,26 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import React from 'react';
-import { usePedidos } from '../hooks/useKPIs';
+import { usePedidos, usePKLs } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
 import { ClienteModal } from './ClienteModal';
 import { NuevoPedidoModal } from './NuevoPedidoModal';
 import { CotizacionesModal } from './CotizacionesModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { TIPOS_OPERACION_PKL, ESTADOS_PKL, type EstadoPKL, type TipoOperacionPKL } from '../types';
+
+// Map PKL state to pedido-compatible state for filtering
+function mapPKLStateToTableState(pklState: string): string {
+    const mapping: Record<string, string> = {
+        'recibido': 'cotizacion',
+        'en_produccion': 'en_produccion',
+        'en_curso': 'listo',
+        'en_pausa': 'cotizacion',
+        'cerrado_ok': 'cerrado',
+        'cerrado_parcial': 'cerrado',
+        'cancelado': 'cerrado',
+    };
+    return mapping[pklState] || pklState;
+}
 
 // Función para formatear ISO date sin desplazar por zona horaria
 const formatDateISO = (isoString: string): string => {
@@ -23,10 +38,36 @@ const getLocalDate = (isoString: string): Date => {
     return new Date(year, month, day);
 };
 
+// Unified row type for both Pedidos and PKLs
+interface TableRow {
+    id: string;
+    type: 'pedido' | 'pkl';
+    created_at: string;
+    cliente: string;
+    descripcion: string;
+    descripcion_corta?: string;
+    vendedora: string;
+    estado: string;
+    estadoOriginal?: string; // For PKLs, keep the original state
+    rl_numero?: string;
+    rq_numero?: string;
+    precio?: number;
+    pagado?: number;
+    fecha_compromiso?: string;
+    // PKL-specific fields
+    tipoOperacion?: string;
+    tipoOperacionLabel?: string;
+    tipoOperacionColor?: string;
+    costoTotal?: number;
+    tasksTotal?: number;
+    tasksCompletadas?: number;
+}
+
 export function PedidosTable() {
     // Get shared state
     const pedidos = usePedidos();
-    const { updatePedido, addPayment, payments, selectedStateFilter, clientes, updateCliente, uploadLogo, deletePedido, deletePedidos } = useDatabase();
+    const pkls = usePKLs();
+    const { updatePedido, updatePKL, addPayment, payments, selectedStateFilter, clientes, updateCliente, uploadLogo, deletePedido, deletePedidos, getClienteLogo } = useDatabase();
 
     // Refs
     const heroFileInputRef = useRef<HTMLInputElement>(null);
@@ -87,17 +128,30 @@ export function PedidosTable() {
             if (['precio'].includes(editingCell.field)) {
                 val = Number(val.toString().replace(/[^\d.]/g, ''));
             }
-            // Auto-formatear RL: si es solo número, convertir a RL-YYYY-XXXX
-            if (editingCell.field === 'rl_numero' && val) {
-                const valStr = val.toString().trim();
-                // Si es solo dígitos, formatear como RL-YYYY-XXXX
-                if (/^\d+$/.test(valStr)) {
-                    const year = new Date().getFullYear();
-                    const num = valStr.padStart(4, '0');
-                    val = `RL-${year}-${num}`;
+
+            // Check if this is a PKL edit
+            const isPKLEdit = editingCell.id.startsWith('PKL-');
+
+            if (isPKLEdit) {
+                // Route PKL edits to updatePKL with proper nested structure
+                // TypeScript needs the full type but updatePKL handles partial merges
+                if (editingCell.field === 'vendedora') {
+                    updatePKL(editingCell.id, { cliente: { ejecutiva_asignada: val.toString() } } as any);
                 }
+                // Other PKL fields handled elsewhere (cliente dropdown, estado dropdown, tipo dropdown)
+            } else {
+                // Auto-formatear RL: si es solo número, convertir a RL-YYYY-XXXX
+                if (editingCell.field === 'rl_numero' && val) {
+                    const valStr = val.toString().trim();
+                    // Si es solo dígitos, formatear como RL-YYYY-XXXX
+                    if (/^\d+$/.test(valStr)) {
+                        const year = new Date().getFullYear();
+                        const num = valStr.padStart(4, '0');
+                        val = `RL-${year}-${num}`;
+                    }
+                }
+                updatePedido(editingCell.id, { [editingCell.field]: val });
             }
-            updatePedido(editingCell.id, { [editingCell.field]: val });
             setEditingCell(null);
         }
     };
@@ -172,6 +226,75 @@ export function PedidosTable() {
         return Array.from(set).sort();
     }, [pedidos]);
 
+    // Convert PKLs to unified table rows
+    const pklRows: TableRow[] = useMemo(() => {
+        return pkls.map(pkl => {
+            const tipoOp = TIPOS_OPERACION_PKL.find(t => t.value === pkl.clasificacion.tipo_operacion);
+            return {
+                id: pkl.pkl_id,
+                type: 'pkl' as const,
+                created_at: pkl.created_at,
+                cliente: pkl.cliente.nombre,
+                descripcion: pkl.origen.descripcion_inicial,
+                descripcion_corta: pkl.productos[0]?.descripcion?.slice(0, 30),
+                vendedora: pkl.cliente.ejecutiva_asignada || '',
+                estado: mapPKLStateToTableState(pkl.estado.actual),
+                estadoOriginal: pkl.estado.actual,
+                rl_numero: pkl.pkl_id,
+                rq_numero: undefined,
+                precio: pkl.costos?.total || 0,
+                pagado: pkl.costos?.total || 0, // PKLs are typically paid as you go
+                tipoOperacion: pkl.clasificacion.tipo_operacion,
+                tipoOperacionLabel: tipoOp?.label || pkl.clasificacion.tipo_operacion,
+                tipoOperacionColor: tipoOp?.color || 'bg-gray-500',
+                costoTotal: pkl.costos?.total || 0,
+                tasksTotal: pkl.tasks?.length || 0,
+                tasksCompletadas: pkl.tasks?.filter(t => t.estado === 'completado').length || 0,
+            };
+        });
+    }, [pkls]);
+
+    // Convert pedidos to unified table rows
+    const pedidoRows: TableRow[] = useMemo(() => {
+        return pedidos.map(p => ({
+            id: p.id,
+            type: 'pedido' as const,
+            created_at: p.created_at,
+            cliente: p.cliente,
+            descripcion: p.descripcion,
+            descripcion_corta: p.descripcion_corta,
+            vendedora: p.vendedora,
+            estado: p.estado,
+            rl_numero: p.rl_numero || undefined, // Convert null to undefined
+            rq_numero: p.rq_numero || undefined, // Convert null to undefined
+            precio: p.precio,
+            pagado: p.pagado,
+            fecha_compromiso: p.fecha_compromiso,
+        }));
+    }, [pedidos]);
+
+    // Combined and filtered rows
+    const filteredRows = useMemo(() => {
+        const allRows = [...pedidoRows, ...pklRows];
+
+        return allRows.filter(row => {
+            const matchesSearch = !search ||
+                row.id.toLowerCase().includes(search.toLowerCase()) ||
+                row.cliente.toLowerCase().includes(search.toLowerCase()) ||
+                row.descripcion.toLowerCase().includes(search.toLowerCase());
+
+            const matchesEstado = !filterEstado || row.estado === filterEstado;
+            const matchesCliente = !filterCliente || row.cliente === filterCliente;
+
+            return matchesSearch && matchesEstado && matchesCliente;
+        }).sort((a, b) => {
+            const aVal = a.created_at;
+            const bVal = b.created_at;
+            return aVal < bVal ? 1 : -1;
+        });
+    }, [pedidoRows, pklRows, search, filterEstado, filterCliente]);
+
+    // Keep filteredPedidos for backward compatibility (selection, deletion)
     const filteredPedidos = useMemo(() => {
         return pedidos.filter(p => {
             const matchesSearch = !search ||
@@ -308,7 +431,8 @@ export function PedidosTable() {
                             {[
                                 { label: 'Fecha', w: 'w-28' },
                                 { label: 'Cliente', w: 'w-48' },
-                                { label: 'Descripción', w: 'w-64' },
+                                { label: 'Tipo', w: 'w-32' },   // Tipo: PKL operation type
+                                { label: 'Descripción', w: 'w-56' },
                                 { label: 'Vendedor/a', w: 'w-32' },
                                 { label: 'Estado', w: 'w-40' },
                                 { label: 'RL', w: 'w-32' },     // RL: Requisito Logístico (auto, editable)
@@ -320,26 +444,34 @@ export function PedidosTable() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredPedidos.map((pedido) => (
-                            <React.Fragment key={pedido.id}>
+                        {filteredRows.map((row) => {
+                            const isPKL = row.type === 'pkl';
+                            const pedido = !isPKL ? pedidos.find(p => p.id === row.id) : null;
+
+                            return (
+                            <React.Fragment key={row.id}>
                                 <tr
-                                    className={`border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group ${expandedRowId === pedido.id ? 'bg-blue-950/20' : ''} ${selectedIds.has(pedido.id) ? 'bg-cyan-950/20' : ''}`}
+                                    className={`border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group ${expandedRowId === row.id ? 'bg-blue-950/20' : ''} ${selectedIds.has(row.id) ? 'bg-cyan-950/20' : ''} ${isPKL ? 'bg-cyan-950/10' : ''}`}
                                 >
                                     {/* Row Checkbox */}
                                     <td className="p-4 align-middle">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.has(pedido.id)}
-                                            onChange={() => toggleSelection(pedido.id)}
-                                            className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
-                                        />
+                                        {isPKL ? (
+                                            <span className="text-[10px] font-mono bg-cyan-600/30 text-cyan-300 px-1.5 py-0.5 rounded">PKL</span>
+                                        ) : (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(row.id)}
+                                                onChange={() => toggleSelection(row.id)}
+                                                className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
+                                            />
+                                        )}
                                     </td>
                                     {/* Fecha */}
                                     <td
-                                        className="p-4 align-middle cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleEditStart(pedido.id, 'created_at', formatDateISO(pedido.created_at))}
+                                        className={`p-4 align-middle ${!isPKL ? 'cursor-pointer hover:text-cyan-400' : ''} transition-colors`}
+                                        onClick={() => !isPKL && handleEditStart(row.id, 'created_at', formatDateISO(row.created_at))}
                                     >
-                                        {editingCell?.id === pedido.id && editingCell?.field === 'created_at' ? (
+                                        {!isPKL && editingCell?.id === row.id && editingCell?.field === 'created_at' ? (
                                             <input
                                                 type="date"
                                                 autoFocus
@@ -351,12 +483,12 @@ export function PedidosTable() {
                                             />
                                         ) : (
                                             <span className="text-gray-400 text-sm">
-                                                {getLocalDate(pedido.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                                                {getLocalDate(row.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
                                             </span>
                                         )}
                                     </td>
                                     <td className="p-4 align-middle relative">
-                                        {editingCell?.id === pedido.id && editingCell?.field === 'cliente' ? (
+                                        {editingCell?.id === row.id && editingCell?.field === 'cliente' ? (
                                             <div className="absolute top-full left-4 mt-1 bg-gray-950 border border-gray-700 rounded-lg shadow-xl z-40 w-64 max-h-72 overflow-y-auto">
                                                 <div className="p-2 border-b border-gray-800">
                                                     <input
@@ -382,7 +514,11 @@ export function PedidosTable() {
                                                                 key={razonSocial}
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    updatePedido(pedido.id, { cliente: razonSocial });
+                                                                    if (isPKL) {
+                                                                        updatePKL(row.id, { cliente: { nombre: razonSocial } } as any);
+                                                                    } else {
+                                                                        updatePedido(row.id, { cliente: razonSocial });
+                                                                    }
                                                                     setEditingCell(null);
                                                                     setEditValue('');
                                                                 }}
@@ -404,7 +540,11 @@ export function PedidosTable() {
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            updatePedido(pedido.id, { cliente: '' });
+                                                            if (isPKL) {
+                                                                updatePKL(row.id, { cliente: { nombre: '' } } as any);
+                                                            } else {
+                                                                updatePedido(row.id, { cliente: '' });
+                                                            }
                                                             setEditingCell(null);
                                                             setEditValue('');
                                                         }}
@@ -416,58 +556,105 @@ export function PedidosTable() {
                                             </div>
                                         ) : (
                                             <div
-                                                className="flex items-center gap-3 font-bold text-gray-100 hover:text-cyan-400 cursor-pointer transition-colors group/client"
-                                                onClick={() => handleEditStart(pedido.id, 'cliente', pedido.cliente)}
+                                                className="flex items-center gap-3 font-bold text-gray-100 transition-colors group/client hover:text-cyan-400 cursor-pointer"
+                                                onClick={() => handleEditStart(row.id, 'cliente', row.cliente)}
                                             >
                                                 <div className="relative w-8 h-8 flex-shrink-0 bg-gray-900 rounded-full border border-gray-800 overflow-hidden shadow-inner">
-                                                    {pedido.cliente && (clientes[pedido.cliente]?.logo || clientes[pedido.cliente]?.grupo_logo_url) ? (
-                                                        <img
-                                                            src={clientes[pedido.cliente].logo || clientes[pedido.cliente].grupo_logo_url}
-                                                            alt=""
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                console.warn("Logo failed for:", pedido.cliente);
-                                                                (e.target as HTMLImageElement).style.opacity = '0';
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">
-                                                            ⚠️
-                                                        </div>
-                                                    )}
+                                                    {(() => {
+                                                        // For PKLs, use getClienteLogo which searches by name/grupo
+                                                        const logoUrl = isPKL
+                                                            ? getClienteLogo(row.cliente)
+                                                            : (clientes[row.cliente]?.logo || clientes[row.cliente]?.grupo_logo_url);
+
+                                                        if (logoUrl) {
+                                                            return (
+                                                                <img
+                                                                    src={logoUrl}
+                                                                    alt=""
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).style.opacity = '0';
+                                                                    }}
+                                                                />
+                                                            );
+                                                        }
+                                                        return (
+                                                            <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">
+                                                                {isPKL ? '📋' : '⚠️'}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="flex flex-col leading-tight">
-                                                    <span className={pedido.cliente ? 'text-gray-100' : 'text-gray-500 italic'}>
-                                                        {pedido.cliente
-                                                            ? (clientes[pedido.cliente]?.nombre_comercial && clientes[pedido.cliente]?.nombre_comercial?.trim()
-                                                                ? clientes[pedido.cliente].nombre_comercial
-                                                                : pedido.cliente)
+                                                    <span className={row.cliente ? 'text-gray-100' : 'text-gray-500 italic'}>
+                                                        {row.cliente
+                                                            ? (clientes[row.cliente]?.nombre_comercial && clientes[row.cliente]?.nombre_comercial?.trim()
+                                                                ? clientes[row.cliente].nombre_comercial
+                                                                : row.cliente)
                                                             : 'Sin cliente'}
                                                     </span>
-                                                    <span className="text-[10px] text-gray-500 font-mono font-normal">{pedido.id}</span>
+                                                    <span className="text-[10px] text-gray-500 font-mono font-normal">{row.id}</span>
                                                 </div>
                                             </div>
                                         )}
                                     </td>
-                                    <td
-                                        className="p-4 align-middle hover:text-cyan-400 cursor-pointer transition-colors"
-                                        onClick={() => {
-                                            setDescripcionModalPedidoId(pedido.id);
-                                            setDescripcionModalValue(pedido.descripcion);
-                                            setDescripcionCortaModalValue(pedido.descripcion_corta || '');
-                                        }}
-                                        title={pedido.descripcion}
-                                    >
-                                        <div className="truncate max-w-[240px]">
-                                            {pedido.descripcion_corta || pedido.descripcion}
-                                        </div>
+                                    {/* Tipo - Para PKLs es editable, para Pedidos muestra "-" */}
+                                    <td className="p-4 align-middle">
+                                        {isPKL ? (
+                                            editingCell?.id === row.id && editingCell?.field === 'tipoOperacion' ? (
+                                                <div className="absolute z-50">
+                                                    <div className="bg-gray-950 border border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                                        {TIPOS_OPERACION_PKL.map(tipo => (
+                                                            <button
+                                                                key={tipo.value}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    updatePKL(row.id, { clasificacion: { tipo_operacion: tipo.value as TipoOperacionPKL } } as any);
+                                                                    setEditingCell(null);
+                                                                }}
+                                                                className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs transition-colors hover:bg-gray-800 ${tipo.color} !text-white`}
+                                                            >
+                                                                {tipo.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span
+                                                    onClick={() => handleEditStart(row.id, 'tipoOperacion', row.tipoOperacion || '')}
+                                                    className={`text-xs font-medium px-2 py-1 rounded cursor-pointer hover:ring-2 hover:ring-white/30 transition-all !text-white ${row.tipoOperacionColor}`}
+                                                >
+                                                    {row.tipoOperacionLabel}
+                                                </span>
+                                            )
+                                        ) : (
+                                            <span className="text-gray-600 text-xs">-</span>
+                                        )}
                                     </td>
                                     <td
-                                        className="p-4 align-middle cursor-pointer transition-colors group/seller"
-                                        onClick={() => handleEditStart(pedido.id, 'vendedora', pedido.vendedora)}
+                                        className="p-4 align-middle transition-colors hover:text-cyan-400 cursor-pointer"
+                                        onClick={() => {
+                                            setDescripcionModalPedidoId(row.id);
+                                            setDescripcionModalValue(row.descripcion);
+                                            setDescripcionCortaModalValue(row.descripcion_corta || '');
+                                        }}
+                                        title={row.descripcion}
+                                    >
+                                        <div className="truncate max-w-[220px]">
+                                            {row.descripcion_corta || row.descripcion}
+                                        </div>
+                                        {isPKL && (
+                                            <div className="text-[10px] text-gray-500 mt-1">
+                                                {row.tasksCompletadas}/{row.tasksTotal} tasks | S/{row.costoTotal}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td
+                                        className="p-4 align-middle transition-colors group/seller cursor-pointer"
+                                        onClick={() => handleEditStart(row.id, 'vendedora', row.vendedora)}
                                         title="Click para editar vendedor/a"
                                     >
-                                        {editingCell?.id === pedido.id && editingCell?.field === 'vendedora' ? (
+                                        {editingCell?.id === row.id && editingCell?.field === 'vendedora' ? (
                                             <input
                                                 autoFocus
                                                 value={editValue}
@@ -477,13 +664,13 @@ export function PedidosTable() {
                                                 className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-cyan-400"
                                             />
                                         ) : (
-                                            <div className="text-gray-300 group-hover/seller:text-cyan-400 transition-colors font-medium">
-                                                {pedido.vendedora || '(Sin asignar)'}
+                                            <div className="text-gray-300 transition-colors font-medium group-hover/seller:text-cyan-400">
+                                                {row.vendedora || '(Sin asignar)'}
                                             </div>
                                         )}
                                     </td>
                                     <td className="p-4 align-middle">
-                                        {editingCell?.id === pedido.id && editingCell?.field === 'estado' ? (
+                                        {editingCell?.id === row.id && editingCell?.field === 'estado' ? (
                                             <div
                                                 className="absolute z-50"
                                                 tabIndex={0}
@@ -491,58 +678,76 @@ export function PedidosTable() {
                                                 onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
                                                 ref={(el) => el?.focus()}
                                             >
-                                                <div className="bg-gray-950 border border-gray-700 rounded-lg shadow-lg">
-                                                    {['cotizacion', 'aprobado', 'en_produccion', 'listo', 'entregado', 'cerrado'].map(estadoOpt => {
-                                                        const colors: Record<string, string> = {
-                                                            'cotizacion': 'bg-yellow-600/40 text-yellow-300 border-yellow-500/50 hover:bg-yellow-600/60',
-                                                            'aprobado': 'bg-green-600/40 text-green-300 border-green-500/50 hover:bg-green-600/60',
-                                                            'en_produccion': 'bg-blue-600/40 text-blue-300 border-blue-500/50 hover:bg-blue-600/60',
-                                                            'listo': 'bg-cyan-600/40 text-cyan-300 border-cyan-500/50 hover:bg-cyan-600/60',
-                                                            'entregado': 'bg-teal-600/40 text-teal-300 border-teal-500/50 hover:bg-teal-600/60',
-                                                            'cerrado': 'bg-gray-600/40 text-gray-300 border-gray-500/50 hover:bg-gray-600/60',
-                                                        };
-                                                        return (
+                                                <div className="bg-gray-950 border border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                                    {isPKL ? (
+                                                        // PKL estados
+                                                        ESTADOS_PKL.map(estado => (
                                                             <button
-                                                                key={estadoOpt}
+                                                                key={estado.value}
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    const newVal = estadoOpt as 'cotizacion' | 'aprobado' | 'en_produccion' | 'listo' | 'entregado' | 'cerrado';
-                                                                    updatePedido(pedido.id, { estado: newVal });
+                                                                    updatePKL(row.id, { estado: { actual: estado.value as EstadoPKL } } as any);
                                                                     setEditingCell(null);
                                                                 }}
-                                                                onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
-                                                                className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs font-semibold uppercase tracking-wide transition-colors ${colors[estadoOpt]}`}
+                                                                className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs font-semibold transition-colors hover:bg-gray-800 ${estado.color} !text-white`}
                                                             >
-                                                                {estadoOpt === 'cotizacion' ? 'Cotización' :
-                                                                 estadoOpt === 'en_produccion' ? 'En Producción' :
-                                                                 estadoOpt.charAt(0).toUpperCase() + estadoOpt.slice(1)}
+                                                                {estado.label}
                                                             </button>
-                                                        );
-                                                    })}
+                                                        ))
+                                                    ) : (
+                                                        // Pedido estados
+                                                        ['cotizacion', 'aprobado', 'en_produccion', 'listo', 'entregado', 'cerrado'].map(estadoOpt => {
+                                                            const colors: Record<string, string> = {
+                                                                'cotizacion': 'bg-yellow-600/40 text-yellow-300 border-yellow-500/50 hover:bg-yellow-600/60',
+                                                                'aprobado': 'bg-green-600/40 text-green-300 border-green-500/50 hover:bg-green-600/60',
+                                                                'en_produccion': 'bg-blue-600/40 text-blue-300 border-blue-500/50 hover:bg-blue-600/60',
+                                                                'listo': 'bg-cyan-600/40 text-cyan-300 border-cyan-500/50 hover:bg-cyan-600/60',
+                                                                'entregado': 'bg-teal-600/40 text-teal-300 border-teal-500/50 hover:bg-teal-600/60',
+                                                                'cerrado': 'bg-gray-600/40 text-gray-300 border-gray-500/50 hover:bg-gray-600/60',
+                                                            };
+                                                            return (
+                                                                <button
+                                                                    key={estadoOpt}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newVal = estadoOpt as 'cotizacion' | 'aprobado' | 'en_produccion' | 'listo' | 'entregado' | 'cerrado';
+                                                                        updatePedido(row.id, { estado: newVal });
+                                                                        setEditingCell(null);
+                                                                    }}
+                                                                    onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
+                                                                    className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs font-semibold uppercase tracking-wide transition-colors ${colors[estadoOpt]}`}
+                                                                >
+                                                                    {estadoOpt === 'cotizacion' ? 'Cotización' :
+                                                                     estadoOpt === 'en_produccion' ? 'En Producción' :
+                                                                     estadoOpt.charAt(0).toUpperCase() + estadoOpt.slice(1)}
+                                                                </button>
+                                                            );
+                                                        })
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : (
                                             <span
-                                                onClick={() => handleEditStart(pedido.id, 'estado', pedido.estado)}
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:ring-1 hover:ring-white/30 transition-all
-                                                ${pedido.estado === 'cotizacion' ? 'bg-yellow-600/30 text-yellow-300 border border-yellow-500/50' :
-                                                        pedido.estado === 'aprobado' ? 'bg-green-600/30 text-green-300 border border-green-500/50' :
-                                                                pedido.estado === 'en_produccion' ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50' :
-                                                                    pedido.estado === 'listo' ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/50' :
-                                                                        pedido.estado === 'entregado' ? 'bg-teal-600/30 text-teal-300 border border-teal-500/50' :
-                                                                            pedido.estado === 'cerrado' ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50' :
+                                                onClick={() => handleEditStart(row.id, 'estado', isPKL ? (row.estadoOriginal || '') : row.estado)}
+                                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer hover:ring-1 hover:ring-white/30
+                                                ${row.estado === 'cotizacion' ? 'bg-yellow-600/30 text-yellow-300 border border-yellow-500/50' :
+                                                        row.estado === 'aprobado' ? 'bg-green-600/30 text-green-300 border border-green-500/50' :
+                                                                row.estado === 'en_produccion' ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50' :
+                                                                    row.estado === 'listo' ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/50' :
+                                                                        row.estado === 'entregado' ? 'bg-teal-600/30 text-teal-300 border border-teal-500/50' :
+                                                                            row.estado === 'cerrado' ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50' :
                                                                                 'bg-gray-600/30 text-gray-300 border border-gray-500/50'}`}>
-                                                {pedido.estado.replace('_', ' ')}
+                                                {isPKL ? (row.estadoOriginal || row.estado).replace('_', ' ') : row.estado.replace('_', ' ')}
                                             </span>
                                         )}
                                     </td>
-                                    {/* RL - Requisito Logístico (editable) */}
+                                    {/* RL - Requisito Logístico (editable for pedidos, show PKL ID for PKLs) */}
                                     <td
-                                        className="p-4 align-middle cursor-pointer transition-colors group/rl"
-                                        onClick={() => handleEditStart(pedido.id, 'rl_numero', pedido.rl_numero || '')}
-                                        title="Click para editar RL"
+                                        className={`p-4 align-middle transition-colors group/rl ${!isPKL ? 'cursor-pointer' : ''}`}
+                                        onClick={() => !isPKL && handleEditStart(row.id, 'rl_numero', row.rl_numero || '')}
+                                        title={!isPKL ? "Click para editar RL" : undefined}
                                     >
-                                        {editingCell?.id === pedido.id && editingCell?.field === 'rl_numero' ? (
+                                        {!isPKL && editingCell?.id === row.id && editingCell?.field === 'rl_numero' ? (
                                             <input
                                                 autoFocus
                                                 value={editValue}
@@ -553,18 +758,18 @@ export function PedidosTable() {
                                                 className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-20 outline-none text-cyan-400 font-mono text-xs"
                                             />
                                         ) : (
-                                            <span className={`font-mono text-xs group-hover/rl:text-cyan-300 transition-colors ${pedido.rl_numero ? 'text-cyan-400 font-semibold' : 'text-gray-600 italic'}`}>
-                                                {pedido.rl_numero || '-'}
+                                            <span className={`font-mono text-xs transition-colors ${isPKL ? 'text-cyan-400 font-semibold' : row.rl_numero ? 'text-cyan-400 font-semibold group-hover/rl:text-cyan-300' : 'text-gray-600 italic'}`}>
+                                                {row.rl_numero || '-'}
                                             </span>
                                         )}
                                     </td>
                                     {/* RQ - Código interno empresa (manual, editable) */}
                                     <td
-                                        className="p-4 align-middle cursor-pointer transition-colors group/rq"
-                                        onClick={() => handleEditStart(pedido.id, 'rq_numero', pedido.rq_numero || '')}
-                                        title="Click para editar RQ"
+                                        className={`p-4 align-middle transition-colors group/rq ${!isPKL ? 'cursor-pointer' : ''}`}
+                                        onClick={() => !isPKL && handleEditStart(row.id, 'rq_numero', row.rq_numero || '')}
+                                        title={!isPKL ? "Click para editar RQ" : undefined}
                                     >
-                                        {editingCell?.id === pedido.id && editingCell?.field === 'rq_numero' ? (
+                                        {!isPKL && editingCell?.id === row.id && editingCell?.field === 'rq_numero' ? (
                                             <input
                                                 autoFocus
                                                 value={editValue}
@@ -575,25 +780,27 @@ export function PedidosTable() {
                                                 className="bg-gray-950 border border-amber-500 rounded px-2 py-1 w-20 outline-none text-amber-400 font-mono text-xs"
                                             />
                                         ) : (
-                                            <span className={`font-mono text-xs group-hover/rq:text-amber-400 transition-colors ${pedido.rq_numero ? 'text-amber-400' : 'text-gray-600 italic'}`}>
-                                                {pedido.rq_numero || '-'}
+                                            <span className={`font-mono text-xs transition-colors ${!isPKL ? 'group-hover/rq:text-amber-400' : ''} ${row.rq_numero ? 'text-amber-400' : 'text-gray-600 italic'}`}>
+                                                {row.rq_numero || '-'}
                                             </span>
                                         )}
                                     </td>
                                     <td className="p-4 align-middle">
-                                        <button
-                                            onClick={() => toggleExpand(pedido.id)}
-                                            className="w-8 h-8 rounded-full hover:bg-gray-700 flex items-center justify-center transition-colors text-gray-500 hover:text-white"
-                                        >
-                                            {expandedRowId === pedido.id ? '▲' : '▼'}
-                                        </button>
+                                        {!isPKL && (
+                                            <button
+                                                onClick={() => toggleExpand(row.id)}
+                                                className="w-8 h-8 rounded-full hover:bg-gray-700 flex items-center justify-center transition-colors text-gray-500 hover:text-white"
+                                            >
+                                                {expandedRowId === row.id ? '▲' : '▼'}
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
 
-                                {/* Expanded Row: Payments Detail */}
-                                {expandedRowId === pedido.id && (
+                                {/* Expanded Row: Payments Detail (only for Pedidos) */}
+                                {!isPKL && expandedRowId === row.id && pedido && (
                                     <tr className="bg-gray-900/30">
-                                        <td colSpan={9} className="p-0 border-b border-gray-800">
+                                        <td colSpan={10} className="p-0 border-b border-gray-800">
                                             <div className="p-6 flex flex-col md:flex-row gap-8 animate-in slide-in-from-top-2 duration-200">
                                                 {/* Resumen Financiero */}
                                                 <div className="w-full md:w-56 bg-gradient-to-br from-gray-950 to-gray-900 p-4 rounded-xl border border-gray-700 space-y-4">
@@ -721,16 +928,17 @@ export function PedidosTable() {
                                     </tr>
                                 )}
                             </React.Fragment>
-                        ))}
+                        );
+                        })}
                     </tbody>
                 </table>
             </div>
 
             {/* Empty State */}
-            {filteredPedidos.length === 0 && (
+            {filteredRows.length === 0 && (
                 <div className="p-20 text-center flex flex-col items-center">
                     <span className="text-6xl mb-4 grayscale opacity-20">🔍</span>
-                    <h3 className="text-gray-400 font-medium">No encontramos pedidos con estos filtros</h3>
+                    <h3 className="text-gray-400 font-medium">No encontramos pedidos o PKLs con estos filtros</h3>
                     <p className="text-gray-600 text-sm mt-1">Intenta ajustando los términos de búsqueda</p>
                 </div>
             )}
@@ -843,10 +1051,20 @@ export function PedidosTable() {
                             <button
                                 onClick={() => {
                                     if (descripcionModalPedidoId) {
-                                        updatePedido(descripcionModalPedidoId, {
-                                            descripcion: descripcionModalValue,
-                                            descripcion_corta: descripcionCortaModalValue || undefined
-                                        });
+                                        const isPKLEdit = descripcionModalPedidoId.startsWith('PKL-');
+                                        if (isPKLEdit) {
+                                            // PKL: update origen.descripcion_inicial
+                                            // Use 'as any' since updatePKL handles partial merges
+                                            updatePKL(descripcionModalPedidoId, {
+                                                origen: { descripcion_inicial: descripcionModalValue }
+                                            } as any);
+                                        } else {
+                                            // Pedido: update descripcion and descripcion_corta
+                                            updatePedido(descripcionModalPedidoId, {
+                                                descripcion: descripcionModalValue,
+                                                descripcion_corta: descripcionCortaModalValue || undefined
+                                            });
+                                        }
                                         setDescripcionModalPedidoId(null);
                                     }
                                 }}

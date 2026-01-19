@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
-import type { KPIs, Pedido } from '../types';
+import type { KPIs, Pedido, PKL } from '../types';
 
 // Helper para obtener fecha de hoy en formato YYYY-MM-DD
 function getTodayKey(): string {
@@ -11,7 +11,7 @@ function getTodayKey(): string {
 // KPIs HOOK - Uses centralized 'pedidos' state for consistency
 // =============================================================================
 export function useKPIs(): KPIs | null {
-    const { db, pedidos, dataSource, movimientosLogisticos, rendiciones } = useDatabase();
+    const { db, pedidos, dataSource, movimientosLogisticos, rendiciones, pkls } = useDatabase();
 
     if (dataSource === 'db' && db) {
         // Legacy DB logic
@@ -21,7 +21,7 @@ export function useKPIs(): KPIs | null {
             const montoProduccion = db.exec("SELECT COALESCE(SUM(costo_total), 0) FROM acuerdos WHERE estado = 'pendiente'")[0]?.values[0]?.[0] as number || 0;
             const alertas = db.exec("SELECT COUNT(*) FROM acuerdos WHERE estado = 'problema' OR (estado = 'pendiente' AND fecha_prometida < date('now'))")[0]?.values[0]?.[0] as number || 0;
             const movilidadHoy = db.exec("SELECT COALESCE(SUM(costo), 0) FROM movilidad WHERE date(fecha) = date('now')")[0]?.values[0]?.[0] as number || 0;
-            return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy, valorPipeline: 0, tasaConversion: 0, saldoPendiente: 0 };
+            return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy, valorPipeline: 0, tasaConversion: 0, saldoPendiente: 0, totalPKLs: pkls.length, pklsActivos: pkls.filter(p => !['cerrado_ok', 'cerrado_parcial', 'cancelado'].includes(p.estado.actual)).length, costoPKLs: pkls.reduce((sum, p) => sum + (p.costos?.total || 0), 0) };
         } catch { return null; }
     }
 
@@ -71,7 +71,12 @@ export function useKPIs(): KPIs | null {
         // Saldo Pendiente: Total price - total paid
         const saldoPendiente = pedidos.reduce((sum, p) => sum + ((p.precio || 0) - (p.pagado || 0)), 0);
 
-        return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy, valorPipeline, tasaConversion, saldoPendiente };
+        // PKL KPIs
+        const totalPKLs = pkls.length;
+        const pklsActivos = pkls.filter(p => !['cerrado_ok', 'cerrado_parcial', 'cancelado'].includes(p.estado.actual)).length;
+        const costoPKLs = pkls.reduce((sum, p) => sum + (p.costos?.total || 0), 0);
+
+        return { totalPedidos, pedidosActivos, montoProduccion, alertas, movilidadHoy, valorPipeline, tasaConversion, saldoPendiente, totalPKLs, pklsActivos, costoPKLs };
     }
 
     return null;
@@ -102,10 +107,25 @@ export function usePedidos(): Pedido[] {
 }
 
 // =============================================================================
-// PROCESS FLOW HOOK - Uses shared state
+// PROCESS FLOW HOOK - Uses shared state + PKLs
 // =============================================================================
+
+// Map PKL states to Process Graph states
+function mapPKLStateToProcessState(pklState: string): string | null {
+    const mapping: Record<string, string> = {
+        'recibido': 'cotizacion',
+        'en_produccion': 'en_produccion',
+        'en_curso': 'listo',
+        'en_pausa': 'cotizacion', // Show paused as pending
+        'cerrado_ok': 'cerrado',
+        'cerrado_parcial': 'cerrado',
+        'cancelado': 'cerrado',
+    };
+    return mapping[pklState] || null;
+}
+
 export function useProcessFlow() {
-    const { db, pedidos, dataSource } = useDatabase();
+    const { db, pedidos, dataSource, pkls } = useDatabase();
 
     const getFlowData = useCallback(() => {
         const nodeDefinitions = [
@@ -118,6 +138,7 @@ export function useProcessFlow() {
         ];
 
         const estadoCounts: Record<string, number> = {};
+        const pklCounts: Record<string, number> = {};
 
         if (dataSource === 'db' && db) {
             // ... Legacy DB execution ...
@@ -130,14 +151,38 @@ export function useProcessFlow() {
             });
         }
 
-        const nodes = nodeDefinitions.map(def => ({
-            id: def.id,
-            label: `${def.label}\n(${estadoCounts[def.id] || 0})`,
-            color: { background: def.color, border: def.color },
-            font: { color: '#ffffff' },
-            shape: 'box' as const,
-            margin: { top: 10, right: 10, bottom: 10, left: 10 },
-        }));
+        // Add PKL counts
+        pkls.forEach(pkl => {
+            const mappedState = mapPKLStateToProcessState(pkl.estado.actual);
+            if (mappedState) {
+                pklCounts[mappedState] = (pklCounts[mappedState] || 0) + 1;
+            }
+        });
+
+        const nodes = nodeDefinitions.map(def => {
+            const pedidoCount = estadoCounts[def.id] || 0;
+            const pklCount = pklCounts[def.id] || 0;
+            const totalCount = pedidoCount + pklCount;
+
+            // Show breakdown if there are PKLs
+            let label = def.label;
+            if (pklCount > 0 && pedidoCount > 0) {
+                label = `${def.label}\n(${totalCount}: ${pedidoCount}P + ${pklCount}PKL)`;
+            } else if (pklCount > 0) {
+                label = `${def.label}\n(${pklCount} PKL)`;
+            } else {
+                label = `${def.label}\n(${pedidoCount})`;
+            }
+
+            return {
+                id: def.id,
+                label,
+                color: { background: def.color, border: def.color },
+                font: { color: '#ffffff' },
+                shape: 'box' as const,
+                margin: { top: 10, right: 10, bottom: 10, left: 10 },
+            };
+        });
 
         const edges = [
             { id: 'e1', from: 'cotizacion', to: 'aprobado', arrows: 'to' },
@@ -151,4 +196,12 @@ export function useProcessFlow() {
     }, [db, pedidos, dataSource]);
 
     return getFlowData;
+}
+
+// =============================================================================
+// PKL DATA HOOK - Returns PKLs from context
+// =============================================================================
+export function usePKLs(): PKL[] {
+    const { pkls } = useDatabase();
+    return pkls;
 }

@@ -1,13 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { Network } from 'vis-network';
-import { useProcessFlow } from '../hooks/useKPIs';
+import { useProcessFlow, usePKLs } from '../hooks/useKPIs';
 import { useDatabase } from '../context/DatabaseContext';
 import { ProveedorModal } from './ProveedorModal';
+import { TIPOS_OPERACION_PKL } from '../types';
+
+// Map PKL states to Process Graph states for filtering
+function mapPKLStateToProcessState(pklState: string): string | null {
+    const mapping: Record<string, string> = {
+        'recibido': 'cotizacion',
+        'en_produccion': 'en_produccion',
+        'en_curso': 'listo',
+        'en_pausa': 'cotizacion',
+        'cerrado_ok': 'cerrado',
+        'cerrado_parcial': 'cerrado',
+        'cancelado': 'cerrado',
+    };
+    return mapping[pklState] || null;
+}
 
 export function ProcessGraph() {
     const containerRef = useRef<HTMLDivElement>(null);
     const networkRef = useRef<Network | null>(null);
     const getFlowData = useProcessFlow();
+    const pkls = usePKLs();
     const { pedidos, selectedStateFilter, setSelectedStateFilter, clientes } = useDatabase();
 
     // New state for provider modal and zoom
@@ -90,8 +106,8 @@ export function ProcessGraph() {
         return () => { network.destroy(); networkRef.current = null; };
     }, [getFlowData, setSelectedStateFilter, selectedStateFilter]);
 
-    // Derived Summary List for Selected State
-    const selectedItemsSummary = selectedStateFilter ?
+    // Derived Summary List for Selected State - Pedidos
+    const selectedPedidosSummary = selectedStateFilter ?
         pedidos.filter(p => p.estado === selectedStateFilter)
             .map(p => {
                 const firstWord = p.descripcion ? p.descripcion.split(' ')[0] : 'Pedido';
@@ -100,10 +116,36 @@ export function ProcessGraph() {
                     label: firstWord,
                     full: p.descripcion,
                     cliente: p.cliente,
-                    proveedor: p.vendedora // Using 'vendedora' field as Provider (based on extraction logic)
+                    proveedor: p.vendedora,
+                    type: 'pedido' as const
                 };
             })
         : [];
+
+    // Derived Summary List for Selected State - PKLs
+    const selectedPKLsSummary = selectedStateFilter ?
+        pkls.filter(pkl => mapPKLStateToProcessState(pkl.estado.actual) === selectedStateFilter)
+            .map(pkl => {
+                const tipoOp = TIPOS_OPERACION_PKL.find(t => t.value === pkl.clasificacion.tipo_operacion);
+                return {
+                    id: pkl.pkl_id,
+                    label: pkl.cliente.nombre,
+                    full: pkl.origen.descripcion_inicial,
+                    cliente: pkl.cliente.nombre,
+                    proveedor: pkl.proveedores[0]?.nombre || null,
+                    type: 'pkl' as const,
+                    tipoOperacion: tipoOp?.label || pkl.clasificacion.tipo_operacion,
+                    tipoColor: tipoOp?.color || 'bg-gray-500',
+                    estado: pkl.estado.actual,
+                    costoTotal: pkl.costos?.total || 0,
+                    tasksTotal: pkl.tasks?.length || 0,
+                    tasksCompletadas: pkl.tasks?.filter(t => t.estado === 'completado').length || 0
+                };
+            })
+        : [];
+
+    // Combined list
+    const selectedItemsSummary = [...selectedPedidosSummary, ...selectedPKLsSummary];
 
     const handleZoomIn = () => {
         if (networkRef.current) {
@@ -179,18 +221,47 @@ export function ProcessGraph() {
                     </div>
                     <div className="p-4 overflow-y-auto max-h-[300px] space-y-3">
                         {selectedItemsSummary.length > 0 ? selectedItemsSummary.map(item => {
-                            const clientDetails = clientes[item.cliente]; // Get client details
+                            const clientDetails = clientes[item.cliente];
+                            const isPKL = item.type === 'pkl';
+
                             return (
-                                <div key={item.id} className="bg-gray-800 p-3 rounded border border-gray-700 hover:border-cyan-500/50 transition-colors shadow-sm">
+                                <div key={item.id} className={`p-3 rounded border transition-colors shadow-sm ${isPKL ? 'bg-cyan-950/30 border-cyan-700/50 hover:border-cyan-500' : 'bg-gray-800 border-gray-700 hover:border-cyan-500/50'}`}>
                                     <div className="flex justify-between items-start mb-1">
-                                        <div className="font-bold text-cyan-400 text-sm">{item.label}</div>
+                                        <div className="flex items-center gap-2">
+                                            {isPKL && (
+                                                <span className="text-[10px] font-mono bg-cyan-600/30 text-cyan-300 px-1.5 py-0.5 rounded">PKL</span>
+                                            )}
+                                            <div className="font-bold text-cyan-400 text-sm">{item.label}</div>
+                                        </div>
                                         <div className="text-[10px] text-gray-500 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">
-                                            {item.cliente?.slice(0, 15)}
+                                            {item.id.slice(0, 15)}
                                         </div>
                                     </div>
 
+                                    {/* PKL-specific info */}
+                                    {isPKL && 'tipoOperacion' in item && (
+                                        <div className="flex flex-wrap gap-1 mb-2">
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.tipoColor} text-white`}>
+                                                {item.tipoOperacion}
+                                            </span>
+                                            {item.costoTotal > 0 && (
+                                                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                                                    S/{item.costoTotal}
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] text-gray-400 bg-gray-700/50 px-1.5 py-0.5 rounded">
+                                                {item.tasksCompletadas}/{item.tasksTotal} tasks
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Description */}
+                                    {item.full && (
+                                        <p className="text-[11px] text-gray-400 mb-2 line-clamp-2">{item.full}</p>
+                                    )}
+
                                     {/* Cliente con Logo */}
-                                    {item.cliente && (
+                                    {item.cliente && !isPKL && (
                                         <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700">
                                             <span className="text-xs text-gray-500">Cliente:</span>
                                             <div className="flex items-center gap-1">

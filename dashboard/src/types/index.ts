@@ -371,6 +371,10 @@ export interface KPIs {
     valorPipeline: number;      // Sum of prices of active orders
     tasaConversion: number;     // % of closed orders vs total
     saldoPendiente: number;     // Total price - total paid
+    // PKL KPIs
+    totalPKLs: number;
+    pklsActivos: number;
+    costoPKLs: number;
 }
 
 // ============================================
@@ -554,3 +558,268 @@ export const TIPOS_RENDICION = [
     { value: 'gasto_extra', label: 'Gasto Extra', color: 'bg-red-500', icon: '📋' },
     { value: 'compra_material', label: 'Compra Material', color: 'bg-indigo-500', icon: '🛍️' },
 ] as const;
+
+// ============================================
+// PKL - PRIMARY KEY LOGÍSTICA
+// Unidad mínima de ejecución logística end-to-end
+// ============================================
+
+// Tipos de operacion PKL
+export const TIPOS_OPERACION_PKL = [
+    { value: 'produccion', label: 'Produccion', color: 'bg-blue-700' },
+    { value: 'instalacion', label: 'Instalacion', color: 'bg-purple-700' },
+    { value: 'produccion_instalacion', label: 'Produccion + Instalacion', color: 'bg-indigo-700' },
+    { value: 'solo_entrega', label: 'Solo Entrega', color: 'bg-green-700' },
+    { value: 'recojo', label: 'Recojo', color: 'bg-cyan-700' },
+    { value: 'feria', label: 'Feria/Evento', color: 'bg-orange-600' },
+    { value: 'mantenimiento', label: 'Mantenimiento', color: 'bg-gray-700' },
+    { value: 'solo_cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-600' },
+    { value: 'compra_insumo', label: 'Compra Insumo', color: 'bg-amber-700' },
+] as const;
+
+export type TipoOperacionPKL = typeof TIPOS_OPERACION_PKL[number]['value'];
+
+// Estados del PKL
+export const ESTADOS_PKL = [
+    { value: 'recibido', label: 'Recibido', color: 'bg-gray-500' },
+    { value: 'en_produccion', label: 'En Produccion', color: 'bg-blue-500' },
+    { value: 'en_curso', label: 'En Curso', color: 'bg-cyan-500' },
+    { value: 'en_pausa', label: 'En Pausa', color: 'bg-yellow-500' },
+    { value: 'cerrado_ok', label: 'Cerrado OK', color: 'bg-green-500' },
+    { value: 'cerrado_parcial', label: 'Cerrado Parcial', color: 'bg-orange-500' },
+    { value: 'cancelado', label: 'Cancelado', color: 'bg-red-500' },
+] as const;
+
+export type EstadoPKL = typeof ESTADOS_PKL[number]['value'];
+
+// Tipos de Task
+export const TIPOS_TASK_PKL = [
+    { value: 'cotizacion', label: 'Cotizacion', color: 'bg-yellow-500' },
+    { value: 'coordinacion_proveedor', label: 'Coordinacion Proveedor', color: 'bg-blue-500' },
+    { value: 'compra_insumo', label: 'Compra Insumo', color: 'bg-amber-500' },
+    { value: 'pago', label: 'Pago', color: 'bg-green-500' },
+    { value: 'movilidad', label: 'Movilidad', color: 'bg-cyan-500' },
+    { value: 'instalacion', label: 'Instalacion', color: 'bg-purple-500' },
+    { value: 'cierre', label: 'Cierre', color: 'bg-emerald-500' },
+    { value: 'administrativo', label: 'Administrativo', color: 'bg-gray-500' },
+] as const;
+
+export type TipoTaskPKL = typeof TIPOS_TASK_PKL[number]['value'];
+
+// Contacto del cliente
+export interface ContactoPKL {
+    nombre?: string;
+    telefono?: string;
+    email?: string;
+}
+
+// Cliente del PKL
+export interface ClientePKL {
+    nombre: string;
+    proyecto?: string;
+    contacto?: ContactoPKL;
+    direccion_entrega?: string;
+    ejecutiva_asignada?: string;
+}
+
+// Origen del PKL
+export interface OrigenPKL {
+    canal: 'whatsapp' | 'email' | 'telefono' | 'presencial' | 'otro';
+    solicitado_por?: string;
+    fecha_solicitud: string;
+    descripcion_inicial: string;
+}
+
+// Producto del PKL
+export interface ProductoPKL {
+    producto_id: string;
+    tipo: string;
+    cantidad?: number;
+    descripcion: string;
+    atributos?: Record<string, unknown>;
+}
+
+// Input (arte gráfico, etc.)
+export interface InputPKL {
+    fuente?: string;
+    estado?: 'pendiente' | 'recibido' | 'aprobado';
+    fecha_recepcion?: string;
+    archivo?: string;
+}
+
+// Proveedor del PKL
+export interface ProveedorPKL {
+    proveedor_id: string;
+    nombre: string;
+    alias?: string;
+    servicio?: string;
+    ubicacion?: string;
+    contacto?: string;
+}
+
+// Historial de estado
+export interface HistorialEstadoPKL {
+    estado: EstadoPKL;
+    fecha: string;
+    motivo?: string;
+}
+
+// Costo de un task
+export interface CostoTaskPKL {
+    monto: number;
+    moneda: 'PEN' | 'USD';
+    concepto?: string;
+    medio_pago?: 'yape' | 'plin' | 'transferencia' | 'efectivo' | 'otro';
+    incluye_igv?: boolean;
+    comprobante?: 'factura' | 'boleta' | 'recibo' | 'ninguno';
+}
+
+// Ruta de movilidad
+export interface RutaTaskPKL {
+    origen: string;
+    destino: string;
+}
+
+// Resultado de cotización
+export interface ResultadoCotizacionPKL {
+    precio_encontrado?: number;
+    moneda?: 'PEN' | 'USD';
+    observaciones?: string;
+}
+
+// Task del PKL
+export interface TaskPKL {
+    task_id: string;
+    orden: number;
+    nombre: string;
+    descripcion?: string;
+    tipo: TipoTaskPKL;
+    responsable: string;
+    proveedor_id?: string;
+    estado: 'pendiente' | 'en_progreso' | 'completado' | 'cancelado';
+    es_happy_path: boolean;
+    bloqueado_por_evento?: string;
+    duracion_min?: number;
+    costo?: CostoTaskPKL;
+    ruta?: RutaTaskPKL;
+    ubicacion?: string;
+    resultado?: ResultadoCotizacionPKL;
+    fecha_completado?: string;
+}
+
+// Evento externo
+export interface EventoExternoPKL {
+    evento_id: string;
+    descripcion: string;
+    proveedor_id?: string;
+    fecha: string;
+    duracion_esperada?: string;
+    duracion_real?: string;
+    impacta_estado?: EstadoPKL;
+}
+
+// Detalle de costo
+export interface DetalleCostoPKL {
+    concepto: string;
+    monto: number;
+    task_id?: string;
+    incluye_igv?: boolean;
+}
+
+// Resumen de costos
+export interface CostosPKL {
+    detalle: DetalleCostoPKL[];
+    total?: number;
+    moneda: 'PEN' | 'USD';
+    nota?: string;
+}
+
+// Evidencia de cierre
+export interface EvidenciaPKL {
+    tipo: 'foto_entrega' | 'firma' | 'guia_remision' | 'mensaje_confirmacion';
+    archivo?: string;
+    fecha?: string;
+    descripcion?: string;
+}
+
+// Cierre del PKL
+export interface CierrePKL {
+    estado_final?: EstadoPKL;
+    fecha_cierre?: string;
+    evidencias: EvidenciaPKL[];
+    confirmado_por?: string;
+}
+
+// Alertas del PKL
+export interface AlertasPKL {
+    dias_sin_actividad: number;
+    umbral_pausa_dias: number;
+}
+
+// Riesgo identificado
+export interface RiesgoPKL {
+    descripcion: string;
+    mitigacion?: string;
+    costo_referencia?: string;
+}
+
+// ============================================
+// PKL - Entidad principal
+// ============================================
+export interface PKL {
+    pkl_id: string;                           // PKL-YYYY-NNNN
+    version: string;                          // "2.0"
+    created_at: string;
+    updated_at: string;
+
+    // Clasificación
+    clasificacion: {
+        tipo_operacion: TipoOperacionPKL;
+        area: 'logistica';                    // Preparado para expandir
+    };
+
+    // Cliente
+    cliente: ClientePKL;
+
+    // Origen del requerimiento
+    origen: OrigenPKL;
+
+    // Productos
+    productos: ProductoPKL[];
+
+    // Inputs (arte, archivos, etc.)
+    inputs?: {
+        arte_grafico?: InputPKL;
+        [key: string]: InputPKL | undefined;
+    };
+
+    // Proveedores involucrados
+    proveedores: ProveedorPKL[];
+
+    // Estado actual e historial
+    estado: {
+        actual: EstadoPKL;
+        historial: HistorialEstadoPKL[];
+    };
+
+    // Tasks ejecutados
+    tasks: TaskPKL[];
+
+    // Eventos externos (de terceros)
+    eventos_externos: EventoExternoPKL[];
+
+    // Costos
+    costos: CostosPKL;
+
+    // Cierre
+    cierre: CierrePKL;
+
+    // Alertas
+    alertas: AlertasPKL;
+
+    // Riesgos identificados (opcional)
+    riesgos_identificados?: RiesgoPKL[];
+
+    // Observaciones generales
+    observaciones?: string;
+}

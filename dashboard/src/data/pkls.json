@@ -1,0 +1,746 @@
+[
+  {
+    "pkl_id": "PKL-2026-0001",
+    "version": "2.0",
+    "created_at": "2026-01-05",
+    "updated_at": "2026-01-06",
+    "clasificacion": {
+      "tipo_operacion": "produccion_instalacion",
+      "area": "logistica"
+    },
+    "cliente": {
+      "nombre": "Grupo Lar",
+      "proyecto": "Zendai",
+      "contacto": null,
+      "direccion_entrega": "Proyecto Zendai",
+      "ejecutiva_asignada": "Angelica"
+    },
+    "origen": {
+      "canal": "whatsapp",
+      "solicitado_por": "Angelica",
+      "fecha_solicitud": "2026-01-05",
+      "descripcion_inicial": "Viniles pegados en foam para instalacion en caballete"
+    },
+    "productos": [
+      {
+        "producto_id": "PROD-001",
+        "tipo": "vinilo",
+        "cantidad": 1,
+        "descripcion": "Vinil pegado en foam para caballete",
+        "atributos": {
+          "material_base": "foam"
+        }
+      }
+    ],
+    "inputs": {
+      "arte_grafico": {
+        "fuente": "Editor Creaktivo",
+        "estado": "aprobado",
+        "fecha_recepcion": "2026-01-05"
+      }
+    },
+    "proveedores": [
+      {
+        "proveedor_id": "PROV-PATTY",
+        "nombre": "Patricia",
+        "alias": "Patty",
+        "servicio": "impresion_vinilo",
+        "ubicacion": "Galeria La 11"
+      }
+    ],
+    "estado": {
+      "actual": "cerrado_ok",
+      "historial": [
+        { "estado": "recibido", "fecha": "2026-01-05" },
+        { "estado": "en_produccion", "fecha": "2026-01-05" },
+        { "estado": "en_curso", "fecha": "2026-01-06" },
+        { "estado": "cerrado_ok", "fecha": "2026-01-06" }
+      ]
+    },
+    "tasks": [
+      {
+        "task_id": "T001",
+        "orden": 1,
+        "nombre": "Envio de arte a Patty",
+        "descripcion": "Envio del archivo de arte a proveedora para produccion",
+        "tipo": "coordinacion_proveedor",
+        "responsable": "Equipo (pre-ingreso Huber)",
+        "proveedor_id": "PROV-PATTY",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-05"
+      },
+      {
+        "task_id": "T002",
+        "orden": 2,
+        "nombre": "Recepcion cotizacion y confirmacion",
+        "descripcion": "Recepcion de precio y confirmacion para iniciar produccion",
+        "tipo": "coordinacion_proveedor",
+        "responsable": "Equipo (pre-ingreso Huber)",
+        "proveedor_id": "PROV-PATTY",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-05"
+      },
+      {
+        "task_id": "T003",
+        "orden": 3,
+        "nombre": "Compra cinta doble contacto",
+        "descripcion": "Compra de insumo para instalacion",
+        "tipo": "compra_insumo",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": {
+          "monto": 6.50,
+          "moneda": "PEN",
+          "concepto": "cinta doble contacto 2m"
+        },
+        "fecha_completado": "2026-01-06"
+      },
+      {
+        "task_id": "T004",
+        "orden": 4,
+        "nombre": "Recojo viniles en Galeria La 11",
+        "descripcion": "Recojo de produccion terminada",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-PATTY",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "ruta": {
+          "origen": "Oficina/Punto inicial",
+          "destino": "Galeria La 11"
+        },
+        "fecha_completado": "2026-01-06"
+      },
+      {
+        "task_id": "T005",
+        "orden": 5,
+        "nombre": "Pago a Patty",
+        "descripcion": "Pago via Yape, factura enviada por WhatsApp",
+        "tipo": "pago",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-PATTY",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": {
+          "monto": 0,
+          "moneda": "PEN",
+          "medio_pago": "yape",
+          "comprobante": "factura"
+        },
+        "fecha_completado": "2026-01-06"
+      },
+      {
+        "task_id": "T006",
+        "orden": 6,
+        "nombre": "Traslado a Proyecto Zendai",
+        "descripcion": "Traslado desde Galeria 11 al proyecto del cliente",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": 40,
+        "costo": null,
+        "ruta": {
+          "origen": "Galeria La 11",
+          "destino": "Proyecto Zendai"
+        },
+        "fecha_completado": "2026-01-06"
+      },
+      {
+        "task_id": "T007",
+        "orden": 7,
+        "nombre": "Instalacion en caballete",
+        "descripcion": "Instalacion de vinil en foam en caballete del proyecto",
+        "tipo": "instalacion",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": 20,
+        "costo": null,
+        "ubicacion": "Proyecto Zendai",
+        "fecha_completado": "2026-01-06"
+      },
+      {
+        "task_id": "T008",
+        "orden": 8,
+        "nombre": "Retorno a Estacion Angamos",
+        "descripcion": "Retorno despues de instalacion",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": 35,
+        "costo": null,
+        "ruta": {
+          "origen": "Proyecto Zendai",
+          "destino": "Estacion Angamos"
+        },
+        "fecha_completado": "2026-01-06"
+      },
+      {
+        "task_id": "T009",
+        "orden": 9,
+        "nombre": "Registro fotografico",
+        "descripcion": "Foto del trabajo instalado",
+        "tipo": "cierre",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-06"
+      },
+      {
+        "task_id": "T010",
+        "orden": 10,
+        "nombre": "Envio evidencia a ejecutiva",
+        "descripcion": "Envio de foto a Angelica por WhatsApp",
+        "tipo": "cierre",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-06"
+      }
+    ],
+    "eventos_externos": [
+      {
+        "evento_id": "E001",
+        "descripcion": "Patty termino produccion vinil + foam",
+        "proveedor_id": "PROV-PATTY",
+        "fecha": "2026-01-06",
+        "impacta_estado": "en_curso"
+      }
+    ],
+    "costos": {
+      "detalle": [
+        { "concepto": "Produccion vinil Patty", "monto": 0, "task_id": "T005" },
+        { "concepto": "Cinta doble contacto", "monto": 6.50, "task_id": "T003" }
+      ],
+      "total": 6.50,
+      "moneda": "PEN",
+      "nota": "Costo produccion no registrado (primer dia Huber)"
+    },
+    "cierre": {
+      "estado_final": "cerrado_ok",
+      "fecha_cierre": "2026-01-06",
+      "evidencias": [
+        {
+          "tipo": "foto_entrega",
+          "archivo": null,
+          "fecha": "2026-01-06"
+        }
+      ],
+      "confirmado_por": "Angelica (via WhatsApp)"
+    },
+    "alertas": {
+      "dias_sin_actividad": 0,
+      "umbral_pausa_dias": 7
+    },
+    "riesgos_identificados": [
+      {
+        "descripcion": "Dependencia de insumo: cinta doble contacto",
+        "mitigacion": "Mantener stock minimo (2-5 metros)",
+        "costo_referencia": "2m = S/6.50, 5m = S/12.00"
+      }
+    ],
+    "observaciones": "Primer PKL de Huber. Tasks pre-produccion ejecutados antes de su ingreso. Tiempo en campo: ~2.5 horas (traslado 40min + instalacion 20min + retorno 35min)."
+  },
+  {
+    "pkl_id": "PKL-2026-0002",
+    "version": "2.0",
+    "created_at": "2026-01-09",
+    "updated_at": "2026-01-15",
+    "clasificacion": {
+      "tipo_operacion": "produccion",
+      "area": "logistica"
+    },
+    "cliente": {
+      "nombre": "Lien",
+      "proyecto": null,
+      "contacto": null,
+      "direccion_entrega": null,
+      "ejecutiva_asignada": "Angelica"
+    },
+    "origen": {
+      "canal": "whatsapp",
+      "solicitado_por": "Angelica",
+      "fecha_solicitud": "2026-01-09",
+      "descripcion_inicial": "50 lanyards personalizados + 50 notebooks con serigrafia"
+    },
+    "productos": [
+      {
+        "producto_id": "PROD-001",
+        "tipo": "lanyard",
+        "cantidad": 50,
+        "descripcion": "Lanyards con gancho, ancho 2cm",
+        "atributos": {
+          "color_verde": "numero 10",
+          "color_dorado": "numero 17",
+          "ancho": "2cm",
+          "gancho": true
+        }
+      },
+      {
+        "producto_id": "PROD-002",
+        "tipo": "notebook",
+        "cantidad": 50,
+        "descripcion": "Notebooks con serigrafia logo",
+        "atributos": {
+          "medida": "14.5 x 21 cm",
+          "color": "negro"
+        }
+      }
+    ],
+    "inputs": {
+      "arte_grafico": {
+        "fuente": "Editor grafico interno",
+        "estado": "aprobado",
+        "fecha_recepcion": "2026-01-09"
+      }
+    },
+    "proveedores": [
+      {
+        "proveedor_id": "PROV-HOSH",
+        "nombre": "Hosh",
+        "servicio": "produccion_lanyards",
+        "ubicacion": "San Martin"
+      },
+      {
+        "proveedor_id": "PROV-EYF",
+        "nombre": "EYF",
+        "servicio": "venta_notebooks",
+        "ubicacion": "Chorrillos"
+      },
+      {
+        "proveedor_id": "PROV-ARTECK",
+        "nombre": "Jhonn - Arteck",
+        "servicio": "serigrafia"
+      }
+    ],
+    "estado": {
+      "actual": "cerrado_ok",
+      "historial": [
+        { "estado": "recibido", "fecha": "2026-01-09" },
+        { "estado": "en_produccion", "fecha": "2026-01-12" },
+        { "estado": "en_curso", "fecha": "2026-01-14" },
+        { "estado": "cerrado_ok", "fecha": "2026-01-15" }
+      ]
+    },
+    "tasks": [
+      {
+        "task_id": "T001",
+        "orden": 1,
+        "nombre": "Crear muestra de color",
+        "descripcion": "Editor grafico crea muestra para prueba de color",
+        "tipo": "coordinacion_proveedor",
+        "responsable": "Diseno interno",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-09"
+      },
+      {
+        "task_id": "T002",
+        "orden": 2,
+        "nombre": "Envio arte a Hosh para prueba",
+        "descripcion": "Enviar muestra a proveedor para prueba de color",
+        "tipo": "coordinacion_proveedor",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-HOSH",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-09"
+      },
+      {
+        "task_id": "T003",
+        "orden": 3,
+        "nombre": "Compra notebooks en EYF",
+        "descripcion": "Compra de 50 notebooks negros 14.5x21cm en Chorrillos",
+        "tipo": "compra_insumo",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-EYF",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": {
+          "monto": 300.00,
+          "moneda": "PEN",
+          "incluye_igv": true
+        },
+        "fecha_completado": "2026-01-09"
+      },
+      {
+        "task_id": "T004",
+        "orden": 4,
+        "nombre": "Recojo prueba de color (motorizado)",
+        "descripcion": "Motorizado recoge prueba de color de Hosh en San Martin",
+        "tipo": "movilidad",
+        "responsable": "Motorizado",
+        "proveedor_id": "PROV-HOSH",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": {
+          "monto": 18.50,
+          "moneda": "PEN",
+          "concepto": "motorizado"
+        },
+        "ruta": {
+          "origen": "Hosh - San Martin",
+          "destino": "Oficina"
+        },
+        "fecha_completado": "2026-01-12"
+      },
+      {
+        "task_id": "T005",
+        "orden": 5,
+        "nombre": "Entrega prueba de color a cliente",
+        "descripcion": "Llevar prueba de color a Lien para aprobacion",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "ruta": {
+          "origen": "Oficina",
+          "destino": "Cliente Lien"
+        },
+        "fecha_completado": "2026-01-12"
+      },
+      {
+        "task_id": "T006",
+        "orden": 6,
+        "nombre": "Envio especificaciones finales a Hosh",
+        "descripcion": "Cliente eligio verde #10, dorado #17, 50 unidades ancho 2cm",
+        "tipo": "coordinacion_proveedor",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-HOSH",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-12"
+      },
+      {
+        "task_id": "T007",
+        "orden": 7,
+        "nombre": "Pago produccion lanyards Hosh",
+        "descripcion": "Pago a Hosh por produccion de 50 lanyards",
+        "tipo": "pago",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-HOSH",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": {
+          "monto": 300.00,
+          "moneda": "PEN",
+          "incluye_igv": true
+        },
+        "fecha_completado": "2026-01-12"
+      },
+      {
+        "task_id": "T008",
+        "orden": 8,
+        "nombre": "Recojo notebooks EYF",
+        "descripcion": "Recoger notebooks comprados en Chorrillos",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-EYF",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "ruta": {
+          "origen": "Oficina",
+          "destino": "EYF - Chorrillos"
+        },
+        "fecha_completado": "2026-01-12"
+      },
+      {
+        "task_id": "T009",
+        "orden": 9,
+        "nombre": "Traslado notebooks a Arteck",
+        "descripcion": "Llevar notebooks directo de EYF a Jhonn para serigrafia",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "ruta": {
+          "origen": "EYF - Chorrillos",
+          "destino": "Arteck - Jhonn"
+        },
+        "fecha_completado": "2026-01-12"
+      },
+      {
+        "task_id": "T010",
+        "orden": 10,
+        "nombre": "Pago serigrafia Arteck",
+        "descripcion": "Pago a Jhonn por serigrafia de logo en notebooks",
+        "tipo": "pago",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-ARTECK",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": {
+          "monto": 85.00,
+          "moneda": "PEN",
+          "incluye_igv": false
+        },
+        "fecha_completado": "2026-01-12"
+      },
+      {
+        "task_id": "T011",
+        "orden": 11,
+        "nombre": "Recojo lanyards de Hosh (motorizado)",
+        "descripcion": "Motorizado recoge produccion final de lanyards",
+        "tipo": "movilidad",
+        "responsable": "Motorizado",
+        "proveedor_id": "PROV-HOSH",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": {
+          "monto": 18.50,
+          "moneda": "PEN",
+          "concepto": "motorizado"
+        },
+        "ruta": {
+          "origen": "Hosh - San Martin",
+          "destino": "Oficina"
+        },
+        "fecha_completado": "2026-01-14"
+      },
+      {
+        "task_id": "T012",
+        "orden": 12,
+        "nombre": "Recojo notebooks de Arteck",
+        "descripcion": "Recoger notebooks con serigrafia terminada",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "ruta": {
+          "origen": "Arteck - Jhonn",
+          "destino": "Oficina"
+        },
+        "fecha_completado": "2026-01-14"
+      },
+      {
+        "task_id": "T013",
+        "orden": 13,
+        "nombre": "Entrega final a cliente Lien",
+        "descripcion": "Entrega de lanyards + notebooks juntos al cliente",
+        "tipo": "movilidad",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "ruta": {
+          "origen": "Oficina",
+          "destino": "Cliente Lien"
+        },
+        "fecha_completado": "2026-01-15"
+      },
+      {
+        "task_id": "T014",
+        "orden": 14,
+        "nombre": "Registro de evidencia",
+        "descripcion": "Foto de entrega al cliente",
+        "tipo": "cierre",
+        "responsable": "Huber",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "fecha_completado": "2026-01-15"
+      }
+    ],
+    "eventos_externos": [
+      {
+        "evento_id": "E001",
+        "descripcion": "Hosh termino prueba de color",
+        "proveedor_id": "PROV-HOSH",
+        "fecha": "2026-01-12",
+        "impacta_estado": null
+      },
+      {
+        "evento_id": "E002",
+        "descripcion": "Cliente Lien aprobo colores (verde #10, dorado #17)",
+        "fecha": "2026-01-12",
+        "impacta_estado": "en_produccion"
+      },
+      {
+        "evento_id": "E003",
+        "descripcion": "Hosh termino produccion completa de lanyards",
+        "proveedor_id": "PROV-HOSH",
+        "fecha": "2026-01-13T23:30:00-05:00",
+        "impacta_estado": "en_curso"
+      },
+      {
+        "evento_id": "E004",
+        "descripcion": "Arteck termino serigrafia notebooks",
+        "proveedor_id": "PROV-ARTECK",
+        "fecha": "2026-01-13",
+        "impacta_estado": null
+      }
+    ],
+    "costos": {
+      "detalle": [
+        { "concepto": "Notebooks EYF", "monto": 300.00, "task_id": "T003", "incluye_igv": true },
+        { "concepto": "Produccion lanyards Hosh", "monto": 300.00, "task_id": "T007", "incluye_igv": true },
+        { "concepto": "Serigrafia Arteck", "monto": 85.00, "task_id": "T010", "incluye_igv": false },
+        { "concepto": "Motorizado prueba color", "monto": 18.50, "task_id": "T004" },
+        { "concepto": "Motorizado recojo lanyards", "monto": 18.50, "task_id": "T011" }
+      ],
+      "total": 722.00,
+      "moneda": "PEN"
+    },
+    "cierre": {
+      "estado_final": "cerrado_ok",
+      "fecha_cierre": "2026-01-15",
+      "evidencias": [
+        {
+          "tipo": "foto_entrega",
+          "archivo": null,
+          "fecha": "2026-01-15"
+        }
+      ],
+      "confirmado_por": "Cliente Lien"
+    },
+    "alertas": {
+      "dias_sin_actividad": 0,
+      "umbral_pausa_dias": 7
+    },
+    "observaciones": "PKL con dos lineas de producto paralelas. Flujo lanyards: prueba color -> aprobacion -> produccion. Flujo notebooks: compra -> serigrafia. Consolidacion en oficina miercoles, entrega jueves."
+  },
+  {
+    "pkl_id": "PKL-2026-0006",
+    "version": "2.0",
+    "created_at": "2026-01-07",
+    "updated_at": "2026-01-07",
+    "clasificacion": {
+      "tipo_operacion": "solo_cotizacion",
+      "area": "logistica"
+    },
+    "cliente": {
+      "nombre": "TYC",
+      "proyecto": null,
+      "contacto": null,
+      "direccion_entrega": null,
+      "ejecutiva_asignada": "Angelica"
+    },
+    "origen": {
+      "canal": "whatsapp",
+      "solicitado_por": "Angelica",
+      "fecha_solicitud": "2026-01-07",
+      "descripcion_inicial": "Cotizacion cajas 40x30 y 40x40 de marciano (tecnopor)"
+    },
+    "productos": [
+      {
+        "producto_id": "PROD-001",
+        "tipo": "caja_tecnopor",
+        "cantidad": null,
+        "descripcion": "Cajas marcianos tecnopor 40x30 y 40x40"
+      }
+    ],
+    "proveedores": [
+      {
+        "proveedor_id": "PROV-MERCADO2",
+        "nombre": "Mercado Dos",
+        "servicio": "venta_insumos"
+      }
+    ],
+    "estado": {
+      "actual": "en_pausa",
+      "historial": [
+        { "estado": "recibido", "fecha": "2026-01-07" },
+        { "estado": "en_pausa", "fecha": "2026-01-07", "motivo": "Pedido no avanzo" }
+      ]
+    },
+    "tasks": [
+      {
+        "task_id": "T001",
+        "orden": 1,
+        "nombre": "Cotizacion de cajas",
+        "descripcion": "Averiguar precio de cajas marcianos en Mercado Dos",
+        "tipo": "cotizacion",
+        "responsable": "Huber",
+        "proveedor_id": "PROV-MERCADO2",
+        "estado": "completado",
+        "es_happy_path": true,
+        "bloqueado_por_evento": null,
+        "duracion_min": null,
+        "costo": null,
+        "resultado": {
+          "precio_encontrado": 35.00,
+          "moneda": "PEN"
+        },
+        "fecha_completado": "2026-01-07"
+      }
+    ],
+    "eventos_externos": [],
+    "costos": {
+      "detalle": [],
+      "total": 0,
+      "moneda": "PEN"
+    },
+    "cierre": {
+      "estado_final": null,
+      "fecha_cierre": null,
+      "evidencias": []
+    },
+    "alertas": {
+      "dias_sin_actividad": 11,
+      "umbral_pausa_dias": 7
+    },
+    "observaciones": "El pedido no avanzo despues de la cotizacion."
+  }
+]

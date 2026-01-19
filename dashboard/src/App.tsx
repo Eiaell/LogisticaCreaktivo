@@ -16,17 +16,21 @@ import { ProveedorFichaPage } from './components/ProveedorFichaPage';
 import { CatalogoItemsPage } from './components/CatalogoItemsPage';
 import { CotizacionesPage } from './components/CotizacionesPage';
 import { DiaADiaPage } from './components/DiaADiaPage';
+import PKLPage from './components/PKLPage';
 import { ActividadReciente } from './components/ActividadReciente';
 import { useDatabase, DatabaseProvider } from './context/DatabaseContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { useAutoBackup } from './hooks/useAutoBackup';
 
-type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'proveedor_ficha' | 'catalogo_items' | 'cotizaciones' | 'dia_a_dia';
+type PageView = 'dashboard' | 'clientes' | 'cliente_ficha' | 'proveedores' | 'proveedor_ficha' | 'catalogo_items' | 'cotizaciones' | 'dia_a_dia' | 'pkl';
 
 interface DashboardProps {
   onNavigate: (page: PageView) => void;
   onNuevoRequerimiento: () => void;
 }
+
+// Re-export PageView for child components
+export type { PageView };
 
 function Dashboard({ onNavigate, onNuevoRequerimiento }: DashboardProps) {
   const { pedidos, clientes, proveedores, loadDatabase } = useDatabase();
@@ -125,6 +129,14 @@ function Dashboard({ onNavigate, onNuevoRequerimiento }: DashboardProps) {
           >
             <span className="text-lg group-hover:scale-110 transition-transform">💰</span>
             <span className="font-medium">Cotizaciones</span>
+          </button>
+          <button
+            onClick={() => onNavigate('pkl')}
+            className="group px-4 py-2 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border border-cyan-500/30 rounded-xl text-cyan-300 hover:from-cyan-600/40 hover:to-blue-600/40 hover:border-cyan-400/50 hover:text-white transition-all flex items-center gap-2"
+          >
+            <span className="text-lg group-hover:scale-110 transition-transform">📋</span>
+            <span className="font-medium">PKL</span>
+            <span className="text-xs bg-cyan-500/30 px-2 py-0.5 rounded-full">3</span>
           </button>
 
           <div className="w-px bg-gray-700 mx-1"></div>
@@ -301,6 +313,10 @@ function AppContent() {
       case 'dia_a_dia':
         return (
           <DiaADiaPage onBack={() => setCurrentPage('dashboard')} />
+        );
+      case 'pkl':
+        return (
+          <PKLPage />
         );
       default:
         return (
