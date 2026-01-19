@@ -71,85 +71,87 @@ export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
     }, [pkls]);
 
     return (
-        <div className="p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+            {/* Header - Responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">PKL - Primary Key Logistica</h1>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white">PKL - Primary Key Logistica</h1>
+                    <p className="text-gray-400 text-xs sm:text-sm mt-1 hidden sm:block">
                         Trazabilidad end-to-end de requerimientos logisticos
                     </p>
                 </div>
-                <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors">
+                <button className="px-3 sm:px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors text-sm sm:text-base">
                     + Nuevo PKL
                 </button>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-white">{stats.total}</div>
-                    <div className="text-gray-400 text-sm">Total PKLs</div>
+            {/* Stats Cards - Responsive */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-white">{stats.total}</div>
+                    <div className="text-gray-400 text-[10px] sm:text-xs md:text-sm">Total PKLs</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-green-400">{stats.cerrados}</div>
-                    <div className="text-gray-400 text-sm">Cerrados</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-400">{stats.cerrados}</div>
+                    <div className="text-gray-400 text-[10px] sm:text-xs md:text-sm">Cerrados</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-cyan-400">{stats.enCurso}</div>
-                    <div className="text-gray-400 text-sm">En Curso</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-cyan-400">{stats.enCurso}</div>
+                    <div className="text-gray-400 text-[10px] sm:text-xs md:text-sm">En Curso</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-yellow-400">{stats.enPausa}</div>
-                    <div className="text-gray-400 text-sm">En Pausa</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-yellow-400">{stats.enPausa}</div>
+                    <div className="text-gray-400 text-[10px] sm:text-xs md:text-sm">En Pausa</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-white">S/ {stats.totalCosto.toFixed(2)}</div>
-                    <div className="text-gray-400 text-sm">Costo Total</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-white">S/ {stats.totalCosto.toFixed(2)}</div>
+                    <div className="text-gray-400 text-[10px] sm:text-xs md:text-sm">Costo Total</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-purple-400">{stats.totalTasks}</div>
-                    <div className="text-gray-400 text-sm">Tasks Ejecutados</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-purple-400">{stats.totalTasks}</div>
+                    <div className="text-gray-400 text-[10px] sm:text-xs md:text-sm">Tasks</div>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4 items-center">
+            {/* Filters - Responsive */}
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 items-stretch sm:items-center">
                 <input
                     type="text"
-                    placeholder="Buscar por ID, cliente o descripcion..."
+                    placeholder="Buscar..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="flex-1 min-w-[200px] px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                    className="flex-1 min-w-0 sm:min-w-[200px] px-3 sm:px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 text-sm"
                 />
-                <select
-                    value={filterEstado}
-                    onChange={e => setFilterEstado(e.target.value as EstadoPKL | 'todos')}
-                    className="px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-cyan-500"
-                >
-                    <option value="todos">Todos los estados</option>
-                    {ESTADOS_PKL.map(e => (
-                        <option key={e.value} value={e.value}>{e.label}</option>
-                    ))}
-                </select>
-                <select
-                    value={filterTipo}
-                    onChange={e => setFilterTipo(e.target.value as TipoOperacionPKL | 'todos')}
-                    className="px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-cyan-500"
-                >
-                    <option value="todos">Todos los tipos</option>
-                    {TIPOS_OPERACION_PKL.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                </select>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <select
+                        value={filterEstado}
+                        onChange={e => setFilterEstado(e.target.value as EstadoPKL | 'todos')}
+                        className="flex-1 sm:flex-none px-2 sm:px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white text-xs sm:text-sm focus:outline-none focus:border-cyan-500"
+                    >
+                        <option value="todos">Estados</option>
+                        {ESTADOS_PKL.map(e => (
+                            <option key={e.value} value={e.value}>{e.label}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={filterTipo}
+                        onChange={e => setFilterTipo(e.target.value as TipoOperacionPKL | 'todos')}
+                        className="flex-1 sm:flex-none px-2 sm:px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white text-xs sm:text-sm focus:outline-none focus:border-cyan-500"
+                    >
+                        <option value="todos">Tipos</option>
+                        {TIPOS_OPERACION_PKL.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* PKL List */}
-                <div className="lg:col-span-1 space-y-3">
-                    <h2 className="text-lg font-semibold text-white mb-4">
-                        Lista de PKLs ({filteredPKLs.length})
+                <div className="lg:col-span-1 space-y-2 sm:space-y-3">
+                    <h2 className="text-base sm:text-lg font-semibold text-white mb-2 sm:mb-4">
+                        PKLs ({filteredPKLs.length})
                     </h2>
                     {filteredPKLs.length === 0 ? (
                         <div className="text-gray-500 text-center py-8">

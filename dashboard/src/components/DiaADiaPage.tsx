@@ -1138,29 +1138,29 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     };
 
     return (
-        <div className="min-h-screen p-6">
-            {/* Header */}
-            <header className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
+        <div className="min-h-screen p-3 sm:p-4 md:p-6">
+            {/* Header - Responsive */}
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6 md:mb-8">
+                <div className="flex items-center gap-2 sm:gap-4">
                     <button
                         onClick={onBack}
-                        className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                        className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors text-sm sm:text-base"
                     >
-                        ← Volver
+                        ←
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black">
+                        <h1 className="text-xl sm:text-2xl md:text-3xl font-black">
                             <span className="text-cyan-400">📅</span> Día a Día
                         </h1>
-                        <p className="text-gray-500 text-sm">Registro de actividades diarias</p>
+                        <p className="text-gray-500 text-xs sm:text-sm hidden sm:block">Registro de actividades diarias</p>
                     </div>
                 </div>
 
-                {/* Filtros */}
-                <div className="flex items-center gap-2">
+                {/* Filtros - Responsive */}
+                <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                     <button
                         onClick={() => setFilterType('all')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                             filterType === 'all' ? 'bg-cyan-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
                         }`}
                     >
@@ -1168,52 +1168,52 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     </button>
                     <button
                         onClick={() => setFilterType('movimientos')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                             filterType === 'movimientos' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
                         }`}
                     >
-                        🚚 Movimientos
+                        🚚 <span className="hidden sm:inline">Movimientos</span>
                     </button>
                     <button
                         onClick={() => setFilterType('rendiciones')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                             filterType === 'rendiciones' ? 'bg-orange-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
                         }`}
                     >
-                        💰 Rendiciones
+                        💰 <span className="hidden sm:inline">Rendiciones</span>
                     </button>
                     <button
                         onClick={() => setFilterType('produccion')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                             filterType === 'produccion' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
                         }`}
                     >
-                        🏭 Producción
+                        🏭 <span className="hidden sm:inline">Producción</span>
                     </button>
                 </div>
             </header>
 
-            {/* KPIs Resumen */}
-            <div className="grid grid-cols-5 gap-4 mb-8">
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-                    <div className="text-3xl font-bold text-white">{totales.dias}</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wider">Días</div>
+            {/* KPIs Resumen - Responsive grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
+                <div className="bg-gray-900 border border-gray-800 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{totales.dias}</div>
+                    <div className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider">Días</div>
                 </div>
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 text-center">
-                    <div className="text-3xl font-bold text-blue-400">{totales.movimientos}</div>
-                    <div className="text-xs text-blue-400/70 uppercase tracking-wider">Movimientos</div>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-400">{totales.movimientos}</div>
+                    <div className="text-[10px] sm:text-xs text-blue-400/70 uppercase tracking-wider">Movimientos</div>
                 </div>
-                <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 text-center">
-                    <div className="text-3xl font-bold text-orange-400">{totales.rendiciones}</div>
-                    <div className="text-xs text-orange-400/70 uppercase tracking-wider">Rendiciones</div>
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-400">{totales.rendiciones}</div>
+                    <div className="text-[10px] sm:text-xs text-orange-400/70 uppercase tracking-wider">Rendiciones</div>
                 </div>
-                <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 text-center">
-                    <div className="text-3xl font-bold text-indigo-400">{totales.producciones}</div>
-                    <div className="text-xs text-indigo-400/70 uppercase tracking-wider">Producciones</div>
+                <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-400">{totales.producciones}</div>
+                    <div className="text-[10px] sm:text-xs text-indigo-400/70 uppercase tracking-wider">Producciones</div>
                 </div>
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
-                    <div className="text-3xl font-bold text-amber-400">S/. {totales.montoTotal.toFixed(2)}</div>
-                    <div className="text-xs text-amber-400/70 uppercase tracking-wider">Monto Total</div>
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 text-center col-span-2 sm:col-span-1">
+                    <div className="text-xl sm:text-2xl md:text-3xl font-bold text-amber-400">S/. {totales.montoTotal.toFixed(2)}</div>
+                    <div className="text-[10px] sm:text-xs text-amber-400/70 uppercase tracking-wider">Monto Total</div>
                 </div>
             </div>
 

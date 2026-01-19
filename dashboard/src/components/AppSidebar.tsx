@@ -66,6 +66,18 @@ const IconMoon = () => (
     </svg>
 );
 
+const IconMenu = () => (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+);
+
+const IconClose = () => (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
+
 // Función para agrupar pedidos por fecha
 function groupPedidosByDate(pedidos: Pedido[]): Record<string, Pedido[]> {
     const now = new Date();
@@ -209,8 +221,21 @@ export function AppSidebar({
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; pedido: Pedido } | null>(null);
     const [hoveredPedidoId, setHoveredPedidoId] = useState<string | null>(null);
     const [showImportarJSON, setShowImportarJSON] = useState(false);
+    const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     const groupedPedidos = groupPedidosByDate(pedidos);
+
+    // Close mobile sidebar when navigating
+    const handleNavigate = (page: 'dashboard' | 'clientes' | 'proveedores' | 'catalogo_items' | 'cotizaciones' | 'dia_a_dia' | 'pkl') => {
+        onNavigate(page);
+        setIsMobileOpen(false);
+    };
+
+    // Close mobile sidebar when selecting a pedido
+    const handleSelectPedido = (pedidoId: string) => {
+        onSelectPedido(pedidoId);
+        setIsMobileOpen(false);
+    };
 
     const handleContextMenu = (e: React.MouseEvent, pedido: Pedido) => {
         e.preventDefault();
@@ -251,10 +276,34 @@ export function AppSidebar({
 
     return (
         <>
+            {/* Mobile Hamburger Button - Fixed at top left on mobile */}
+            <button
+                onClick={() => setIsMobileOpen(true)}
+                className="fixed top-4 left-4 z-40 p-2 rounded-lg md:hidden"
+                style={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)'
+                }}
+                aria-label="Abrir menú"
+            >
+                <IconMenu />
+            </button>
+
+            {/* Mobile Overlay */}
+            {isMobileOpen && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+                    onClick={() => setIsMobileOpen(false)}
+                />
+            )}
+
             <aside
-                className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ease-in-out ${
-                    isExpanded ? 'w-72' : 'w-16'
-                }`}
+                className={`fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 ease-in-out
+                    ${isExpanded ? 'w-72' : 'w-16'}
+                    ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+                    md:translate-x-0
+                `}
                 style={{
                     backgroundColor: 'var(--bg-secondary)',
                     borderRight: '1px solid var(--border-color)'
@@ -284,13 +333,25 @@ export function AppSidebar({
                         )}
                     </button>
                     {isExpanded && (
-                        <button
-                            onClick={onToggle}
-                            className="ml-auto p-1.5 rounded-lg transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                        >
-                            <IconChevronLeft />
-                        </button>
+                        <>
+                            {/* Close button for mobile */}
+                            <button
+                                onClick={() => setIsMobileOpen(false)}
+                                className="ml-auto p-1.5 rounded-lg transition-colors md:hidden"
+                                style={{ color: 'var(--text-muted)' }}
+                                aria-label="Cerrar menú"
+                            >
+                                <IconClose />
+                            </button>
+                            {/* Collapse button for desktop */}
+                            <button
+                                onClick={onToggle}
+                                className="ml-auto p-1.5 rounded-lg transition-colors hidden md:block"
+                                style={{ color: 'var(--text-muted)' }}
+                            >
+                                <IconChevronLeft />
+                            </button>
+                        </>
                     )}
                 </div>
 
@@ -302,7 +363,7 @@ export function AppSidebar({
                     {navItems.map(item => (
                         <button
                             key={item.id}
-                            onClick={() => onNavigate(item.page)}
+                            onClick={() => handleNavigate(item.page)}
                             className={`group relative flex items-center gap-3 rounded-xl transition-colors ${
                                 isExpanded ? 'px-4 py-3' : 'p-3 justify-center'
                             } ${
@@ -373,7 +434,7 @@ export function AppSidebar({
                                                             backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
                                                             color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)'
                                                         }}
-                                                        onClick={() => onSelectPedido(pedido.id)}
+                                                        onClick={() => handleSelectPedido(pedido.id)}
                                                         onContextMenu={(e) => handleContextMenu(e, pedido)}
                                                         onMouseEnter={() => setHoveredPedidoId(pedido.id)}
                                                         onMouseLeave={() => setHoveredPedidoId(null)}

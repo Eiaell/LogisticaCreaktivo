@@ -362,64 +362,157 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                 </div>
             )}
 
-            {/* Filters Bar */}
-            <div className="flex flex-wrap gap-4 mb-4 items-center bg-gray-900/40 p-3 rounded-lg border border-gray-800">
-                {/* Nuevo Pedido Button */}
-                <button
-                    onClick={() => setShowNuevoPedidoModal(true)}
-                    className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 shadow-lg shadow-cyan-900/30"
-                >
-                    <span className="text-lg">+</span>
-                    Nuevo Pedido
-                </button>
-
-                {/* Batch Delete Button */}
-                {selectedIds.size > 0 && (
+            {/* Filters Bar - Responsive */}
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 mb-4 items-stretch sm:items-center bg-gray-900/40 p-2 sm:p-3 rounded-lg border border-gray-800">
+                {/* Top row: Action buttons */}
+                <div className="flex gap-2 sm:gap-4">
+                    {/* Nuevo Pedido Button */}
                     <button
-                        onClick={() => setConfirmDelete({ type: 'batch', ids: Array.from(selectedIds) })}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 shadow-lg shadow-red-900/30 animate-in fade-in duration-200"
+                        onClick={() => setShowNuevoPedidoModal(true)}
+                        className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-1 sm:gap-2 shadow-lg shadow-cyan-900/30"
                     >
-                        <span>🗑️</span>
-                        Eliminar ({selectedIds.size})
+                        <span className="text-base sm:text-lg">+</span>
+                        <span className="hidden xs:inline">Nuevo</span> <span className="hidden sm:inline">Pedido</span>
                     </button>
-                )}
 
-                <div className="flex-1 min-w-[200px]">
+                    {/* Batch Delete Button */}
+                    {selectedIds.size > 0 && (
+                        <button
+                            onClick={() => setConfirmDelete({ type: 'batch', ids: Array.from(selectedIds) })}
+                            className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-xs sm:text-sm transition-colors flex items-center gap-1 sm:gap-2 shadow-lg shadow-red-900/30 animate-in fade-in duration-200"
+                        >
+                            <span>🗑️</span>
+                            <span className="hidden sm:inline">Eliminar</span> ({selectedIds.size})
+                        </button>
+                    )}
+                </div>
+
+                {/* Search input - full width on mobile */}
+                <div className="flex-1 min-w-0 sm:min-w-[200px]">
                     <input
                         type="text"
-                        placeholder="Buscar global..."
+                        placeholder="Buscar..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm "
+                        className="w-full px-3 sm:px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm"
                     />
                 </div>
 
-                {/* Client Select */}
-                <select
-                    value={filterCliente}
-                    onChange={(e) => setFilterCliente(e.target.value)}
-                    className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm min-w-[200px] ${filterCliente ? 'bg-blue-900/20 border-blue-500 text-blue-200' : 'bg-gray-950 border-gray-700 text-gray-300'}`}
-                >
-                    <option value="" className="bg-gray-950 text-gray-300">Todos los Clientes</option>
-                    {clientesList.map(c => (
-                        <option key={c.razonSocial} value={c.razonSocial} className="bg-gray-950 text-gray-300">{c.displayName}</option>
-                    ))}
-                </select>
+                {/* Filters row on mobile */}
+                <div className="flex gap-2 w-full sm:w-auto">
+                    {/* Client Select */}
+                    <select
+                        value={filterCliente}
+                        onChange={(e) => setFilterCliente(e.target.value)}
+                        className={`flex-1 sm:flex-none px-2 sm:px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-xs sm:text-sm sm:min-w-[200px] ${filterCliente ? 'bg-blue-900/20 border-blue-500 text-blue-200' : 'bg-gray-950 border-gray-700 text-gray-300'}`}
+                    >
+                        <option value="" className="bg-gray-950 text-gray-300">Clientes</option>
+                        {clientesList.map(c => (
+                            <option key={c.razonSocial} value={c.razonSocial} className="bg-gray-950 text-gray-300">{c.displayName}</option>
+                        ))}
+                    </select>
 
-                <select
-                    value={filterEstado}
-                    onChange={(e) => setFilterEstado(e.target.value)}
-                    className="px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm text-gray-300"
-                >
-                    <option value="" className="bg-gray-950 text-gray-300">Todos los Estados</option>
-                    {estados.map(estado => (
-                        <option key={estado} value={estado} className="bg-gray-950 text-gray-300">{estado}</option>
-                    ))}
-                </select>
+                    <select
+                        value={filterEstado}
+                        onChange={(e) => setFilterEstado(e.target.value)}
+                        className="flex-1 sm:flex-none px-2 sm:px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-xs sm:text-sm text-gray-300"
+                    >
+                        <option value="" className="bg-gray-950 text-gray-300">Estados</option>
+                        {estados.map(estado => (
+                            <option key={estado} value={estado} className="bg-gray-950 text-gray-300">{estado}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto min-h-[400px]">
+            {/* Mobile Card View - Hidden on md and up */}
+            <div className="md:hidden space-y-3">
+                {filteredRows.map((row) => {
+                    const isPKL = row.type === 'pkl';
+                    return (
+                        <div
+                            key={row.id}
+                            className={`p-3 rounded-lg border transition-colors ${
+                                isPKL
+                                    ? 'bg-cyan-950/20 border-cyan-800/50'
+                                    : 'bg-gray-900/50 border-gray-800'
+                            }`}
+                            onClick={() => isPKL && onNavigateToPKL?.(row.id)}
+                        >
+                            {/* Header Row: Client + Estado */}
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    {isPKL && (
+                                        <span className="text-[10px] font-mono bg-cyan-600/30 text-cyan-300 px-1.5 py-0.5 rounded flex-shrink-0">PKL</span>
+                                    )}
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        {(() => {
+                                            const logoUrl = isPKL
+                                                ? getClienteLogo(row.cliente)
+                                                : (clientes[row.cliente]?.logo || clientes[row.cliente]?.grupo_logo_url);
+                                            return logoUrl ? (
+                                                <img src={logoUrl} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                            ) : (
+                                                <span className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs flex-shrink-0">
+                                                    {isPKL ? '📋' : '👤'}
+                                                </span>
+                                            );
+                                        })()}
+                                        <span className="font-medium text-sm truncate">
+                                            {clientes[row.cliente]?.nombre_comercial || row.cliente || 'Sin cliente'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0
+                                    ${row.estado === 'cotizacion' ? 'bg-yellow-600/30 text-yellow-300 border border-yellow-500/50' :
+                                            row.estado === 'aprobado' ? 'bg-green-600/30 text-green-300 border border-green-500/50' :
+                                                    row.estado === 'en_produccion' ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50' :
+                                                        row.estado === 'listo' ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/50' :
+                                                            row.estado === 'entregado' ? 'bg-teal-600/30 text-teal-300 border border-teal-500/50' :
+                                                                row.estado === 'cerrado' ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/50' :
+                                                                    'bg-gray-600/30 text-gray-300 border border-gray-500/50'}`}>
+                                    {isPKL ? (row.estadoOriginal || row.estado).replace('_', ' ') : row.estado.replace('_', ' ')}
+                                </span>
+                            </div>
+
+                            {/* Description */}
+                            <p className="text-sm text-gray-300 truncate mb-2">
+                                {row.descripcion_corta || row.descripcion}
+                            </p>
+
+                            {/* Footer Row: Date, RL, Type */}
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                <span>{getLocalDate(row.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                                {isPKL && row.tipoOperacionLabel && (
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium !text-white ${row.tipoOperacionColor}`}>
+                                        {row.tipoOperacionLabel}
+                                    </span>
+                                )}
+                                <span className="font-mono text-cyan-400">{row.rl_numero || row.id.slice(0, 8)}</span>
+                            </div>
+
+                            {/* PKL Tasks Progress */}
+                            {isPKL && row.tasksTotal && row.tasksTotal > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-800">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-500">{row.tasksCompletadas}/{row.tasksTotal} tasks</span>
+                                        <span className="text-gray-400">S/ {row.costoTotal?.toFixed(2)}</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-gray-800 rounded-full mt-1">
+                                        <div
+                                            className="h-1 bg-cyan-500 rounded-full transition-all"
+                                            style={{ width: `${((row.tasksCompletadas || 0) / row.tasksTotal) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Table - Hidden on mobile */}
+            <div className="overflow-x-auto min-h-[400px] hidden md:block">
                 <table className="w-full text-sm border-collapse">
                     <thead>
                         <tr className="border-b border-gray-700 text-gray-400">
@@ -947,10 +1040,10 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
 
             {/* Empty State */}
             {filteredRows.length === 0 && (
-                <div className="p-20 text-center flex flex-col items-center">
-                    <span className="text-6xl mb-4 grayscale opacity-20">🔍</span>
-                    <h3 className="text-gray-400 font-medium">No encontramos pedidos o PKLs con estos filtros</h3>
-                    <p className="text-gray-600 text-sm mt-1">Intenta ajustando los términos de búsqueda</p>
+                <div className="p-8 sm:p-12 md:p-20 text-center flex flex-col items-center">
+                    <span className="text-4xl sm:text-5xl md:text-6xl mb-3 sm:mb-4 grayscale opacity-20">🔍</span>
+                    <h3 className="text-gray-400 font-medium text-sm sm:text-base">No encontramos pedidos o PKLs con estos filtros</h3>
+                    <p className="text-gray-600 text-xs sm:text-sm mt-1">Intenta ajustando los términos de búsqueda</p>
                 </div>
             )}
 

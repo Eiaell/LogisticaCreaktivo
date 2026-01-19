@@ -65,15 +65,15 @@ function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: Dashbo
     .slice(0, 5);
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Header */}
-      <header className="flex items-center mb-8">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6">
+      {/* Header - Responsive */}
+      <header className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6 md:mb-8">
         {/* Título - con margen izquierdo para no taparse con sidebar */}
-        <div className="flex-shrink-0">
-          <p className="text-lg font-bold tracking-widest uppercase">
+        <div className="flex-shrink-0 hidden md:block">
+          <p className="text-sm md:text-lg font-bold tracking-widest uppercase">
             <span className="text-orange-500">I</span><span className="text-blue-800">NTELIGENCIA</span>
           </p>
-          <h1 className="text-4xl font-black tracking-wider">
+          <h1 className="text-2xl md:text-4xl font-black tracking-wider">
             <span className="text-orange-500">L</span><span className="text-blue-800">OGÍSTICA</span>
           </h1>
         </div>
@@ -83,10 +83,12 @@ function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: Dashbo
           <img
             src="/logo-creaktivo.png"
             alt="Creaktivo"
-            className="h-20 max-w-md w-full object-contain"
+            className="h-12 sm:h-16 md:h-20 max-w-xs md:max-w-md w-full object-contain"
           />
         </div>
-        <div className="flex gap-3 relative">
+
+        {/* Botones de navegación - Responsive grid on mobile */}
+        <div className="flex flex-wrap gap-2 sm:gap-3 justify-center lg:justify-end">
           <input
             type="file"
             id="header-file-upload"
@@ -100,60 +102,60 @@ function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: Dashbo
             accept=".json,.jsonl,.db"
           />
 
-          {/* Botones de navegación elegantes */}
+          {/* Botones de navegación elegantes - Simplified on mobile */}
           <button
             onClick={() => onNavigate('clientes')}
-            className="group px-4 py-2 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-xl text-blue-300 hover:from-blue-600/40 hover:to-cyan-600/40 hover:border-blue-400/50 hover:text-white transition-all flex items-center gap-2"
+            className="group px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-lg sm:rounded-xl text-blue-300 hover:from-blue-600/40 hover:to-cyan-600/40 hover:border-blue-400/50 hover:text-white transition-all flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
           >
-            <span className="text-lg group-hover:scale-110 transition-transform">👥</span>
-            <span className="font-medium">Clientes</span>
-            <span className="text-xs bg-blue-500/30 px-2 py-0.5 rounded-full">{Object.keys(clientes).length}</span>
+            <span className="text-base sm:text-lg group-hover:scale-110 transition-transform">👥</span>
+            <span className="font-medium hidden sm:inline">Clientes</span>
+            <span className="text-xs bg-blue-500/30 px-1.5 sm:px-2 py-0.5 rounded-full">{Object.keys(clientes).length}</span>
           </button>
           <button
             onClick={() => onNavigate('proveedores')}
-            className="group px-4 py-2 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border border-emerald-500/30 rounded-xl text-emerald-300 hover:from-emerald-600/40 hover:to-teal-600/40 hover:border-emerald-400/50 hover:text-white transition-all flex items-center gap-2"
+            className="group px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border border-emerald-500/30 rounded-lg sm:rounded-xl text-emerald-300 hover:from-emerald-600/40 hover:to-teal-600/40 hover:border-emerald-400/50 hover:text-white transition-all flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
           >
-            <span className="text-lg group-hover:scale-110 transition-transform">🏭</span>
-            <span className="font-medium">Proveedores</span>
-            <span className="text-xs bg-emerald-500/30 px-2 py-0.5 rounded-full">{Object.keys(proveedores).length}</span>
+            <span className="text-base sm:text-lg group-hover:scale-110 transition-transform">🏭</span>
+            <span className="font-medium hidden sm:inline">Proveedores</span>
+            <span className="text-xs bg-emerald-500/30 px-1.5 sm:px-2 py-0.5 rounded-full">{Object.keys(proveedores).length}</span>
           </button>
           <button
             onClick={() => onNavigate('catalogo_items')}
-            className="group px-4 py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-xl text-purple-300 hover:from-purple-600/40 hover:to-pink-600/40 hover:border-purple-400/50 hover:text-white transition-all flex items-center gap-2"
+            className="group px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg sm:rounded-xl text-purple-300 hover:from-purple-600/40 hover:to-pink-600/40 hover:border-purple-400/50 hover:text-white transition-all flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
           >
-            <span className="text-lg group-hover:scale-110 transition-transform">📦</span>
-            <span className="font-medium">Catálogo</span>
+            <span className="text-base sm:text-lg group-hover:scale-110 transition-transform">📦</span>
+            <span className="font-medium hidden sm:inline">Catálogo</span>
           </button>
           <button
             onClick={() => onNavigate('cotizaciones')}
-            className="group px-4 py-2 bg-gradient-to-r from-yellow-600/20 to-orange-600/20 border border-yellow-500/30 rounded-xl text-yellow-300 hover:from-yellow-600/40 hover:to-orange-600/40 hover:border-yellow-400/50 hover:text-white transition-all flex items-center gap-2"
+            className="group px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-yellow-600/20 to-orange-600/20 border border-yellow-500/30 rounded-lg sm:rounded-xl text-yellow-300 hover:from-yellow-600/40 hover:to-orange-600/40 hover:border-yellow-400/50 hover:text-white transition-all flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
           >
-            <span className="text-lg group-hover:scale-110 transition-transform">💰</span>
-            <span className="font-medium">Cotizaciones</span>
+            <span className="text-base sm:text-lg group-hover:scale-110 transition-transform">💰</span>
+            <span className="font-medium hidden sm:inline">Cotizaciones</span>
           </button>
           <button
             onClick={() => onNavigate('pkl')}
-            className="group px-4 py-2 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border border-cyan-500/30 rounded-xl text-cyan-300 hover:from-cyan-600/40 hover:to-blue-600/40 hover:border-cyan-400/50 hover:text-white transition-all flex items-center gap-2"
+            className="group px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border border-cyan-500/30 rounded-lg sm:rounded-xl text-cyan-300 hover:from-cyan-600/40 hover:to-blue-600/40 hover:border-cyan-400/50 hover:text-white transition-all flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
           >
-            <span className="text-lg group-hover:scale-110 transition-transform">📋</span>
-            <span className="font-medium">PKL</span>
-            <span className="text-xs bg-cyan-500/30 px-2 py-0.5 rounded-full">3</span>
+            <span className="text-base sm:text-lg group-hover:scale-110 transition-transform">📋</span>
+            <span className="font-medium hidden sm:inline">PKL</span>
+            <span className="text-xs bg-cyan-500/30 px-1.5 sm:px-2 py-0.5 rounded-full">3</span>
           </button>
 
-          <div className="w-px bg-gray-700 mx-1"></div>
+          <div className="w-px bg-gray-700 mx-1 hidden sm:block"></div>
 
           <button
             onClick={() => createBackup()}
-            className="px-4 py-2 bg-green-600 border border-green-500 rounded-lg text-white hover:bg-green-500 transition-colors flex items-center gap-2 shadow-lg shadow-green-900/40 font-medium"
+            className="px-2 sm:px-4 py-1.5 sm:py-2 bg-green-600 border border-green-500 rounded-lg text-white hover:bg-green-500 transition-colors flex items-center gap-1 sm:gap-2 shadow-lg shadow-green-900/40 font-medium text-sm sm:text-base"
             title="Descargar backup completo"
           >
-            <span>💾</span> Backup
+            <span>💾</span> <span className="hidden sm:inline">Backup</span>
           </button>
           <button
             onClick={() => document.getElementById('header-file-upload')?.click()}
-            className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-600 transition-colors flex items-center gap-2"
+            className="px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-600 transition-colors flex items-center gap-1 sm:gap-2 text-sm sm:text-base"
           >
-            <span>📂</span> Cargar
+            <span>📂</span> <span className="hidden sm:inline">Cargar</span>
           </button>
         </div>
       </header>
@@ -350,9 +352,12 @@ function AppContent() {
       />
 
       {/* Contenido Principal con margen para la sidebar */}
+      {/* Mobile: no margin, add top padding for hamburger button */}
+      {/* Desktop: margin based on sidebar expanded state */}
       <main
-        className="flex-1 transition-all duration-300 ease-in-out"
-        style={{ marginLeft: sidebarExpanded ? '320px' : '80px' }}
+        className={`flex-1 transition-all duration-300 ease-in-out pt-14 md:pt-0 ${
+          sidebarExpanded ? 'md:ml-72' : 'md:ml-16'
+        }`}
       >
         {renderMainContent()}
       </main>

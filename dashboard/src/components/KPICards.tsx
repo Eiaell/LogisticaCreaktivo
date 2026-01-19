@@ -62,18 +62,18 @@ export function KPICards({ onCardClick }: Props) {
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
             {cards.map((card) => (
                 <div
                     key={card.title}
                     onClick={() => onCardClick?.(card.title)}
-                    className="glass-card p-4 relative overflow-hidden group hover:scale-105 transition-transform cursor-pointer"
+                    className="glass-card p-2 sm:p-3 md:p-4 relative overflow-hidden group hover:scale-105 transition-transform cursor-pointer"
                 >
                     <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-10 group-hover:opacity-20 transition-opacity`} />
                     <div className="relative">
-                        <span className="text-2xl">{card.icon}</span>
-                        <p className="text-gray-400 text-sm mt-2">{card.title}</p>
-                        <p className="text-2xl font-bold mt-1">{card.value}</p>
+                        <span className="text-lg sm:text-xl md:text-2xl">{card.icon}</span>
+                        <p className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2 truncate">{card.title}</p>
+                        <p className="text-lg sm:text-xl md:text-2xl font-bold mt-0.5 sm:mt-1">{card.value}</p>
                     </div>
                 </div>
             ))}
