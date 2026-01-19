@@ -23,7 +23,7 @@ interface PKLPageProps {
 }
 
 export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
-    const { pkls, updatePKLTask } = useDatabase();
+    const { pkls, updatePKLTask, deletePKL } = useDatabase();
     const [selectedPKLId, setSelectedPKLId] = useState<string | null>(initialSelectedPKLId || null);
     const [filterEstado, setFilterEstado] = useState<EstadoPKL | 'todos'>('todos');
     const [filterTipo, setFilterTipo] = useState<TipoOperacionPKL | 'todos'>('todos');
@@ -203,7 +203,16 @@ export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
                 {/* PKL Detail */}
                 <div className="lg:col-span-2">
                     {selectedPKL ? (
-                        <PKLDetail pkl={selectedPKL} onUpdateTask={updatePKLTask} />
+                        <PKLDetail
+                            pkl={selectedPKL}
+                            onUpdateTask={updatePKLTask}
+                            onDelete={async () => {
+                                if (confirm(`¿Eliminar PKL ${selectedPKL.pkl_id}?\n\nEsta acción no se puede deshacer.`)) {
+                                    await deletePKL(selectedPKL.pkl_id);
+                                    setSelectedPKLId(null);
+                                }
+                            }}
+                        />
                     ) : (
                         <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-8 text-center">
                             <div className="text-gray-500 text-lg mb-2">Selecciona un PKL</div>
@@ -222,7 +231,7 @@ export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
 type UpdateTaskFn = (pklId: string, taskId: string, changes: Partial<import('../types').TaskPKL>) => void;
 
 // PKL Detail Component
-function PKLDetail({ pkl, onUpdateTask }: { pkl: PKL; onUpdateTask: UpdateTaskFn }) {
+function PKLDetail({ pkl, onUpdateTask, onDelete }: { pkl: PKL; onUpdateTask: UpdateTaskFn; onDelete: () => void }) {
     const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'costos' | 'eventos'>('overview');
     const estadoConfig = getEstadoConfig(pkl.estado.actual);
     const tipoConfig = getTipoOperacionConfig(pkl.clasificacion.tipo_operacion);
@@ -244,9 +253,20 @@ function PKLDetail({ pkl, onUpdateTask }: { pkl: PKL; onUpdateTask: UpdateTaskFn
                             <div className="text-gray-400">Proyecto: {pkl.cliente.proyecto}</div>
                         )}
                     </div>
-                    <span className={`px-3 py-1 rounded ${tipoConfig.color} !text-white text-sm`}>
-                        {tipoConfig.label}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded ${tipoConfig.color} !text-white text-sm`}>
+                            {tipoConfig.label}
+                        </span>
+                        <button
+                            onClick={onDelete}
+                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Eliminar PKL"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <p className="text-gray-300">{pkl.origen.descripcion_inicial}</p>
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-400">

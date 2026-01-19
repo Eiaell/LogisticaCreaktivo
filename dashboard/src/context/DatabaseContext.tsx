@@ -23,6 +23,7 @@ interface DatabaseContextType {
     // CRUD PKLs
     updatePKL: (id: string, changes: Partial<PKL>) => Promise<void>;
     updatePKLTask: (pklId: string, taskId: string, changes: Partial<TaskPKL>) => Promise<void>;
+    deletePKL: (id: string) => Promise<void>;
 
     // CRUD Pedidos
     createPedido: (data: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>) => Promise<Pedido>;
@@ -638,6 +639,31 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             await supabase.from('pkls').update({ updated_at: now }).eq('pkl_id', pklId);
         } catch (err) {
             console.error('Error persisting PKL task:', err);
+        }
+    };
+
+    // Delete PKL - removes from state and Supabase
+    const deletePKL = async (id: string) => {
+        // Remove from state
+        setPkls(prev => prev.filter(pkl => pkl.pkl_id !== id));
+
+        // Delete from Supabase
+        try {
+            // First delete associated tasks
+            const { error: tasksError } = await supabase.from('pkl_tasks').delete().eq('pkl_id', id);
+            if (tasksError) {
+                console.error('Error deleting PKL tasks:', tasksError);
+            }
+
+            // Then delete the PKL
+            const { error } = await supabase.from('pkls').delete().eq('pkl_id', id);
+            if (error) {
+                console.error('Error deleting PKL from Supabase:', error);
+            } else {
+                console.log('✓ PKL deleted from Supabase:', id);
+            }
+        } catch (err) {
+            console.error('Error deleting PKL:', err);
         }
     };
 
@@ -1923,6 +1949,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             // CRUD PKLs
             updatePKL,
             updatePKLTask,
+            deletePKL,
             // CRUD Pedidos
             createPedido, updatePedido, deletePedido, deletePedidos,
             // Pagos

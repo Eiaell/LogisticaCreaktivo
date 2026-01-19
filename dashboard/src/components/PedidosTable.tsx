@@ -71,7 +71,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     // Get shared state
     const pedidos = usePedidos();
     const pkls = usePKLs();
-    const { updatePedido, updatePKL, addPayment, payments, selectedStateFilter, clientes, updateCliente, uploadLogo, deletePedido, deletePedidos, getClienteLogo } = useDatabase();
+    const { updatePedido, updatePKL, addPayment, payments, selectedStateFilter, clientes, updateCliente, uploadLogo, deletePedido, deletePedidos, deletePKL, getClienteLogo } = useDatabase();
 
     // Refs
     const heroFileInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +99,20 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [confirmDelete, setConfirmDelete] = useState<{ type: 'single' | 'batch', ids: string[] } | null>(null);
 
+    // Sorting state
+    type SortField = 'created_at' | 'cliente' | 'tipo' | 'descripcion' | 'vendedora' | 'estado' | 'rl_numero' | 'rq_numero';
+    const [sortField, setSortField] = useState<SortField>('created_at');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDir('asc');
+        }
+    };
+
     // Helpers
     const currentCliente = filterCliente ? clientes[filterCliente] : null;
 
@@ -111,9 +125,6 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
             }
         }
     };
-
-    const sortField = 'created_at';
-    const sortDir = 'desc' as const;
 
 
     // Sync filter
@@ -292,11 +303,61 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
 
             return matchesSearch && matchesEstado && matchesCliente;
         }).sort((a, b) => {
-            const aVal = a.created_at;
-            const bVal = b.created_at;
-            return aVal < bVal ? 1 : -1;
+            let aVal: string | number | undefined;
+            let bVal: string | number | undefined;
+
+            switch (sortField) {
+                case 'created_at':
+                    aVal = a.created_at;
+                    bVal = b.created_at;
+                    break;
+                case 'cliente':
+                    aVal = a.cliente.toLowerCase();
+                    bVal = b.cliente.toLowerCase();
+                    break;
+                case 'tipo':
+                    aVal = a.tipoOperacionLabel?.toLowerCase() || '';
+                    bVal = b.tipoOperacionLabel?.toLowerCase() || '';
+                    break;
+                case 'descripcion':
+                    aVal = a.descripcion.toLowerCase();
+                    bVal = b.descripcion.toLowerCase();
+                    break;
+                case 'vendedora':
+                    aVal = a.vendedora.toLowerCase();
+                    bVal = b.vendedora.toLowerCase();
+                    break;
+                case 'estado':
+                    aVal = a.estado.toLowerCase();
+                    bVal = b.estado.toLowerCase();
+                    break;
+                case 'rl_numero':
+                    // Extract number from RL-YYYY-XXXX or PKL-YYYY-XXXX for proper numeric sorting
+                    const extractNum = (val: string | undefined) => {
+                        if (!val) return 0;
+                        const match = val.match(/(\d+)$/);
+                        return match ? parseInt(match[1], 10) : 0;
+                    };
+                    aVal = extractNum(a.rl_numero);
+                    bVal = extractNum(b.rl_numero);
+                    break;
+                case 'rq_numero':
+                    aVal = a.rq_numero?.toLowerCase() || '';
+                    bVal = b.rq_numero?.toLowerCase() || '';
+                    break;
+                default:
+                    aVal = a.created_at;
+                    bVal = b.created_at;
+            }
+
+            if (aVal === undefined || aVal === '') aVal = sortDir === 'asc' ? 'zzz' : '';
+            if (bVal === undefined || bVal === '') bVal = sortDir === 'asc' ? 'zzz' : '';
+
+            if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+            return 0;
         });
-    }, [pedidoRows, pklRows, search, filterEstado, filterCliente]);
+    }, [pedidoRows, pklRows, search, filterEstado, filterCliente, sortField, sortDir]);
 
     // Keep filteredPedidos for backward compatibility (selection, deletion)
     const filteredPedidos = useMemo(() => {
@@ -433,17 +494,31 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                 />
                             </th>
                             {[
-                                { label: 'Fecha', w: 'w-28' },
-                                { label: 'Cliente', w: 'w-48' },
-                                { label: 'Tipo', w: 'w-32' },   // Tipo: PKL operation type
-                                { label: 'Descripción', w: 'w-56' },
-                                { label: 'Vendedor/a', w: 'w-32' },
-                                { label: 'Estado', w: 'w-40' },
-                                { label: 'RL', w: 'w-32' },     // RL: Requisito Logístico (auto, editable)
-                                { label: 'RQ', w: 'w-28' },     // RQ: Código interno (manual)
-                                { label: '', w: 'w-10' }
+                                { label: 'Fecha', w: 'w-28', field: 'created_at' as SortField },
+                                { label: 'Cliente', w: 'w-48', field: 'cliente' as SortField },
+                                { label: 'Tipo', w: 'w-32', field: 'tipo' as SortField },
+                                { label: 'Descripción', w: 'w-56', field: 'descripcion' as SortField },
+                                { label: 'Vendedor/a', w: 'w-32', field: 'vendedora' as SortField },
+                                { label: 'Estado', w: 'w-40', field: 'estado' as SortField },
+                                { label: 'RL', w: 'w-32', field: 'rl_numero' as SortField },
+                                { label: 'RQ', w: 'w-28', field: 'rq_numero' as SortField },
+                                { label: '', w: 'w-10', field: null },       // Expand button
+                                { label: '', w: 'w-10', field: null }        // Delete button
                             ].map((col, idx) => (
-                                <th key={idx} className={`p-4 text-left font-medium ${col.w}`}>{col.label}</th>
+                                <th
+                                    key={idx}
+                                    className={`p-4 text-left font-medium ${col.w} ${col.field ? 'cursor-pointer hover:text-cyan-400 select-none transition-colors' : ''}`}
+                                    onClick={() => col.field && handleSort(col.field)}
+                                >
+                                    <span className="flex items-center gap-1">
+                                        {col.label}
+                                        {col.field && sortField === col.field && (
+                                            <span className="text-cyan-400">
+                                                {sortDir === 'asc' ? '▲' : '▼'}
+                                            </span>
+                                        )}
+                                    </span>
+                                </th>
                             ))}
                         </tr>
                     </thead>
@@ -806,12 +881,33 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                             </button>
                                         )}
                                     </td>
+                                    {/* Delete button */}
+                                    <td className="p-4 align-middle">
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (isPKL) {
+                                                    if (confirm(`¿Eliminar ${row.id}?\n\nEsta acción no se puede deshacer.`)) {
+                                                        await deletePKL(row.id);
+                                                    }
+                                                } else {
+                                                    setConfirmDelete({ type: 'single', ids: [row.id] });
+                                                }
+                                            }}
+                                            className="w-8 h-8 rounded-full hover:bg-red-500/20 flex items-center justify-center transition-colors text-gray-500 hover:text-red-400"
+                                            title="Eliminar"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </td>
                                 </tr>
 
                                 {/* Expanded Row: Payments Detail (only for Pedidos) */}
                                 {!isPKL && expandedRowId === row.id && pedido && (
                                     <tr className="bg-gray-900/30">
-                                        <td colSpan={10} className="p-0 border-b border-gray-800">
+                                        <td colSpan={11} className="p-0 border-b border-gray-800">
                                             <div className="p-6 flex flex-col md:flex-row gap-8 animate-in slide-in-from-top-2 duration-200">
                                                 {/* Resumen Financiero */}
                                                 <div className="w-full md:w-56 bg-gradient-to-br from-gray-950 to-gray-900 p-4 rounded-xl border border-gray-700 space-y-4">
