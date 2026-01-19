@@ -23,6 +23,8 @@ interface DatabaseContextType {
     // CRUD PKLs
     updatePKL: (id: string, changes: Partial<PKL>) => Promise<void>;
     updatePKLTask: (pklId: string, taskId: string, changes: Partial<TaskPKL>) => Promise<void>;
+    createPKLTask: (pklId: string, task: Omit<TaskPKL, 'task_id'>) => Promise<void>;
+    deletePKLTask: (pklId: string, taskId: string) => Promise<void>;
     deletePKL: (id: string) => Promise<void>;
 
     // CRUD Pedidos
@@ -639,6 +641,105 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             await supabase.from('pkls').update({ updated_at: now }).eq('pkl_id', pklId);
         } catch (err) {
             console.error('Error persisting PKL task:', err);
+        }
+    };
+
+    // Create a new task for a PKL
+    const createPKLTask = async (pklId: string, taskData: Omit<TaskPKL, 'task_id'>) => {
+        const now = new Date().toISOString();
+
+        // Find the PKL
+        const currentPkl = pkls.find(p => p.pkl_id === pklId);
+        if (!currentPkl) {
+            console.error('PKL not found:', pklId);
+            return;
+        }
+
+        // Generate task ID
+        const taskNum = currentPkl.tasks.length + 1;
+        const taskId = `${pklId}-T${String(taskNum).padStart(3, '0')}`;
+
+        const newTask: TaskPKL = {
+            ...taskData,
+            task_id: taskId,
+            orden: taskNum,
+        };
+
+        // Update state
+        const updatedTasks = [...currentPkl.tasks, newTask];
+        setPkls(prev => prev.map(pkl =>
+            pkl.pkl_id === pklId
+                ? { ...pkl, tasks: updatedTasks, updated_at: now }
+                : pkl
+        ));
+
+        // Persist to Supabase
+        try {
+            const { error } = await supabase.from('pkl_tasks').insert({
+                pkl_id: pklId,
+                task_id: taskId,
+                orden: newTask.orden,
+                nombre: newTask.nombre,
+                descripcion: newTask.descripcion,
+                tipo: newTask.tipo,
+                responsable: newTask.responsable,
+                estado: newTask.estado,
+                duracion_min: newTask.duracion_min,
+                es_happy_path: newTask.es_happy_path,
+                costo: newTask.costo,
+                ruta: newTask.ruta,
+                created_at: now,
+                updated_at: now,
+            });
+
+            if (error) {
+                console.error('Error creating PKL task:', error);
+            } else {
+                console.log('✓ PKL Task created:', taskId);
+            }
+
+            // Update PKL's updated_at
+            await supabase.from('pkls').update({ updated_at: now }).eq('pkl_id', pklId);
+        } catch (err) {
+            console.error('Error creating PKL task:', err);
+        }
+    };
+
+    // Delete a task from a PKL
+    const deletePKLTask = async (pklId: string, taskId: string) => {
+        const now = new Date().toISOString();
+
+        // Find the PKL
+        const currentPkl = pkls.find(p => p.pkl_id === pklId);
+        if (!currentPkl) {
+            console.error('PKL not found:', pklId);
+            return;
+        }
+
+        // Update state - remove task and reorder
+        const updatedTasks = currentPkl.tasks
+            .filter(t => t.task_id !== taskId)
+            .map((t, idx) => ({ ...t, orden: idx + 1 }));
+
+        setPkls(prev => prev.map(pkl =>
+            pkl.pkl_id === pklId
+                ? { ...pkl, tasks: updatedTasks, updated_at: now }
+                : pkl
+        ));
+
+        // Delete from Supabase
+        try {
+            const { error } = await supabase.from('pkl_tasks').delete().eq('task_id', taskId);
+            if (error) {
+                console.error('Error deleting PKL task:', error);
+            } else {
+                console.log('✓ PKL Task deleted:', taskId);
+            }
+
+            // Update PKL's updated_at
+            await supabase.from('pkls').update({ updated_at: now }).eq('pkl_id', pklId);
+        } catch (err) {
+            console.error('Error deleting PKL task:', err);
         }
     };
 
@@ -1949,6 +2050,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             // CRUD PKLs
             updatePKL,
             updatePKLTask,
+            createPKLTask,
+            deletePKLTask,
             deletePKL,
             // CRUD Pedidos
             createPedido, updatePedido, deletePedido, deletePedidos,

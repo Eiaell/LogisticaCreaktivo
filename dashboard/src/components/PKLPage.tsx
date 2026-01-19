@@ -23,7 +23,7 @@ interface PKLPageProps {
 }
 
 export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
-    const { pkls, updatePKLTask, deletePKL } = useDatabase();
+    const { pkls, updatePKL, updatePKLTask, createPKLTask, deletePKLTask, deletePKL } = useDatabase();
     const [selectedPKLId, setSelectedPKLId] = useState<string | null>(initialSelectedPKLId || null);
     const [filterEstado, setFilterEstado] = useState<EstadoPKL | 'todos'>('todos');
     const [filterTipo, setFilterTipo] = useState<TipoOperacionPKL | 'todos'>('todos');
@@ -205,7 +205,10 @@ export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
                     {selectedPKL ? (
                         <PKLDetail
                             pkl={selectedPKL}
+                            onUpdate={(changes) => updatePKL(selectedPKL.pkl_id, changes)}
                             onUpdateTask={updatePKLTask}
+                            onCreateTask={(task) => createPKLTask(selectedPKL.pkl_id, task)}
+                            onDeleteTask={(taskId) => deletePKLTask(selectedPKL.pkl_id, taskId)}
                             onDelete={async () => {
                                 if (confirm(`¿Eliminar PKL ${selectedPKL.pkl_id}?\n\nEsta acción no se puede deshacer.`)) {
                                     await deletePKL(selectedPKL.pkl_id);
@@ -229,34 +232,150 @@ export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
 
 // Type for task update function
 type UpdateTaskFn = (pklId: string, taskId: string, changes: Partial<import('../types').TaskPKL>) => void;
+type UpdatePKLFn = (changes: Partial<PKL>) => void;
+type CreateTaskFn = (task: Omit<import('../types').TaskPKL, 'task_id'>) => void;
+type DeleteTaskFn = (taskId: string) => void;
 
 // PKL Detail Component
-function PKLDetail({ pkl, onUpdateTask, onDelete }: { pkl: PKL; onUpdateTask: UpdateTaskFn; onDelete: () => void }) {
+function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, onDelete }: {
+    pkl: PKL;
+    onUpdate: UpdatePKLFn;
+    onUpdateTask: UpdateTaskFn;
+    onCreateTask: CreateTaskFn;
+    onDeleteTask: DeleteTaskFn;
+    onDelete: () => void;
+}) {
     const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'costos' | 'eventos'>('overview');
+    const [editingField, setEditingField] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState('');
+
     const estadoConfig = getEstadoConfig(pkl.estado.actual);
     const tipoConfig = getTipoOperacionConfig(pkl.clasificacion.tipo_operacion);
+
+    const handleEditStart = (field: string, value: string) => {
+        setEditingField(field);
+        setEditValue(value);
+    };
+
+    const handleEditSave = () => {
+        if (!editingField) return;
+
+        switch (editingField) {
+            case 'cliente.nombre':
+                onUpdate({ cliente: { ...pkl.cliente, nombre: editValue } } as any);
+                break;
+            case 'cliente.proyecto':
+                onUpdate({ cliente: { ...pkl.cliente, proyecto: editValue || null } } as any);
+                break;
+            case 'descripcion':
+                onUpdate({ origen: { ...pkl.origen, descripcion_inicial: editValue } } as any);
+                break;
+            case 'solicitado_por':
+                onUpdate({ origen: { ...pkl.origen, solicitado_por: editValue } } as any);
+                break;
+            case 'observaciones':
+                onUpdate({ observaciones: editValue } as any);
+                break;
+        }
+        setEditingField(null);
+        setEditValue('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleEditSave();
+        }
+        if (e.key === 'Escape') {
+            setEditingField(null);
+            setEditValue('');
+        }
+    };
 
     return (
         <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-gray-700/50">
                 <div className="flex items-start justify-between mb-4">
-                    <div>
+                    <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                             <span className="font-mono text-2xl text-cyan-400">{pkl.pkl_id}</span>
-                            <span className={`px-3 py-1 rounded-full ${estadoConfig.color} text-black font-semibold text-sm`}>
-                                {estadoConfig.label}
-                            </span>
+                            {/* Estado - Dropdown editable */}
+                            <div className="relative group">
+                                <span className={`px-3 py-1 rounded-full ${estadoConfig.color} text-black font-semibold text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
+                                    {estadoConfig.label}
+                                </span>
+                                <div className="absolute left-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[140px]">
+                                    {ESTADOS_PKL.map(estado => (
+                                        <button
+                                            key={estado.value}
+                                            onClick={() => onUpdate({ estado: { actual: estado.value } } as any)}
+                                            className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg ${estado.color} text-black font-medium`}
+                                        >
+                                            {estado.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                        <h2 className="text-xl font-bold text-white">{pkl.cliente.nombre}</h2>
-                        {pkl.cliente.proyecto && (
-                            <div className="text-gray-400">Proyecto: {pkl.cliente.proyecto}</div>
+                        {/* Cliente nombre - Editable */}
+                        {editingField === 'cliente.nombre' ? (
+                            <input
+                                autoFocus
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={handleEditSave}
+                                onKeyDown={handleKeyDown}
+                                className="text-xl font-bold bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-white outline-none w-full max-w-md"
+                            />
+                        ) : (
+                            <h2
+                                onClick={() => handleEditStart('cliente.nombre', pkl.cliente.nombre)}
+                                className="text-xl font-bold text-white cursor-pointer hover:text-cyan-400 transition-colors"
+                                title="Click para editar"
+                            >
+                                {pkl.cliente.nombre}
+                            </h2>
+                        )}
+                        {/* Proyecto - Editable */}
+                        {editingField === 'cliente.proyecto' ? (
+                            <input
+                                autoFocus
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={handleEditSave}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Nombre del proyecto"
+                                className="text-gray-400 bg-gray-900 border border-cyan-500 rounded px-2 py-1 outline-none w-full max-w-md mt-1"
+                            />
+                        ) : (
+                            <div
+                                onClick={() => handleEditStart('cliente.proyecto', pkl.cliente.proyecto || '')}
+                                className="text-gray-400 cursor-pointer hover:text-cyan-400 transition-colors"
+                                title="Click para editar proyecto"
+                            >
+                                {pkl.cliente.proyecto ? `Proyecto: ${pkl.cliente.proyecto}` : <span className="text-gray-600 italic">+ Agregar proyecto</span>}
+                            </div>
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded ${tipoConfig.color} !text-white text-sm`}>
-                            {tipoConfig.label}
-                        </span>
+                        {/* Tipo operacion - Dropdown editable */}
+                        <div className="relative group">
+                            <span className={`px-3 py-1 rounded ${tipoConfig.color} !text-white text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
+                                {tipoConfig.label}
+                            </span>
+                            <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[180px]">
+                                {TIPOS_OPERACION_PKL.map(tipo => (
+                                    <button
+                                        key={tipo.value}
+                                        onClick={() => onUpdate({ clasificacion: { ...pkl.clasificacion, tipo_operacion: tipo.value } } as any)}
+                                        className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
+                                    >
+                                        {tipo.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         <button
                             onClick={onDelete}
                             className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -268,9 +387,46 @@ function PKLDetail({ pkl, onUpdateTask, onDelete }: { pkl: PKL; onUpdateTask: Up
                         </button>
                     </div>
                 </div>
-                <p className="text-gray-300">{pkl.origen.descripcion_inicial}</p>
+                {/* Descripción - Editable */}
+                {editingField === 'descripcion' ? (
+                    <textarea
+                        autoFocus
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
+                        onBlur={handleEditSave}
+                        onKeyDown={handleKeyDown}
+                        rows={2}
+                        className="text-gray-300 bg-gray-900 border border-cyan-500 rounded px-2 py-1 outline-none w-full resize-none"
+                    />
+                ) : (
+                    <p
+                        onClick={() => handleEditStart('descripcion', pkl.origen.descripcion_inicial)}
+                        className="text-gray-300 cursor-pointer hover:text-cyan-400 transition-colors"
+                        title="Click para editar descripción"
+                    >
+                        {pkl.origen.descripcion_inicial}
+                    </p>
+                )}
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-400">
-                    <span>Solicitado por: {pkl.origen.solicitado_por || 'N/A'}</span>
+                    {/* Solicitado por - Editable */}
+                    {editingField === 'solicitado_por' ? (
+                        <input
+                            autoFocus
+                            value={editValue}
+                            onChange={e => setEditValue(e.target.value)}
+                            onBlur={handleEditSave}
+                            onKeyDown={handleKeyDown}
+                            className="bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 outline-none text-sm w-32"
+                        />
+                    ) : (
+                        <span
+                            onClick={() => handleEditStart('solicitado_por', pkl.origen.solicitado_por || '')}
+                            className="cursor-pointer hover:text-cyan-400 transition-colors"
+                            title="Click para editar"
+                        >
+                            Solicitado por: {pkl.origen.solicitado_por || 'N/A'}
+                        </span>
+                    )}
                     <span>Canal: {pkl.origen.canal}</span>
                     <span>Fecha: {pkl.origen.fecha_solicitud}</span>
                 </div>
@@ -298,8 +454,8 @@ function PKLDetail({ pkl, onUpdateTask, onDelete }: { pkl: PKL; onUpdateTask: Up
 
             {/* Tab Content */}
             <div className="p-6">
-                {activeTab === 'overview' && <OverviewTab pkl={pkl} />}
-                {activeTab === 'tasks' && <TasksTab pkl={pkl} onUpdateTask={onUpdateTask} />}
+                {activeTab === 'overview' && <OverviewTab pkl={pkl} onUpdate={onUpdate} />}
+                {activeTab === 'tasks' && <TasksTab pkl={pkl} onUpdateTask={onUpdateTask} onCreateTask={onCreateTask} onDeleteTask={onDeleteTask} />}
                 {activeTab === 'costos' && <CostosTab pkl={pkl} />}
                 {activeTab === 'eventos' && <EventosTab pkl={pkl} />}
             </div>
@@ -308,10 +464,18 @@ function PKLDetail({ pkl, onUpdateTask, onDelete }: { pkl: PKL; onUpdateTask: Up
 }
 
 // Overview Tab
-function OverviewTab({ pkl }: { pkl: PKL }) {
+function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
+    const [editingObs, setEditingObs] = useState(false);
+    const [obsValue, setObsValue] = useState(pkl.observaciones || '');
+
     const tasksCompletados = pkl.tasks.filter(t => t.estado === 'completado').length;
     const tasksTotal = pkl.tasks.length;
     const progreso = tasksTotal > 0 ? (tasksCompletados / tasksTotal) * 100 : 0;
+
+    const handleSaveObs = () => {
+        onUpdate({ observaciones: obsValue } as any);
+        setEditingObs(false);
+    };
 
     return (
         <div className="space-y-6">
@@ -319,7 +483,7 @@ function OverviewTab({ pkl }: { pkl: PKL }) {
             <div>
                 <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-400">Progreso</span>
-                    <span className="text-white">{tasksCompletados}/{tasksTotal} tasks</span>
+                    <span className="text-white">{tasksCompletados}/{tasksTotal}</span>
                 </div>
                 <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
                     <div
@@ -334,7 +498,9 @@ function OverviewTab({ pkl }: { pkl: PKL }) {
                 {/* Productos */}
                 <div className="bg-gray-900/50 rounded-lg p-4">
                     <h4 className="text-gray-400 text-sm mb-3">Productos</h4>
-                    {pkl.productos.map(prod => (
+                    {pkl.productos.length === 0 ? (
+                        <div className="text-gray-600 italic text-sm">Sin productos</div>
+                    ) : pkl.productos.map(prod => (
                         <div key={prod.producto_id} className="mb-2">
                             <div className="text-white font-medium">{prod.tipo}</div>
                             <div className="text-gray-400 text-sm">
@@ -347,7 +513,9 @@ function OverviewTab({ pkl }: { pkl: PKL }) {
                 {/* Proveedores */}
                 <div className="bg-gray-900/50 rounded-lg p-4">
                     <h4 className="text-gray-400 text-sm mb-3">Proveedores</h4>
-                    {pkl.proveedores.map(prov => (
+                    {pkl.proveedores.length === 0 ? (
+                        <div className="text-gray-600 italic text-sm">Sin proveedores</div>
+                    ) : pkl.proveedores.map(prov => (
                         <div key={prov.proveedor_id} className="mb-2">
                             <div className="text-white font-medium">{prov.nombre}</div>
                             <div className="text-gray-400 text-sm">
@@ -397,13 +565,44 @@ function OverviewTab({ pkl }: { pkl: PKL }) {
                 </div>
             </div>
 
-            {/* Observaciones */}
-            {pkl.observaciones && (
-                <div className="bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-gray-400 text-sm mb-2">Observaciones</h4>
-                    <p className="text-gray-300">{pkl.observaciones}</p>
-                </div>
-            )}
+            {/* Observaciones - Editable */}
+            <div className="bg-gray-900/50 rounded-lg p-4">
+                <h4 className="text-gray-400 text-sm mb-2">Observaciones</h4>
+                {editingObs ? (
+                    <div className="space-y-2">
+                        <textarea
+                            autoFocus
+                            value={obsValue}
+                            onChange={e => setObsValue(e.target.value)}
+                            rows={3}
+                            className="w-full bg-gray-800 border border-cyan-500 rounded px-3 py-2 text-gray-300 outline-none resize-none"
+                            placeholder="Agregar observaciones..."
+                        />
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleSaveObs}
+                                className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded transition-colors"
+                            >
+                                Guardar
+                            </button>
+                            <button
+                                onClick={() => { setEditingObs(false); setObsValue(pkl.observaciones || ''); }}
+                                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <p
+                        onClick={() => setEditingObs(true)}
+                        className="text-gray-300 cursor-pointer hover:text-cyan-400 transition-colors min-h-[24px]"
+                        title="Click para editar"
+                    >
+                        {pkl.observaciones || <span className="text-gray-600 italic">+ Agregar observaciones</span>}
+                    </p>
+                )}
+            </div>
 
             {/* Riesgos */}
             {pkl.riesgos_identificados && pkl.riesgos_identificados.length > 0 && (
@@ -435,10 +634,32 @@ const TASK_ESTADOS = [
 ] as const;
 
 // Tasks Tab
-function TasksTab({ pkl, onUpdateTask }: { pkl: PKL; onUpdateTask: UpdateTaskFn }) {
+function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL; onUpdateTask: UpdateTaskFn; onCreateTask: CreateTaskFn; onDeleteTask: DeleteTaskFn }) {
     const [editingTask, setEditingTask] = useState<string | null>(null);
     const [editingField, setEditingField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
+    const [showNewTask, setShowNewTask] = useState(false);
+    const [newTaskName, setNewTaskName] = useState('');
+    const [newTaskDesc, setNewTaskDesc] = useState('');
+    const [newTaskTipo, setNewTaskTipo] = useState<TipoTaskPKL>('coordinacion_proveedor');
+    const [newTaskResponsable, setNewTaskResponsable] = useState('Huber');
+
+    const handleCreateTask = () => {
+        if (!newTaskName.trim()) return;
+        onCreateTask({
+            orden: pkl.tasks.length + 1,
+            nombre: newTaskName.trim(),
+            descripcion: newTaskDesc.trim() || undefined,
+            tipo: newTaskTipo,
+            responsable: newTaskResponsable,
+            estado: 'pendiente',
+            es_happy_path: false,
+        });
+        setNewTaskName('');
+        setNewTaskDesc('');
+        setNewTaskTipo('coordinacion_proveedor');
+        setShowNewTask(false);
+    };
 
     const handleEditStart = (taskId: string, field: string, value: string) => {
         setEditingTask(taskId);
@@ -470,6 +691,90 @@ function TasksTab({ pkl, onUpdateTask }: { pkl: PKL; onUpdateTask: UpdateTaskFn 
 
     return (
         <div className="space-y-0">
+            {/* New Task Form */}
+            {showNewTask ? (
+                <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-cyan-500/50 shadow-lg">
+                    <h4 className="text-white font-semibold mb-3">Nuevo Task</h4>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="block text-gray-400 text-xs mb-1">Nombre *</label>
+                            <input
+                                autoFocus
+                                value={newTaskName}
+                                onChange={e => setNewTaskName(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleCreateTask(); if (e.key === 'Escape') setShowNewTask(false); }}
+                                placeholder="Ej: Coordinar con proveedor"
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-gray-400 text-xs mb-1">Descripción</label>
+                            <textarea
+                                value={newTaskDesc}
+                                onChange={e => setNewTaskDesc(e.target.value)}
+                                placeholder="Descripción opcional..."
+                                rows={2}
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 resize-none"
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <div className="flex-1">
+                                <label className="block text-gray-400 text-xs mb-1">Tipo</label>
+                                <select
+                                    value={newTaskTipo}
+                                    onChange={e => setNewTaskTipo(e.target.value as TipoTaskPKL)}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white outline-none focus:border-cyan-500"
+                                >
+                                    {TIPOS_TASK_PKL.map(t => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-gray-400 text-xs mb-1">Responsable</label>
+                                <input
+                                    value={newTaskResponsable}
+                                    onChange={e => setNewTaskResponsable(e.target.value)}
+                                    placeholder="Nombre"
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-cyan-500"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                            <button
+                                onClick={handleCreateTask}
+                                disabled={!newTaskName.trim()}
+                                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded transition-colors"
+                            >
+                                Crear Task
+                            </button>
+                            <button
+                                onClick={() => setShowNewTask(false)}
+                                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <button
+                    onClick={() => setShowNewTask(true)}
+                    className="mb-4 w-full py-3 border-2 border-dashed border-gray-700 hover:border-cyan-500 rounded-lg text-gray-500 hover:text-cyan-400 transition-colors flex items-center justify-center gap-2"
+                >
+                    <span className="text-xl">+</span> Agregar Task
+                </button>
+            )}
+
+            {/* Empty state */}
+            {pkl.tasks.length === 0 && !showNewTask && (
+                <div className="text-center py-8 text-gray-500">
+                    <div className="text-4xl mb-2">📋</div>
+                    <p>No hay tasks en este PKL</p>
+                    <p className="text-sm text-gray-600">Haz clic en "+ Agregar Task" para crear uno</p>
+                </div>
+            )}
+
             {pkl.tasks.map((task, index) => {
                 const typeConfig = getTaskTypeConfig(task.tipo);
                 const isCompleted = task.estado === 'completado';
@@ -479,7 +784,7 @@ function TasksTab({ pkl, onUpdateTask }: { pkl: PKL; onUpdateTask: UpdateTaskFn 
                 return (
                     <div
                         key={task.task_id}
-                        className={`relative flex items-start gap-4 py-4 ${!isLast ? 'border-b border-gray-800/50' : ''}`}
+                        className={`relative flex items-start gap-4 py-4 group/task ${!isLast ? 'border-b border-gray-800/50' : ''}`}
                     >
                         {/* Timeline */}
                         <div className="flex flex-col items-center">
@@ -672,6 +977,21 @@ function TasksTab({ pkl, onUpdateTask }: { pkl: PKL; onUpdateTask: UpdateTaskFn 
                                 ))}
                             </div>
                         </div>
+
+                        {/* Delete button - visible on hover */}
+                        <button
+                            onClick={() => {
+                                if (confirm(`¿Eliminar task "${task.nombre}"?`)) {
+                                    onDeleteTask(task.task_id);
+                                }
+                            }}
+                            className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover/task:opacity-100"
+                            title="Eliminar task"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
                 );
             })}
