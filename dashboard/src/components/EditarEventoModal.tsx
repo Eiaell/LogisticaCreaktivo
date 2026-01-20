@@ -79,8 +79,34 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
 
     if (!isOpen) return null;
 
-    const clientesList = Object.keys(clientes);
+    // Lista de clientes con nombre comercial para mostrar
+    const clientesConNombre = Object.entries(clientes).map(([key, c]) => ({
+        id: key,
+        razon_social: c.razon_social || key,
+        nombre_comercial: c.nombre_comercial || c.razon_social || key,
+        display: c.nombre_comercial || c.razon_social || key
+    }));
     const proveedoresList = Object.keys(proveedores);
+
+    // Handlers para items del detalle
+    const handleItemChange = (index: number, field: string, value: any) => {
+        const detalle = formData.detalle || {};
+        const items = [...(detalle.items || [])];
+        items[index] = { ...items[index], [field]: value };
+        handleChange('detalle', { ...detalle, items });
+    };
+
+    const addItem = () => {
+        const detalle = formData.detalle || {};
+        const items = [...(detalle.items || []), { producto: '', cantidad: 1 }];
+        handleChange('detalle', { ...detalle, items });
+    };
+
+    const removeItem = (index: number) => {
+        const detalle = formData.detalle || {};
+        const items = (detalle.items || []).filter((_: any, i: number) => i !== index);
+        handleChange('detalle', { ...detalle, items });
+    };
 
     // Configuración por tipo
     const config = {
@@ -146,7 +172,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             type="date"
                             value={formData.fecha || ''}
                             onChange={(e) => handleChange('fecha', e.target.value)}
-                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none [color-scheme:dark]"
                         />
                     </div>
 
@@ -157,10 +183,11 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             <select
                                 value={formData.tipo || ''}
                                 onChange={(e) => handleChange('tipo', e.target.value)}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                style={{ colorScheme: 'dark' }}
                             >
                                 {currentConfig.tipos.map(t => (
-                                    <option key={t} value={t}>{t.replace('_', ' ').toUpperCase()}</option>
+                                    <option key={t} value={t} className="bg-gray-800 text-white">{t.replace('_', ' ').toUpperCase()}</option>
                                 ))}
                             </select>
                         </div>
@@ -169,10 +196,11 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             <select
                                 value={formData.estado || ''}
                                 onChange={(e) => handleChange('estado', e.target.value)}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                style={{ colorScheme: 'dark' }}
                             >
                                 {currentConfig.estados.map(e => (
-                                    <option key={e} value={e}>{e.replace('_', ' ').toUpperCase()}</option>
+                                    <option key={e} value={e} className="bg-gray-800 text-white">{e.replace('_', ' ').toUpperCase()}</option>
                                 ))}
                             </select>
                         </div>
@@ -182,29 +210,36 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Cliente</label>
-                            <input
-                                type="text"
-                                list="clientes-list"
+                            <select
                                 value={formData.cliente || ''}
-                                onChange={(e) => handleChange('cliente', e.target.value.toUpperCase())}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
-                                placeholder="Nombre del cliente"
-                            />
-                            <datalist id="clientes-list">
-                                {clientesList.map(c => <option key={c} value={c} />)}
-                            </datalist>
+                                onChange={(e) => handleChange('cliente', e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                <option value="" className="bg-gray-800 text-gray-400">Seleccionar cliente...</option>
+                                {clientesConNombre.map(c => (
+                                    <option key={c.id} value={c.id} className="bg-gray-800 text-white">
+                                        {c.display}
+                                    </option>
+                                ))}
+                            </select>
+                            {formData.cliente && clientes[formData.cliente] && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Razón social: {clientes[formData.cliente].razon_social}
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Proveedor</label>
                             <input
                                 type="text"
-                                list="proveedores-list"
+                                list="proveedores-list-edit"
                                 value={formData.proveedor || ''}
                                 onChange={(e) => handleChange('proveedor', e.target.value.toUpperCase())}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
                                 placeholder="Nombre del proveedor"
                             />
-                            <datalist id="proveedores-list">
+                            <datalist id="proveedores-list-edit">
                                 {proveedoresList.map(p => <option key={p} value={p} />)}
                             </datalist>
                         </div>
@@ -212,17 +247,89 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
 
                     {/* Campos especificos por tipo */}
                     {tipo === 'movimiento' && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Costo Movilidad (S/.)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={formData.costo_movilidad || ''}
-                                onChange={(e) => handleChange('costo_movilidad', parseFloat(e.target.value) || 0)}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
-                                placeholder="0.00"
-                            />
-                        </div>
+                        <>
+                            {/* Items del movimiento */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-medium text-gray-400">Items / Productos</label>
+                                    <button
+                                        type="button"
+                                        onClick={addItem}
+                                        className="text-xs px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded transition-colors"
+                                    >
+                                        + Agregar item
+                                    </button>
+                                </div>
+                                {formData.detalle?.items && formData.detalle.items.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {formData.detalle.items.map((item: any, index: number) => (
+                                            <div key={index} className="flex gap-2 items-center">
+                                                <input
+                                                    type="number"
+                                                    value={item.cantidad || 1}
+                                                    onChange={(e) => handleItemChange(index, 'cantidad', parseInt(e.target.value) || 1)}
+                                                    className="w-20 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none text-center"
+                                                    min="1"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={item.producto || ''}
+                                                    onChange={(e) => handleItemChange(index, 'producto', e.target.value)}
+                                                    className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
+                                                    placeholder="Descripción del producto"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(index)}
+                                                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-sm italic py-2">No hay items registrados</p>
+                                )}
+                            </div>
+
+                            {/* Origen y Destino */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Origen</label>
+                                    <input
+                                        type="text"
+                                        value={formData.detalle?.origen || ''}
+                                        onChange={(e) => handleChange('detalle', { ...formData.detalle, origen: e.target.value })}
+                                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
+                                        placeholder="Lugar de origen"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Destino</label>
+                                    <input
+                                        type="text"
+                                        value={formData.detalle?.destino || ''}
+                                        onChange={(e) => handleChange('detalle', { ...formData.detalle, destino: e.target.value })}
+                                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
+                                        placeholder="Lugar de destino"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Costo Movilidad */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Costo Movilidad (S/.)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.costo_movilidad || ''}
+                                    onChange={(e) => handleChange('costo_movilidad', parseFloat(e.target.value) || 0)}
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </>
                     )}
 
                     {tipo === 'rendicion' && (
@@ -234,7 +341,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     step="0.01"
                                     value={formData.monto || ''}
                                     onChange={(e) => handleChange('monto', parseFloat(e.target.value) || 0)}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
                                     placeholder="0.00"
                                 />
                             </div>
@@ -243,10 +350,11 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                 <select
                                     value={formData.moneda || 'PEN'}
                                     onChange={(e) => handleChange('moneda', e.target.value)}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                    style={{ colorScheme: 'dark' }}
                                 >
-                                    <option value="PEN">PEN (Soles)</option>
-                                    <option value="USD">USD (Dolares)</option>
+                                    <option value="PEN" className="bg-gray-800 text-white">PEN (Soles)</option>
+                                    <option value="USD" className="bg-gray-800 text-white">USD (Dolares)</option>
                                 </select>
                             </div>
                         </div>
@@ -260,7 +368,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     type="text"
                                     value={formData.producto || ''}
                                     onChange={(e) => handleChange('producto', e.target.value)}
-                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
                                     placeholder="Nombre del producto"
                                 />
                             </div>
@@ -271,7 +379,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         type="number"
                                         value={formData.cantidad || ''}
                                         onChange={(e) => handleChange('cantidad', parseInt(e.target.value) || 0)}
-                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
                                         placeholder="0"
                                     />
                                 </div>
@@ -282,7 +390,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         step="0.01"
                                         value={formData.precio_unitario || ''}
                                         onChange={(e) => handleChange('precio_unitario', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -293,7 +401,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         step="0.01"
                                         value={formData.precio_total || ''}
                                         onChange={(e) => handleChange('precio_total', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
+                                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none placeholder-gray-500"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -308,7 +416,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             value={formData.observaciones || ''}
                             onChange={(e) => handleChange('observaciones', e.target.value)}
                             rows={3}
-                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none resize-none"
+                            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none resize-none placeholder-gray-500"
                             placeholder="Notas adicionales..."
                         />
                     </div>

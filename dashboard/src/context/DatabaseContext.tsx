@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import initSqlJs, { type Database } from 'sql.js';
-import type { Pedido, Payment, Proveedor, Cliente, Cotizacion, LineaPedido, CambioPedido, ItemCotizacion, HistoricoPrecio, Produccion, MovimientoLogistico, Rendicion, EventoProduccion, PKL, TaskPKL, EventoImportado, ResumenDiarioImportado } from '../types';
+import type { Pedido, Payment, Proveedor, Cliente, Cotizacion, LineaPedido, CambioPedido, ItemCotizacion, HistoricoPrecio, Produccion, MovimientoLogistico, Rendicion, EventoProduccion, PKL, TaskPKL } from '../types';
 import { supabase } from '../supabaseClient';
 import { type TraceEvent, parseEventsToPedidos } from '../utils/parsers';
 import { generateRL } from '../utils/rqGenerator';
@@ -19,12 +19,6 @@ interface DatabaseContextType {
     historicoPrecio: HistoricoPrecio[];
     pkls: PKL[];
     setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
-
-    // Eventos importados
-    eventosImportados: ResumenDiarioImportado[];
-    importarEventosJSON: (jsonContent: string, filename?: string) => Promise<ResumenDiarioImportado | null>;
-    convertirEventoAPKL: (eventoId: string, resumenId: string) => Promise<string | null>;
-    eliminarResumenImportado: (resumenId: string) => void;
 
     // CRUD PKLs
     updatePKL: (id: string, changes: Partial<PKL>) => Promise<void>;
@@ -119,6 +113,10 @@ interface DatabaseContextType {
     selectedStateFilter: string | null;
     setSelectedStateFilter: (state: string | null) => void;
 
+    // PKL para merge desde Día a Día
+    pklParaMerge: string | null;
+    setPKLParaMerge: (pklId: string | null) => void;
+
     isLoading: boolean;
     error: string | null;
     dataSource: 'db' | 'jsonl' | 'supabase' | null;
@@ -149,12 +147,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     const [rendiciones, setRendiciones] = useState<Rendicion[]>([]);
     const [eventosProduccion, setEventosProduccion] = useState<EventoProduccion[]>([]);
     const [pkls, setPkls] = useState<PKL[]>(pklsDataImport as unknown as PKL[]);
-    const [eventosImportados, setEventosImportados] = useState<ResumenDiarioImportado[]>(() => {
-        // Load from localStorage on init
-        const saved = localStorage.getItem('eventosImportados');
-        return saved ? JSON.parse(saved) : [];
-    });
     const [selectedStateFilter, setSelectedStateFilter] = useState<string | null>(null);
+    const [pklParaMerge, setPklParaMerge] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [dataSource, setDataSource] = useState<'db' | 'jsonl' | 'supabase' | null>(null);
@@ -533,21 +527,36 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             updated.clasificacion = { ...currentPkl.clasificacion, ...changes.clasificacion };
         }
 
-        // Handle estado changes (partial merge with historial append)
+        // Handle estado changes (partial merge with historial append only on actual change)
         if (changes.estado) {
-            const newHistorialEntry = {
-                estado: changes.estado.actual || currentPkl.estado.actual,
-                fecha: now,
-                motivo: 'Actualización manual'
-            };
-            updated.estado = {
-                ...currentPkl.estado,
-                ...changes.estado,
-                historial: [
-                    ...currentPkl.estado.historial,
-                    newHistorialEntry
-                ]
-            };
+            // If historial is explicitly provided, use it directly (for deletions)
+            if (changes.estado.historial !== undefined) {
+                updated.estado = {
+                    ...currentPkl.estado,
+                    ...changes.estado
+                };
+            } else if (changes.estado.actual && changes.estado.actual !== currentPkl.estado.actual) {
+                // Only add to historial when estado.actual changes
+                const newHistorialEntry = {
+                    estado: changes.estado.actual,
+                    fecha: now,
+                    motivo: 'Actualización manual'
+                };
+                updated.estado = {
+                    ...currentPkl.estado,
+                    ...changes.estado,
+                    historial: [
+                        ...currentPkl.estado.historial,
+                        newHistorialEntry
+                    ]
+                };
+            } else {
+                // No actual change, just merge without adding historial
+                updated.estado = {
+                    ...currentPkl.estado,
+                    ...changes.estado
+                };
+            }
         }
 
         // Handle origen changes (partial merge)
@@ -944,195 +953,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             console.error('Error merging PKLs:', err);
         }
-    };
-
-    // ========================================
-    // Importar eventos desde JSON
-    // ========================================
-    const importarEventosJSON = async (jsonContent: string, filename?: string): Promise<ResumenDiarioImportado | null> => {
-        try {
-            const parsed = JSON.parse(jsonContent);
-            const now = new Date().toISOString();
-            const resumenId = `RES-${Date.now()}`;
-
-            // Parse eventos
-            const eventos: EventoImportado[] = (parsed.eventos_dia || []).map((e: any, idx: number) => ({
-                id: `EVT-${Date.now()}-${idx}`,
-                tipo: e.tipo || 'otro',
-                fecha: parsed.fecha || new Date().toISOString().split('T')[0],
-                cliente: e.cliente,
-                proveedor: e.proveedor,
-                producto: e.producto,
-                cantidad: e.cantidad,
-                estado: e.estado,
-                descripcion: e.descripcion,
-                medio: e.medio,
-                materiales: e.materiales,
-                origen: e.origen,
-                destino: e.destino,
-                detalle: e.detalle,
-                importado_at: now,
-            }));
-
-            const resumen: ResumenDiarioImportado = {
-                id: resumenId,
-                fecha: parsed.fecha || new Date().toISOString().split('T')[0],
-                eventos_dia: eventos,
-                importado_at: now,
-                archivo_origen: filename,
-            };
-
-            setEventosImportados(prev => {
-                const updated = [...prev, resumen];
-                localStorage.setItem('eventosImportados', JSON.stringify(updated));
-                return updated;
-            });
-
-            console.log(`✓ Imported ${eventos.length} events from ${filename || 'JSON'}`);
-            return resumen;
-        } catch (err) {
-            console.error('Error parsing JSON:', err);
-            return null;
-        }
-    };
-
-    const convertirEventoAPKL = async (eventoId: string, resumenId: string): Promise<string | null> => {
-        const resumen = eventosImportados.find(r => r.id === resumenId);
-        if (!resumen) return null;
-
-        const evento = resumen.eventos_dia.find(e => e.id === eventoId);
-        if (!evento || evento.convertido_a_pkl) return null;
-
-        const now = new Date().toISOString();
-        const year = new Date().getFullYear();
-        const nextNum = pkls.length + 1;
-        const pklId = `PKL-${year}-${String(nextNum).padStart(4, '0')}`;
-
-        // Determine tipo_operacion based on evento type
-        let tipoOperacion: 'produccion' | 'instalacion' | 'produccion_instalacion' | 'solo_entrega' | 'recojo' | 'feria_evento' | 'mantenimiento' | 'solo_cotizacion' | 'compra_insumo' | 'movilidad' = 'solo_cotizacion';
-        if (evento.tipo === 'orden_produccion') tipoOperacion = 'produccion';
-        else if (evento.tipo === 'entrega_directa') tipoOperacion = 'solo_entrega';
-        else if (evento.tipo === 'pedido_materiales' || evento.tipo === 'recojo') tipoOperacion = 'recojo';
-        else if (evento.tipo === 'costo_logistico') tipoOperacion = 'compra_insumo';
-
-        // Create PKL
-        const newPKL: PKL = {
-            pkl_id: pklId,
-            version: '2.0',
-            created_at: `${evento.fecha}T12:00:00.000Z`,
-            updated_at: now,
-            clasificacion: {
-                tipo_operacion: tipoOperacion,
-                area: 'logistica',
-            },
-            cliente: {
-                nombre: evento.cliente || 'Sin cliente',
-                ejecutiva_asignada: 'Angélica',
-            },
-            origen: {
-                canal: 'whatsapp',
-                fecha_solicitud: evento.fecha,
-                descripcion_inicial: evento.descripcion || evento.producto || 'Evento importado',
-            },
-            productos: evento.producto ? [{
-                producto_id: `PROD-${Date.now()}`,
-                tipo: 'importado',
-                descripcion: evento.producto,
-                cantidad: evento.cantidad || 1,
-            }] : [],
-            inputs: {},
-            proveedores: evento.proveedor ? [{
-                proveedor_id: evento.proveedor,
-                nombre: evento.proveedor,
-            }] : [],
-            estado: {
-                actual: 'recibido',
-                historial: [{
-                    estado: 'recibido',
-                    fecha: now,
-                    motivo: 'Creado desde evento importado',
-                }],
-            },
-            eventos_externos: [],
-            costos: {
-                moneda: 'PEN',
-                detalle: evento.detalle?.precio_total ? [{
-                    concepto: evento.descripcion || 'Costo importado',
-                    monto: evento.detalle.precio_total,
-                    incluye_igv: evento.detalle.igv_incluido || evento.detalle.facturado,
-                }] : [],
-                total: evento.detalle?.precio_total || 0,
-            },
-            cierre: {
-                evidencias: [],
-            },
-            alertas: {
-                dias_sin_actividad: 0,
-                umbral_pausa_dias: 3,
-            },
-            tasks: [],
-            observaciones: `Importado desde JSON: ${evento.tipo}\n${evento.detalle?.especificaciones || ''}`,
-        };
-
-        // Add to state
-        setPkls(prev => [...prev, newPKL]);
-
-        // Mark event as converted
-        setEventosImportados(prev => {
-            const updated = prev.map(r => {
-                if (r.id !== resumenId) return r;
-                return {
-                    ...r,
-                    eventos_dia: r.eventos_dia.map(e =>
-                        e.id === eventoId ? { ...e, convertido_a_pkl: pklId } : e
-                    ),
-                };
-            });
-            localStorage.setItem('eventosImportados', JSON.stringify(updated));
-            return updated;
-        });
-
-        // Persist to Supabase
-        try {
-            const { error } = await supabase.from('pkls').insert({
-                pkl_id: newPKL.pkl_id,
-                version: newPKL.version,
-                created_at: newPKL.created_at,
-                updated_at: now,
-                tipo_operacion: newPKL.clasificacion.tipo_operacion,
-                area: newPKL.clasificacion.area,
-                cliente: newPKL.cliente,
-                origen: newPKL.origen,
-                productos: newPKL.productos,
-                inputs: newPKL.inputs,
-                proveedores: newPKL.proveedores,
-                estado_actual: newPKL.estado.actual,
-                estado_historial: newPKL.estado.historial,
-                eventos_externos: newPKL.eventos_externos,
-                costos: newPKL.costos,
-                cierre: newPKL.cierre,
-                alertas: newPKL.alertas,
-                observaciones: newPKL.observaciones,
-            });
-
-            if (error) {
-                console.error('Error saving PKL to Supabase:', error);
-            } else {
-                console.log(`✓ Created PKL ${pklId} from event ${eventoId}`);
-            }
-        } catch (err) {
-            console.error('Error creating PKL:', err);
-        }
-
-        return pklId;
-    };
-
-    const eliminarResumenImportado = (resumenId: string) => {
-        setEventosImportados(prev => {
-            const updated = prev.filter(r => r.id !== resumenId);
-            localStorage.setItem('eventosImportados', JSON.stringify(updated));
-            return updated;
-        });
     };
 
     const deletePedido = async (id: string) => {
@@ -2421,11 +2241,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             deletePKLTask,
             deletePKL,
             mergePKLs,
-            // Eventos importados
-            eventosImportados,
-            importarEventosJSON,
-            convertirEventoAPKL,
-            eliminarResumenImportado,
             // CRUD Pedidos
             createPedido, updatePedido, deletePedido, deletePedidos,
             // Pagos
@@ -2452,7 +2267,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             // CRUD Eventos de Producción
             eventosProduccion, createEventoProduccion, updateEventoProduccion, deleteEventoProduccion, getEventosProduccionByFecha,
             // Filtros y estado
-            selectedStateFilter, setSelectedStateFilter, isLoading, error, dataSource,
+            selectedStateFilter, setSelectedStateFilter,
+            pklParaMerge, setPKLParaMerge: setPklParaMerge,
+            isLoading, error, dataSource,
             loadDatabase, resetDatabase, exportBackup, uploadLogo
         }}>
             {children}

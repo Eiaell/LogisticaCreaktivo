@@ -25,12 +25,8 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
         // Sección 2 - Capacidades
         categorias: [] as string[],
         // Sección 3 - Condiciones comerciales
-        emite_factura: undefined as boolean | undefined,
         incluye_igv: '' as '' | 'si' | 'no' | 'depende',
         forma_pago: '',
-        tiempo_produccion: '',
-        tiempo_entrega: '',
-        minimo_produccion: '',
         // Sección 4 - Observaciones
         notas: ''
     });
@@ -112,12 +108,8 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
                 direccion: formData.direccion || undefined,
                 categorias: formData.categorias.length > 0 ? formData.categorias : undefined,
                 especialidad: formData.categorias[0] || 'General',
-                emite_factura: formData.emite_factura,
                 incluye_igv: formData.incluye_igv || undefined,
                 forma_pago: formData.forma_pago || undefined,
-                tiempo_produccion: formData.tiempo_produccion ? Number(formData.tiempo_produccion) : undefined,
-                tiempo_entrega: formData.tiempo_entrega ? Number(formData.tiempo_entrega) : undefined,
-                minimo_produccion: formData.minimo_produccion || undefined,
                 factor_demora: 0,
                 notas: formData.notas || undefined,
                 logo: logoUrl
@@ -134,8 +126,7 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
     const handleClose = () => {
         setFormData({
             nombre: '', razon_social: '', ruc: '', contacto: '', telefono: '', email: '', direccion: '',
-            categorias: [], emite_factura: undefined, incluye_igv: '', forma_pago: '',
-            tiempo_produccion: '', tiempo_entrega: '', minimo_produccion: '', notas: ''
+            categorias: [], incluye_igv: '', forma_pago: '', notas: ''
         });
         setLogoPreview(null);
         setLogoFile(null);
@@ -340,15 +331,15 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
                                                 onClick={() => handleCategoriaToggle(categoria)}
                                                 className={`px-4 py-3 rounded-xl text-left text-sm transition-all border ${
                                                     formData.categorias.includes(categoria)
-                                                        ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
-                                                        : 'bg-gray-800/30 border-gray-700/50 text-gray-400 hover:border-gray-600 hover:text-gray-300'
+                                                        ? 'bg-purple-600 border-purple-400 text-white font-medium shadow-lg shadow-purple-500/20'
+                                                        : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:border-purple-500/50 hover:bg-gray-800'
                                                 }`}
                                             >
-                                                <span className="flex items-center gap-2">
-                                                    <span className={`w-4 h-4 rounded border-2 flex items-center justify-center text-xs ${
+                                                <span className="flex items-center gap-3">
+                                                    <span className={`w-5 h-5 rounded border-2 flex items-center justify-center text-xs font-bold ${
                                                         formData.categorias.includes(categoria)
-                                                            ? 'bg-purple-500 border-purple-500 text-white'
-                                                            : 'border-gray-600'
+                                                            ? 'bg-white border-white text-purple-600'
+                                                            : 'border-gray-500 bg-gray-900/50'
                                                     }`}>
                                                         {formData.categorias.includes(categoria) && '✓'}
                                                     </span>
@@ -376,115 +367,54 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
                             {/* Sección 3 - Condiciones comerciales */}
                             {activeSection === 3 && (
                                 <div className="space-y-5 animate-in fade-in duration-200">
-                                    {/* Factura e IGV */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Emite Factura</label>
-                                            <div className="flex gap-2">
-                                                {[
-                                                    { value: true, label: 'Sí' },
-                                                    { value: false, label: 'No' }
-                                                ].map(option => (
-                                                    <button
-                                                        key={String(option.value)}
-                                                        type="button"
-                                                        onClick={() => setFormData(prev => ({ ...prev, emite_factura: option.value }))}
-                                                        className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                                                            formData.emite_factura === option.value
-                                                                ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
-                                                                : 'bg-gray-800/30 border-gray-700/50 text-gray-400 hover:border-gray-600'
-                                                        }`}
-                                                    >
+                                    {/* Cotización incluye IGV */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-purple-300 uppercase tracking-wider">Cotización incluye IGV</label>
+                                        <p className="text-xs text-gray-500">¿Los precios que cotiza este proveedor ya incluyen IGV?</p>
+                                        <div className="flex gap-3 mt-2">
+                                            {[
+                                                { value: 'si', label: 'Sí, incluye IGV', icon: '✓' },
+                                                { value: 'no', label: 'No incluye IGV', icon: '✗' },
+                                                { value: 'depende', label: 'Depende del producto', icon: '?' }
+                                            ].map(option => (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({ ...prev, incluye_igv: option.value as 'si' | 'no' | 'depende' }))}
+                                                    className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all border ${
+                                                        formData.incluye_igv === option.value
+                                                            ? 'bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-500/20'
+                                                            : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:border-purple-500/50'
+                                                    }`}
+                                                >
+                                                    <span className="flex items-center justify-center gap-2">
+                                                        <span className={`text-lg ${formData.incluye_igv === option.value ? 'text-white' : 'text-gray-500'}`}>{option.icon}</span>
                                                         {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Incluye IGV</label>
-                                            <div className="flex gap-2">
-                                                {[
-                                                    { value: 'si', label: 'Sí' },
-                                                    { value: 'no', label: 'No' },
-                                                    { value: 'depende', label: 'Depende' }
-                                                ].map(option => (
-                                                    <button
-                                                        key={option.value}
-                                                        type="button"
-                                                        onClick={() => setFormData(prev => ({ ...prev, incluye_igv: option.value as 'si' | 'no' | 'depende' }))}
-                                                        className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                                                            formData.incluye_igv === option.value
-                                                                ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
-                                                                : 'bg-gray-800/30 border-gray-700/50 text-gray-400 hover:border-gray-600'
-                                                        }`}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                                    </span>
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
                                     {/* Forma de pago */}
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Forma de Pago</label>
+                                        <label className="text-xs font-semibold text-purple-300 uppercase tracking-wider">Forma de Pago Preferida</label>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                             {['Contado', 'Adelanto', 'Contra entrega', 'Crédito'].map(option => (
                                                 <button
                                                     key={option}
                                                     type="button"
                                                     onClick={() => setFormData(prev => ({ ...prev, forma_pago: option }))}
-                                                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                                                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-all border ${
                                                         formData.forma_pago === option
-                                                            ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
-                                                            : 'bg-gray-800/30 border-gray-700/50 text-gray-400 hover:border-gray-600'
+                                                            ? 'bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-500/20'
+                                                            : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:border-purple-500/50'
                                                     }`}
                                                 >
                                                     {option}
                                                 </button>
                                             ))}
                                         </div>
-                                    </div>
-
-                                    {/* Tiempos */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tiempo Producción (días)</label>
-                                            <input
-                                                type="number"
-                                                name="tiempo_produccion"
-                                                value={formData.tiempo_produccion}
-                                                onChange={handleChange}
-                                                placeholder="Ej: 5"
-                                                min="0"
-                                                className="w-full px-4 py-2.5 bg-gray-950/50 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-all font-mono"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tiempo Entrega (días)</label>
-                                            <input
-                                                type="number"
-                                                name="tiempo_entrega"
-                                                value={formData.tiempo_entrega}
-                                                onChange={handleChange}
-                                                placeholder="Ej: 2"
-                                                min="0"
-                                                className="w-full px-4 py-2.5 bg-gray-950/50 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-all font-mono"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Mínimo de producción */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mínimo de Producción</label>
-                                        <input
-                                            type="text"
-                                            name="minimo_produccion"
-                                            value={formData.minimo_produccion}
-                                            onChange={handleChange}
-                                            placeholder="Ej: 100 unidades, S/ 500 mínimo, etc."
-                                            className="w-full px-4 py-2.5 bg-gray-950/50 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-all"
-                                        />
                                     </div>
                                 </div>
                             )}
@@ -526,9 +456,9 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-gray-500">Factura:</span>
+                                                <span className="text-gray-500">IGV:</span>
                                                 <span className="text-white ml-2">
-                                                    {formData.emite_factura === true ? 'Sí' : formData.emite_factura === false ? 'No' : '-'}
+                                                    {formData.incluye_igv === 'si' ? 'Incluye' : formData.incluye_igv === 'no' ? 'No incluye' : formData.incluye_igv === 'depende' ? 'Depende' : '-'}
                                                 </span>
                                             </div>
                                             <div>

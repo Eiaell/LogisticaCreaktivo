@@ -564,29 +564,32 @@ export const TIPOS_RENDICION = [
 // Unidad mínima de ejecución logística end-to-end
 // ============================================
 
-// Tipos de operacion PKL
+// Tipos de operacion PKL (Ciclos de Operación)
 export const TIPOS_OPERACION_PKL = [
-    { value: 'produccion', label: 'Produccion', color: 'bg-blue-700' },
-    { value: 'instalacion', label: 'Instalacion', color: 'bg-purple-700' },
-    { value: 'produccion_instalacion', label: 'Produccion + Instalacion', color: 'bg-indigo-700' },
-    { value: 'solo_entrega', label: 'Solo Entrega', color: 'bg-green-700' },
-    { value: 'recojo', label: 'Recojo', color: 'bg-cyan-700' },
-    { value: 'feria', label: 'Feria/Evento', color: 'bg-orange-600' },
-    { value: 'mantenimiento', label: 'Mantenimiento', color: 'bg-gray-700' },
-    { value: 'solo_cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-600' },
-    { value: 'compra_insumo', label: 'Compra Insumo', color: 'bg-amber-700' },
+    { value: 'ciclo_completo', label: 'Ciclo Completo (C+P+R+E)', color: 'bg-emerald-600' },
+    { value: 'produccion_recojo_entrega', label: 'Produccion + Recojo + Entrega', color: 'bg-blue-600' },
+    { value: 'cotizacion_recojo_entrega', label: 'Cotizacion + Recojo + Entrega', color: 'bg-sky-600' },
+    { value: 'cotizacion_recojo', label: 'Cotizacion + Recojo', color: 'bg-teal-600' },
+    { value: 'recojo_entrega', label: 'Recojo + Entrega', color: 'bg-cyan-600' },
+    { value: 'solo_entrega', label: 'Solo Entrega', color: 'bg-green-600' },
+    { value: 'cotizacion_produccion_motorizado', label: 'Cotizacion + Produccion + Motorizado', color: 'bg-indigo-600' },
+    { value: 'solo_motorizado', label: 'Solo Motorizado', color: 'bg-rose-600' },
+    { value: 'cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-500' },
+    { value: 'ciclo_completo_instalacion', label: 'Ciclo Completo + Instalacion', color: 'bg-purple-600' },
+    { value: 'feria_evento', label: 'Feria/Evento', color: 'bg-orange-600' },
+    { value: 'compra_insumo', label: 'Compra Insumo', color: 'bg-amber-600' },
 ] as const;
 
 export type TipoOperacionPKL = typeof TIPOS_OPERACION_PKL[number]['value'];
 
 // Estados del PKL
 export const ESTADOS_PKL = [
-    { value: 'recibido', label: 'Recibido', color: 'bg-gray-500' },
+    { value: 'recibido', label: 'Recibido', color: 'bg-violet-500' },
+    { value: 'cotizado', label: 'Cotizado', color: 'bg-purple-500' },
     { value: 'en_produccion', label: 'En Produccion', color: 'bg-blue-500' },
-    { value: 'en_curso', label: 'En Curso', color: 'bg-cyan-500' },
+    { value: 'para_recoger', label: 'Para Recoger', color: 'bg-cyan-500' },
     { value: 'en_pausa', label: 'En Pausa', color: 'bg-yellow-500' },
     { value: 'cerrado_ok', label: 'Cerrado OK', color: 'bg-green-500' },
-    { value: 'cerrado_parcial', label: 'Cerrado Parcial', color: 'bg-orange-500' },
     { value: 'cancelado', label: 'Cancelado', color: 'bg-red-500' },
 ] as const;
 
@@ -822,60 +825,4 @@ export interface PKL {
 
     // Observaciones generales
     observaciones?: string;
-}
-
-// ============================================
-// Eventos Importados (JSON del Bot)
-// ============================================
-
-export type TipoEventoImportado =
-    | 'cotizacion_propuesta'
-    | 'orden_produccion'
-    | 'pedido_materiales'
-    | 'entrega_directa'
-    | 'costo_logistico'
-    | 'recojo'
-    | 'traslado'
-    | 'otro';
-
-export interface EventoImportado {
-    id: string;                          // Generated UUID
-    tipo: TipoEventoImportado;
-    fecha: string;                       // From parent JSON
-    cliente?: string;
-    proveedor?: string;
-    producto?: string;
-    cantidad?: number;
-    estado?: string;
-    descripcion?: string;
-    medio?: string;
-    materiales?: string[];
-    origen?: string;
-    destino?: string;
-    detalle?: {
-        precio_unitario?: number;
-        precio_total?: number;
-        costo_soles?: number;
-        concepto?: string;
-        material?: string;
-        medidas?: string;
-        especificaciones?: string;
-        fecha_compromiso?: string;
-        facturado?: boolean;
-        igv_incluido?: boolean;
-        cantidad?: number;
-        incluye?: string;
-        impresion?: string;
-    };
-    // Estado en el dashboard
-    convertido_a_pkl?: string;           // PKL ID if converted
-    importado_at: string;                // When it was imported
-}
-
-export interface ResumenDiarioImportado {
-    id: string;                          // Generated UUID
-    fecha: string;
-    eventos_dia: EventoImportado[];
-    importado_at: string;
-    archivo_origen?: string;             // Original filename
 }

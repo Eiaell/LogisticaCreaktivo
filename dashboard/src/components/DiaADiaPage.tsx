@@ -1,8 +1,18 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
-import type { MovimientoLogistico, Rendicion, EventoProduccion } from '../types';
+import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
 import { SincronizarEventoModal } from './SincronizarEventoModal';
+
+// Función para encontrar el PKL vinculado a un evento
+function findPKLForEvent(eventId: string, pkls: PKL[]): PKL | null {
+    for (const pkl of pkls) {
+        if (pkl.tasks?.some(task => (task as any).evento_origen_id === eventId)) {
+            return pkl;
+        }
+    }
+    return null;
+}
 
 interface DiaADiaPageProps {
     onBack: () => void;
@@ -510,13 +520,29 @@ function ClienteLogo({ logoUrl, nombre, size = 'md' }: { logoUrl?: string | null
     );
 }
 
+// Tipo unificado para eventos seleccionables
+type EventoSeleccionable = {
+    id: string;
+    tipo_evento: 'movimiento' | 'rendicion' | 'produccion';
+    tipo: string;
+    cliente?: string;
+    descripcion: string;
+    monto?: number;
+    fecha: string;
+    data: MovimientoLogistico | Rendicion | EventoProduccion;
+};
+
 // Componente para mostrar un movimiento
-function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo }: {
+function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo, isSelected, onToggleSelect, linkedPKL, onDecouple }: {
     movimiento: MovimientoLogistico;
     onEdit: () => void;
     onDelete: () => void;
     onSync: () => void;
     clienteLogo?: string | null;
+    isSelected?: boolean;
+    onToggleSelect?: () => void;
+    linkedPKL?: PKL | null;
+    onDecouple?: (pklId: string, eventId: string) => void;
 }) {
     const config = MOVIMIENTO_CONFIG[movimiento.tipo] || MOVIMIENTO_CONFIG.traslado;
     const detalle = movimiento.detalle as any;
@@ -524,14 +550,22 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo }: {
     // Construir resumen según tipo
     let resumen = '';
     if (detalle?.items && Array.isArray(detalle.items)) {
-        resumen = detalle.items.map((i: any) => `${i.cantidad} ${i.producto}`).join(', ');
+        resumen = detalle.items.map((i: any) => {
+            const producto = i.producto || '';
+            const cantidad = i.cantidad;
+            // Si cantidad es 1 o el producto ya empieza con número, solo mostrar producto
+            if (cantidad === 1 || /^\d/.test(producto)) {
+                return producto;
+            }
+            return `${cantidad} ${producto}`;
+        }).join(', ');
     } else if (detalle?.origen) {
         resumen = `${detalle.origen}${detalle.destino ? ` → ${detalle.destino}` : ''}`;
         if (detalle.item) resumen += ` (${detalle.item})`;
     }
 
     return (
-        <div className={`border rounded-xl p-4 ${config.bgColor} group relative cursor-pointer hover:border-cyan-500/50 transition-all`} onClick={onEdit}>
+        <div className={`border rounded-xl p-4 ${config.bgColor} group relative cursor-pointer hover:border-cyan-500/50 transition-all ${isSelected ? 'ring-2 ring-cyan-500 border-cyan-500' : ''}`} onClick={onEdit}>
             {/* Botones de acción (hover) */}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
                 <button
@@ -555,6 +589,29 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo }: {
             </div>
 
             <div className="flex items-start gap-3">
+                {/* Checkbox de selección O badge de PKL vinculado */}
+                {linkedPKL ? (
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-lg">🔗</span>
+                        <span className="text-[10px] font-mono text-purple-400 whitespace-nowrap">{linkedPKL.pkl_id.replace('PKL-', '')}</span>
+                    </div>
+                ) : onToggleSelect ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isSelected
+                                ? 'bg-cyan-500 border-cyan-500 text-white scale-110'
+                                : 'border-gray-500 hover:border-cyan-400 hover:bg-cyan-500/20'
+                        }`}
+                        title={isSelected ? 'Deseleccionar' : 'Seleccionar para fusionar a PKL'}
+                    >
+                        {isSelected && (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        )}
+                    </button>
+                ) : null}
                 <div className="text-2xl">{config.icon}</div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -566,6 +623,11 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo }: {
                         }`}>
                             {movimiento.estado}
                         </span>
+                        {linkedPKL && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-400 border border-purple-500/50">
+                                {linkedPKL.pkl_id}
+                            </span>
+                        )}
                     </div>
 
                     {movimiento.cliente && (
@@ -589,8 +651,23 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo }: {
                         </p>
                     )}
 
-                    {/* Botón de sincronización */}
-                    {movimiento.pedido_id ? (
+                    {/* PKL vinculado - botón decouple */}
+                    {linkedPKL && onDecouple ? (
+                        <div className="mt-3 flex items-center gap-2">
+                            <span className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/30 flex-1">
+                                🔗 Vinculado a {linkedPKL.pkl_id}
+                            </span>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, movimiento.id); }}
+                                className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors"
+                                title="Desvincular de PKL"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                </svg>
+                            </button>
+                        </div>
+                    ) : movimiento.pedido_id ? (
                         <div className="mt-3 flex items-center gap-2">
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
                                 ✓ Vinculado a pedido
@@ -611,18 +688,22 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo }: {
 }
 
 // Componente para mostrar una rendición
-function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo }: {
+function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo, isSelected, onToggleSelect, linkedPKL, onDecouple }: {
     rendicion: Rendicion;
     onEdit: () => void;
     onDelete: () => void;
     onSync: () => void;
     clienteLogo?: string | null;
+    isSelected?: boolean;
+    onToggleSelect?: () => void;
+    linkedPKL?: PKL | null;
+    onDecouple?: (pklId: string, eventId: string) => void;
 }) {
     const config = RENDICION_CONFIG[rendicion.tipo] || RENDICION_CONFIG.gasto_extra;
     const detalle = rendicion.detalle as any;
 
     return (
-        <div className={`border rounded-xl p-4 ${config.bgColor} group relative cursor-pointer hover:border-orange-500/50 transition-all`} onClick={onEdit}>
+        <div className={`border rounded-xl p-4 ${config.bgColor} group relative cursor-pointer hover:border-orange-500/50 transition-all ${isSelected ? 'ring-2 ring-orange-500 border-orange-500' : ''}`} onClick={onEdit}>
             {/* Botones de acción (hover) */}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
                 <button
@@ -646,6 +727,29 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo }: {
             </div>
 
             <div className="flex items-start gap-3">
+                {/* Checkbox de selección O badge de PKL vinculado */}
+                {linkedPKL ? (
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-lg">🔗</span>
+                        <span className="text-[10px] font-mono text-purple-400 whitespace-nowrap">{linkedPKL.pkl_id.replace('PKL-', '')}</span>
+                    </div>
+                ) : onToggleSelect ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isSelected
+                                ? 'bg-orange-500 border-orange-500 text-white scale-110'
+                                : 'border-gray-500 hover:border-orange-400 hover:bg-orange-500/20'
+                        }`}
+                        title={isSelected ? 'Deseleccionar' : 'Seleccionar para fusionar a PKL'}
+                    >
+                        {isSelected && (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        )}
+                    </button>
+                ) : null}
                 <div className="text-2xl">{config.icon}</div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -657,6 +761,11 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo }: {
                         }`}>
                             {rendicion.estado}
                         </span>
+                        {linkedPKL && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-400 border border-purple-500/50">
+                                {linkedPKL.pkl_id}
+                            </span>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -695,8 +804,23 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo }: {
                         </p>
                     </div>
 
-                    {/* Botón de sincronización */}
-                    {rendicion.pedido_id ? (
+                    {/* PKL vinculado - botón decouple */}
+                    {linkedPKL && onDecouple ? (
+                        <div className="mt-3 flex items-center gap-2">
+                            <span className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/30 flex-1">
+                                🔗 Vinculado a {linkedPKL.pkl_id}
+                            </span>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, rendicion.id); }}
+                                className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors"
+                                title="Desvincular de PKL"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                </svg>
+                            </button>
+                        </div>
+                    ) : rendicion.pedido_id ? (
                         <div className="mt-3 flex items-center gap-2">
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
                                 ✓ Vinculado a pedido
@@ -717,17 +841,21 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo }: {
 }
 
 // Componente para mostrar un evento de producción
-function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo }: {
+function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelected, onToggleSelect, linkedPKL, onDecouple }: {
     evento: EventoProduccion;
     onEdit: () => void;
     onDelete: () => void;
     onSync: () => void;
     clienteLogo?: string | null;
+    isSelected?: boolean;
+    onToggleSelect?: () => void;
+    linkedPKL?: PKL | null;
+    onDecouple?: (pklId: string, eventId: string) => void;
 }) {
     const especificaciones = evento.especificaciones as Record<string, any> || {};
 
     return (
-        <div className="border rounded-xl p-4 bg-indigo-500/20 border-indigo-500/30 group relative cursor-pointer hover:border-indigo-500/50 transition-all" onClick={onEdit}>
+        <div className={`border rounded-xl p-4 bg-indigo-500/20 border-indigo-500/30 group relative cursor-pointer hover:border-indigo-500/50 transition-all ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-500' : ''}`} onClick={onEdit}>
             {/* Botones de acción (hover) */}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
                 <button
@@ -751,6 +879,29 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo }: {
             </div>
 
             <div className="flex items-start gap-3">
+                {/* Checkbox de selección O badge de PKL vinculado */}
+                {linkedPKL ? (
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-lg">🔗</span>
+                        <span className="text-[10px] font-mono text-purple-400 whitespace-nowrap">{linkedPKL.pkl_id.replace('PKL-', '')}</span>
+                    </div>
+                ) : onToggleSelect ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isSelected
+                                ? 'bg-indigo-500 border-indigo-500 text-white scale-110'
+                                : 'border-gray-500 hover:border-indigo-400 hover:bg-indigo-500/20'
+                        }`}
+                        title={isSelected ? 'Deseleccionar' : 'Seleccionar para fusionar a PKL'}
+                    >
+                        {isSelected && (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        )}
+                    </button>
+                ) : null}
                 <div className="text-2xl">🏭</div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -764,6 +915,11 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo }: {
                         }`}>
                             {evento.estado}
                         </span>
+                        {linkedPKL && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-400 border border-purple-500/50">
+                                {linkedPKL.pkl_id}
+                            </span>
+                        )}
                     </div>
 
                     <p className="text-white font-medium">{evento.producto}</p>
@@ -802,8 +958,23 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo }: {
                         </p>
                     )}
 
-                    {/* Botón de sincronización */}
-                    {evento.pedido_id ? (
+                    {/* PKL vinculado - botón decouple */}
+                    {linkedPKL && onDecouple ? (
+                        <div className="mt-3 flex items-center gap-2">
+                            <span className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/30 flex-1">
+                                🔗 Vinculado a {linkedPKL.pkl_id}
+                            </span>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, evento.id); }}
+                                className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors"
+                                title="Desvincular de PKL"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                </svg>
+                            </button>
+                        </div>
+                    ) : evento.pedido_id ? (
                         <div className="mt-3 flex items-center gap-2">
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
                                 ✓ Vinculado a pedido
@@ -864,6 +1035,333 @@ function ConfirmDeleteModal({ isOpen, onClose, onConfirm, itemType }: {
     );
 }
 
+// Modal para fusionar eventos en un PKL
+function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess }: {
+    isOpen: boolean;
+    onClose: () => void;
+    eventos: EventoSeleccionable[];
+    clientes: Record<string, any>;
+    onSuccess: () => void;
+}) {
+    const { updatePKL, pkls } = useDatabase();
+    const [pklNombre, setPklNombre] = useState('');
+    const [selectedCliente, setSelectedCliente] = useState('');
+    const [tipoOperacion, setTipoOperacion] = useState<string>('produccion');
+    const [isCreating, setIsCreating] = useState(false);
+
+    // Auto-detectar cliente más común
+    useEffect(() => {
+        if (eventos.length > 0) {
+            const clienteCounts: Record<string, number> = {};
+            eventos.forEach(e => {
+                if (e.cliente) {
+                    clienteCounts[e.cliente] = (clienteCounts[e.cliente] || 0) + 1;
+                }
+            });
+            const mostCommon = Object.entries(clienteCounts).sort((a, b) => b[1] - a[1])[0];
+            if (mostCommon) {
+                setSelectedCliente(mostCommon[0]);
+            }
+
+            // Auto-generar nombre
+            const fecha = eventos[0].fecha;
+            const clienteNombre = mostCommon ? mostCommon[0] : 'Varios';
+            setPklNombre(`${clienteNombre} - ${fecha}`);
+
+            // Auto-detectar ciclo de operación basado en eventos seleccionados
+            const hasProduccion = eventos.some(e => e.tipo_evento === 'produccion');
+            const hasEntrega = eventos.some(e => e.tipo === 'entrega');
+            const hasRecojo = eventos.some(e => e.tipo === 'recojo');
+            const hasCotizacion = eventos.some(e => e.tipo === 'cotizacion');
+
+            if (hasCotizacion && hasProduccion && hasRecojo && hasEntrega) {
+                setTipoOperacion('ciclo_completo');
+            } else if (hasProduccion && hasRecojo && hasEntrega) {
+                setTipoOperacion('produccion_recojo_entrega');
+            } else if (hasCotizacion && hasProduccion && hasEntrega && !hasRecojo) {
+                setTipoOperacion('produccion_motorizado');
+            } else if (hasRecojo && hasEntrega) {
+                setTipoOperacion('recojo_entrega');
+            } else if (hasRecojo && !hasEntrega) {
+                setTipoOperacion('solo_recojo');
+            } else if (hasEntrega && !hasRecojo) {
+                setTipoOperacion('solo_entrega');
+            } else if (hasCotizacion) {
+                setTipoOperacion('cotizacion');
+            } else if (hasProduccion) {
+                setTipoOperacion('produccion_recojo_entrega');
+            }
+        }
+    }, [eventos]);
+
+    const handleCreate = async () => {
+        if (!pklNombre.trim()) return;
+
+        setIsCreating(true);
+        try {
+            const now = new Date().toISOString();
+            const year = new Date().getFullYear();
+            const nextNum = pkls.length + 1;
+            const pklId = `PKL-${year}-${String(nextNum).padStart(4, '0')}`;
+
+            // Crear tasks a partir de los eventos
+            const tasks = eventos.map((evento, idx) => {
+                const tipoEmoji = evento.tipo_evento === 'movimiento' ? '🚚' :
+                                 evento.tipo_evento === 'rendicion' ? '💰' : '🏭';
+                return {
+                    task_id: `TASK-${Date.now()}-${idx}`,
+                    nombre: `${tipoEmoji} ${evento.tipo.toUpperCase()}: ${evento.descripcion}`.substring(0, 100),
+                    descripcion: evento.descripcion,
+                    estado: 'completada' as const,
+                    orden: idx + 1,
+                    tipo_origen: evento.tipo_evento,
+                    evento_origen_id: evento.id,
+                    fecha_completada: evento.fecha,
+                };
+            });
+
+            // Calcular costos
+            const totalCostos = eventos.reduce((sum, e) => sum + (e.monto || 0), 0);
+            const costoDetalle = eventos
+                .filter(e => e.monto && e.monto > 0)
+                .map(e => ({
+                    concepto: `${e.tipo}: ${e.descripcion}`.substring(0, 50),
+                    monto: e.monto || 0,
+                    fecha: e.fecha,
+                }));
+
+            // Crear el PKL
+            const newPKL = {
+                pkl_id: pklId,
+                version: '2.0',
+                created_at: eventos[0].fecha + 'T12:00:00.000Z',
+                updated_at: now,
+                clasificacion: {
+                    tipo_operacion: tipoOperacion as any,
+                    area: 'logistica' as const,
+                },
+                cliente: {
+                    nombre: selectedCliente || 'Sin cliente',
+                    ejecutiva_asignada: 'Angélica',
+                },
+                origen: {
+                    canal: 'fusion_eventos' as const,
+                    fecha_solicitud: eventos[0].fecha,
+                    descripcion_inicial: pklNombre,
+                },
+                productos: eventos
+                    .filter(e => e.tipo_evento === 'produccion')
+                    .map((e, idx) => ({
+                        producto_id: `PROD-${Date.now()}-${idx}`,
+                        tipo: 'fusionado',
+                        descripcion: e.descripcion,
+                        cantidad: 1,
+                    })),
+                inputs: {},
+                proveedores: [] as any[],
+                estado: {
+                    actual: 'cerrado' as const,
+                    historial: [{
+                        estado: 'cerrado' as const,
+                        fecha: now,
+                        motivo: `PKL creado por fusión de ${eventos.length} eventos`,
+                    }],
+                },
+                eventos_externos: eventos.map(e => ({
+                    fecha: e.fecha,
+                    tipo: e.tipo_evento,
+                    descripcion: `[${e.tipo}] ${e.descripcion}`,
+                })),
+                costos: {
+                    moneda: 'PEN' as const,
+                    detalle: costoDetalle,
+                    total: totalCostos,
+                },
+                cierre: {
+                    evidencias: [],
+                },
+                alertas: {
+                    dias_sin_actividad: 0,
+                    umbral_pausa_dias: 3,
+                },
+                tasks,
+                observaciones: `PKL creado por fusión de ${eventos.length} eventos del día ${eventos[0].fecha}`,
+            };
+
+            // Usar updatePKL para crear (se comporta como upsert)
+            await updatePKL(pklId, newPKL as any);
+
+            console.log(`✅ PKL ${pklId} creado con ${tasks.length} tasks`);
+            onSuccess();
+        } catch (error) {
+            console.error('Error creando PKL:', error);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    const clientesList = Object.entries(clientes).map(([key, c]) => ({
+        id: key,
+        display: c.nombre_comercial || c.razon_social || key
+    }));
+
+    // Ciclo de Operación basado en el nivel de involucramiento
+    const tiposOperacion = [
+        { value: 'ciclo_completo', label: '🔄 Ciclo Completo', desc: 'Cotizo → Producción → Recojo → Entrega' },
+        { value: 'produccion_recojo_entrega', label: '🏭 Producción + Recojo + Entrega', desc: 'Sin cotización' },
+        { value: 'produccion_motorizado', label: '🏭📦 Producción + Motorizado', desc: 'Cotizo, produzco, motorizado entrega' },
+        { value: 'recojo_entrega', label: '🚚📦 Recojo + Entrega', desc: 'Solo logística, sin producción' },
+        { value: 'solo_recojo', label: '🚚 Solo Recojo', desc: 'Recoger de proveedor/cliente' },
+        { value: 'solo_entrega', label: '📦 Solo Entrega', desc: 'Entregar al cliente' },
+        { value: 'cotizacion', label: '💬 Solo Cotización', desc: 'Pendiente de aprobación' },
+    ];
+
+    return (
+        <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-t-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl">🔗</span>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Fusionar Eventos a PKL</h2>
+                                <p className="text-white/70 text-sm">{eventos.length} eventos seleccionados</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Nombre del PKL */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-1">Nombre del PKL</label>
+                        <input
+                            type="text"
+                            value={pklNombre}
+                            onChange={(e) => setPklNombre(e.target.value)}
+                            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
+                            placeholder="Ej: GRUPO LAR - Recojo + Entrega"
+                        />
+                    </div>
+
+                    {/* Cliente y Tipo */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Cliente</label>
+                            <select
+                                value={selectedCliente}
+                                onChange={(e) => setSelectedCliente(e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                <option value="">Seleccionar cliente...</option>
+                                {clientesList.map(c => (
+                                    <option key={c.id} value={c.id}>{c.display}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Ciclo de Operación</label>
+                            <select
+                                value={tipoOperacion}
+                                onChange={(e) => setTipoOperacion(e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                {tiposOperacion.map(t => (
+                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Preview de eventos como tasks */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">
+                            Eventos → Tasks ({eventos.length})
+                        </label>
+                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-60 overflow-y-auto">
+                            {eventos.map((evento, idx) => (
+                                <div key={evento.id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0">
+                                    <span className="text-gray-500 text-sm font-mono w-6">{idx + 1}</span>
+                                    <span className={`text-lg ${
+                                        evento.tipo_evento === 'movimiento' ? 'text-blue-400' :
+                                        evento.tipo_evento === 'rendicion' ? 'text-orange-400' : 'text-indigo-400'
+                                    }`}>
+                                        {evento.tipo_evento === 'movimiento' ? '🚚' :
+                                         evento.tipo_evento === 'rendicion' ? '💰' : '🏭'}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-white text-sm font-medium truncate">
+                                            {evento.tipo.toUpperCase()}: {evento.descripcion}
+                                        </p>
+                                        <p className="text-gray-500 text-xs">
+                                            {evento.cliente} • {evento.fecha}
+                                            {evento.monto ? ` • S/. ${evento.monto.toFixed(2)}` : ''}
+                                        </p>
+                                    </div>
+                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">
+                                        ✓ Task
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Resumen de costos */}
+                    {eventos.some(e => e.monto && e.monto > 0) && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-amber-400 font-medium">Costo total del PKL:</span>
+                                <span className="text-amber-400 font-bold text-xl">
+                                    S/. {eventos.reduce((sum, e) => sum + (e.monto || 0), 0).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 p-6 border-t border-gray-800">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleCreate}
+                        disabled={isCreating || !pklNombre.trim()}
+                        className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                        {isCreating ? (
+                            <span className="animate-pulse">Creando PKL...</span>
+                        ) : (
+                            <>
+                                <span>🔗</span>
+                                Crear PKL con {eventos.length} tasks
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     const {
         movimientosLogisticos, rendiciones, eventosProduccion,
@@ -872,13 +1370,15 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         createPedido, updatePedido, addPayment,
         updateMovimientoLogistico, updateRendicion, updateEventoProduccion,
         createProduccion,
-        // Eventos importados
-        eventosImportados, importarEventosJSON, convertirEventoAPKL, eliminarResumenImportado
+        clientes,
+        pkls,
+        updatePKL,
+        pklParaMerge,
+        setPKLParaMerge,
     } = useDatabase();
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
-    const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion' | 'importados'>('all');
+    const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion'>('all');
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: string; id: string; itemType: string } | null>(null);
     const [editModal, setEditModal] = useState<{ isOpen: boolean; tipo: 'movimiento' | 'rendicion' | 'produccion'; id: string } | null>(null);
     const [syncModal, setSyncModal] = useState<{
@@ -898,28 +1398,9 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [showCalendar, setShowCalendar] = useState(false);
-    const [showImportados, setShowImportados] = useState(false);
-
-    // Handler para importar JSON
-    const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const content = event.target?.result as string;
-            const result = await importarEventosJSON(content, file.name);
-            if (result) {
-                setShowImportados(true);
-            }
-        };
-        reader.readAsText(file);
-
-        // Reset input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
+    const [selectedEventos, setSelectedEventos] = useState<Set<string>>(new Set());
+    const [showMergeModal, setShowMergeModal] = useState(false);
+    const [mergeSelectionMode, setMergeSelectionMode] = useState(false);
 
     // Agrupar eventos por fecha
     const eventosPorFecha = useMemo(() => {
@@ -994,6 +1475,101 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
 
     // Datos del día seleccionado
     const diaSeleccionado = selectedDate ? eventosPorFecha[selectedDate] : null;
+
+    // Toggle selección de evento
+    const toggleEventoSelection = (id: string) => {
+        setSelectedEventos(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
+    // Obtener eventos seleccionados con sus datos
+    const eventosSeleccionadosData = useMemo((): EventoSeleccionable[] => {
+        const result: EventoSeleccionable[] = [];
+
+        selectedEventos.forEach(id => {
+            // Buscar en movimientos
+            const mov = movimientosLogisticos.find(m => m.id === id);
+            if (mov) {
+                const detalle = mov.detalle as any;
+                let descripcion = mov.observaciones || '';
+                if (detalle?.items?.length) {
+                    descripcion = detalle.items.map((i: any) => `${i.cantidad} ${i.producto}`).join(', ');
+                }
+                result.push({
+                    id: mov.id,
+                    tipo_evento: 'movimiento',
+                    tipo: mov.tipo,
+                    cliente: mov.cliente,
+                    descripcion,
+                    monto: mov.costo_movilidad,
+                    fecha: mov.fecha,
+                    data: mov
+                });
+                return;
+            }
+
+            // Buscar en rendiciones
+            const rend = rendiciones.find(r => r.id === id);
+            if (rend) {
+                const detalle = rend.detalle as any;
+                result.push({
+                    id: rend.id,
+                    tipo_evento: 'rendicion',
+                    tipo: rend.tipo,
+                    cliente: rend.cliente,
+                    descripcion: detalle?.concepto || rend.observaciones || rend.tipo,
+                    monto: rend.monto,
+                    fecha: rend.fecha,
+                    data: rend
+                });
+                return;
+            }
+
+            // Buscar en producciones
+            const prod = eventosProduccion.find(p => p.id === id);
+            if (prod) {
+                result.push({
+                    id: prod.id,
+                    tipo_evento: 'produccion',
+                    tipo: 'produccion',
+                    cliente: prod.cliente,
+                    descripcion: `${prod.producto} x ${prod.cantidad || 1}`,
+                    monto: prod.precio_total,
+                    fecha: prod.fecha,
+                    data: prod
+                });
+            }
+        });
+
+        return result;
+    }, [selectedEventos, movimientosLogisticos, rendiciones, eventosProduccion]);
+
+    // Handler para desvincular un evento de un PKL
+    const handleDecoupleFromPKL = async (pklId: string, eventId: string) => {
+        const pkl = pkls.find(p => p.pkl_id === pklId);
+        if (!pkl) return;
+
+        // Filtrar los tasks para remover el evento
+        const updatedTasks = pkl.tasks.filter(task => (task as any).evento_origen_id !== eventId);
+
+        // Si no quedan tasks, podríamos eliminar el PKL o dejarlo vacío
+        const updatedPKL = {
+            ...pkl,
+            tasks: updatedTasks,
+            updated_at: new Date().toISOString(),
+            observaciones: `${pkl.observaciones || ''}\n[${new Date().toISOString()}] Evento ${eventId} desvinculado.`.trim(),
+        };
+
+        await updatePKL(pklId, updatedPKL);
+        console.log(`✅ Evento ${eventId} desvinculado de ${pklId}`);
+    };
 
     // Handlers para eliminar
     const handleDeleteMovimiento = (id: string) => {
@@ -1215,28 +1791,19 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     >
                         🏭 Producción
                     </button>
+                    <div className="border-l border-gray-700 h-8 mx-2"></div>
                     <button
-                        onClick={() => setShowImportados(!showImportados)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            showImportados ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                        onClick={() => {
+                            setMergeSelectionMode(!mergeSelectionMode);
+                            if (mergeSelectionMode) {
+                                setSelectedEventos(new Set());
+                            }
+                        }}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                            mergeSelectionMode ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-purple-600/50'
                         }`}
                     >
-                        📥 Importados {eventosImportados.length > 0 && `(${eventosImportados.length})`}
-                    </button>
-                    <div className="border-l border-gray-700 h-8 mx-2"></div>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".json"
-                        onChange={handleFileImport}
-                        className="hidden"
-                    />
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                        <span>📄</span>
-                        Importar JSON
+                        🔗 {mergeSelectionMode ? 'Cancelar fusión' : 'Fusionar eventos'}
                     </button>
                 </div>
             </header>
@@ -1264,136 +1831,6 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     <div className="text-xs text-amber-400/70 uppercase tracking-wider">Monto Total</div>
                 </div>
             </div>
-
-            {/* Panel de Eventos Importados */}
-            {showImportados && (
-                <div className="mb-8 bg-purple-900/20 border border-purple-500/30 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-purple-400 flex items-center gap-2">
-                            <span>📥</span> Eventos Importados
-                        </h2>
-                        <button
-                            onClick={() => setShowImportados(false)}
-                            className="text-gray-400 hover:text-white"
-                        >
-                            ✕
-                        </button>
-                    </div>
-
-                    {eventosImportados.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                            <p>No hay eventos importados.</p>
-                            <p className="text-sm mt-2">Usa el botón "Importar JSON" para cargar eventos.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {eventosImportados.map(resumen => (
-                                <div key={resumen.id} className="bg-gray-900/50 rounded-xl p-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div>
-                                            <div className="font-bold text-white">{resumen.fecha}</div>
-                                            <div className="text-xs text-gray-500">
-                                                {resumen.archivo_origen} • {resumen.eventos_dia.length} eventos
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                if (confirm('¿Eliminar este resumen importado?')) {
-                                                    eliminarResumenImportado(resumen.id);
-                                                }
-                                            }}
-                                            className="text-gray-500 hover:text-red-400 p-2"
-                                        >
-                                            🗑️
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        {resumen.eventos_dia.map(evento => (
-                                            <div
-                                                key={evento.id}
-                                                className={`p-3 rounded-lg border ${
-                                                    evento.convertido_a_pkl
-                                                        ? 'bg-emerald-900/20 border-emerald-500/30'
-                                                        : 'bg-gray-800/50 border-gray-700'
-                                                }`}
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                                                evento.tipo === 'orden_produccion' ? 'bg-orange-500/30 text-orange-300' :
-                                                                evento.tipo === 'cotizacion_propuesta' ? 'bg-yellow-500/30 text-yellow-300' :
-                                                                evento.tipo === 'entrega_directa' ? 'bg-green-500/30 text-green-300' :
-                                                                evento.tipo === 'pedido_materiales' ? 'bg-blue-500/30 text-blue-300' :
-                                                                evento.tipo === 'costo_logistico' ? 'bg-red-500/30 text-red-300' :
-                                                                'bg-gray-500/30 text-gray-300'
-                                                            }`}>
-                                                                {evento.tipo.replace(/_/g, ' ')}
-                                                            </span>
-                                                            {evento.cliente && (
-                                                                <span className="text-xs text-cyan-400">{evento.cliente}</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-sm text-white">
-                                                            {evento.producto || evento.descripcion}
-                                                        </div>
-                                                        <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
-                                                            {evento.proveedor && <span>Prov: {evento.proveedor}</span>}
-                                                            {evento.cantidad && <span>Cant: {evento.cantidad}</span>}
-                                                            {evento.detalle?.precio_total && (
-                                                                <span className="text-emerald-400">S/ {evento.detalle.precio_total}</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-shrink-0">
-                                                        {evento.convertido_a_pkl ? (
-                                                            <span className="text-xs text-emerald-400 flex items-center gap-1">
-                                                                ✓ {evento.convertido_a_pkl}
-                                                            </span>
-                                                        ) : (
-                                                            <button
-                                                                onClick={async () => {
-                                                                    const pklId = await convertirEventoAPKL(evento.id, resumen.id);
-                                                                    if (pklId) {
-                                                                        alert(`PKL creado: ${pklId}`);
-                                                                    }
-                                                                }}
-                                                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-lg transition-colors"
-                                                            >
-                                                                → PKL
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Botón para convertir todos */}
-                                    {resumen.eventos_dia.some(e => !e.convertido_a_pkl && ['orden_produccion', 'cotizacion_propuesta'].includes(e.tipo)) && (
-                                        <button
-                                            onClick={async () => {
-                                                const convertibles = resumen.eventos_dia.filter(
-                                                    e => !e.convertido_a_pkl && ['orden_produccion', 'cotizacion_propuesta'].includes(e.tipo)
-                                                );
-                                                if (confirm(`¿Convertir ${convertibles.length} eventos a PKLs?`)) {
-                                                    for (const evento of convertibles) {
-                                                        await convertirEventoAPKL(evento.id, resumen.id);
-                                                    }
-                                                }
-                                            }}
-                                            className="mt-4 w-full py-2 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/30 text-purple-300 rounded-lg text-sm font-medium transition-colors"
-                                        >
-                                            Convertir todos a PKLs
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
 
             {/* Contenido principal */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1541,7 +1978,9 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                         🚚 Movimientos Logísticos ({diaSeleccionado.movimientos.length})
                                     </h3>
                                     <div className="space-y-3">
-                                        {diaSeleccionado.movimientos.map(m => (
+                                        {diaSeleccionado.movimientos.map(m => {
+                                            const linkedPKL = findPKLForEvent(m.id, pkls);
+                                            return (
                                                 <MovimientoCard
                                                     key={m.id}
                                                     movimiento={m}
@@ -1549,8 +1988,13 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                                     onDelete={() => handleDeleteMovimiento(m.id)}
                                                     onSync={() => handleSync('movimiento', m)}
                                                     clienteLogo={m.cliente ? getClienteLogo(m.cliente) : null}
+                                                    isSelected={selectedEventos.has(m.id)}
+                                                    onToggleSelect={linkedPKL ? undefined : () => toggleEventoSelection(m.id)}
+                                                    linkedPKL={linkedPKL}
+                                                    onDecouple={handleDecoupleFromPKL}
                                                 />
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -1562,7 +2006,9 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                         💰 Rendiciones y Pagos ({diaSeleccionado.rendiciones.length})
                                     </h3>
                                     <div className="space-y-3">
-                                        {diaSeleccionado.rendiciones.map(r => (
+                                        {diaSeleccionado.rendiciones.map(r => {
+                                            const linkedPKL = findPKLForEvent(r.id, pkls);
+                                            return (
                                                 <RendicionCard
                                                     key={r.id}
                                                     rendicion={r}
@@ -1570,8 +2016,13 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                                     onDelete={() => handleDeleteRendicion(r.id)}
                                                     onSync={() => handleSync('rendicion', r)}
                                                     clienteLogo={r.cliente ? getClienteLogo(r.cliente) : null}
+                                                    isSelected={selectedEventos.has(r.id)}
+                                                    onToggleSelect={linkedPKL ? undefined : () => toggleEventoSelection(r.id)}
+                                                    linkedPKL={linkedPKL}
+                                                    onDecouple={handleDecoupleFromPKL}
                                                 />
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -1583,7 +2034,9 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                         🏭 Producción ({diaSeleccionado.producciones.length})
                                     </h3>
                                     <div className="space-y-3">
-                                        {diaSeleccionado.producciones.map(e => (
+                                        {diaSeleccionado.producciones.map(e => {
+                                            const linkedPKL = findPKLForEvent(e.id, pkls);
+                                            return (
                                                 <ProduccionCard
                                                     key={e.id}
                                                     evento={e}
@@ -1591,8 +2044,13 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                                     onDelete={() => handleDeleteProduccion(e.id)}
                                                     onSync={() => handleSync('produccion', e)}
                                                     clienteLogo={e.cliente ? getClienteLogo(e.cliente) : null}
+                                                    isSelected={selectedEventos.has(e.id)}
+                                                    onToggleSelect={linkedPKL ? undefined : () => toggleEventoSelection(e.id)}
+                                                    linkedPKL={linkedPKL}
+                                                    onDecouple={handleDecoupleFromPKL}
                                                 />
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -1757,6 +2215,125 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Botón flotante para fusionar eventos seleccionados */}
+            {selectedEventos.size > 0 && (
+                <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom fade-in duration-300">
+                    <div className="bg-gray-900 border border-purple-500/50 rounded-2xl shadow-2xl shadow-purple-500/20 p-4">
+                        {/* Mostrar PKL destino si hay uno seleccionado */}
+                        {pklParaMerge && (
+                            <div className="mb-3 pb-3 border-b border-gray-700 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-purple-400 text-sm">Agregar a:</span>
+                                    <span className="font-mono text-cyan-400 text-sm bg-cyan-500/20 px-2 py-0.5 rounded">{pklParaMerge}</span>
+                                </div>
+                                <button
+                                    onClick={() => setPKLParaMerge(null)}
+                                    className="text-gray-400 hover:text-white text-xs"
+                                    title="Crear nuevo PKL en vez"
+                                >
+                                    (cambiar)
+                                </button>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col">
+                                <span className="text-white font-bold">{selectedEventos.size} evento{selectedEventos.size > 1 ? 's' : ''} seleccionado{selectedEventos.size > 1 ? 's' : ''}</span>
+                                <span className="text-gray-400 text-xs">
+                                    {eventosSeleccionadosData.filter(e => e.tipo_evento === 'movimiento').length > 0 && `${eventosSeleccionadosData.filter(e => e.tipo_evento === 'movimiento').length} mov`}
+                                    {eventosSeleccionadosData.filter(e => e.tipo_evento === 'rendicion').length > 0 && ` ${eventosSeleccionadosData.filter(e => e.tipo_evento === 'rendicion').length} rend`}
+                                    {eventosSeleccionadosData.filter(e => e.tipo_evento === 'produccion').length > 0 && ` ${eventosSeleccionadosData.filter(e => e.tipo_evento === 'produccion').length} prod`}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setSelectedEventos(new Set())}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                title="Limpiar selección"
+                            >
+                                ✕
+                            </button>
+                            {pklParaMerge ? (
+                                <button
+                                    onClick={async () => {
+                                        const pkl = pkls.find(p => p.pkl_id === pklParaMerge);
+                                        if (!pkl) return;
+
+                                        // Crear tasks para cada evento
+                                        const newTasks = eventosSeleccionadosData.map((evento, idx) => {
+                                            const tipoEmoji = evento.tipo_evento === 'movimiento' ? '🚚' :
+                                                             evento.tipo_evento === 'rendicion' ? '💰' : '🏭';
+                                            return {
+                                                task_id: `TASK-${Date.now()}-${idx}`,
+                                                orden: pkl.tasks.length + idx + 1,
+                                                nombre: `${tipoEmoji} ${evento.tipo.toUpperCase()}: ${evento.descripcion}`.substring(0, 100),
+                                                descripcion: evento.descripcion,
+                                                tipo: evento.tipo_evento === 'movimiento' ? 'logistica' as const :
+                                                      evento.tipo_evento === 'rendicion' ? 'administrativo' as const : 'produccion' as const,
+                                                responsable: 'Huber',
+                                                estado: 'completado' as const,
+                                                es_happy_path: true,
+                                                tipo_origen: evento.tipo_evento,
+                                                evento_origen_id: evento.id,
+                                                fecha_completado: evento.fecha,
+                                            };
+                                        });
+
+                                        // Calcular nuevos costos
+                                        const newCostos = eventosSeleccionadosData.reduce((sum, e) => sum + (e.monto || 0), 0);
+                                        const newCostoDetalle = eventosSeleccionadosData
+                                            .filter(e => e.monto && e.monto > 0)
+                                            .map(e => ({
+                                                concepto: `${e.tipo}: ${e.descripcion}`.substring(0, 50),
+                                                monto: e.monto || 0,
+                                                fecha: e.fecha,
+                                            }));
+
+                                        // Actualizar PKL
+                                        await updatePKL(pklParaMerge, {
+                                            tasks: [...pkl.tasks, ...newTasks] as any,
+                                            costos: {
+                                                ...pkl.costos,
+                                                detalle: [...(pkl.costos.detalle || []), ...newCostoDetalle],
+                                                total: (pkl.costos.total || 0) + newCostos,
+                                            },
+                                            updated_at: new Date().toISOString(),
+                                        });
+
+                                        setSelectedEventos(new Set());
+                                        setPKLParaMerge(null);
+                                    }}
+                                    className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                                >
+                                    📥 Agregar a {pklParaMerge.replace('PKL-', '')}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setShowMergeModal(true)}
+                                    disabled={selectedEventos.size < 2}
+                                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                                >
+                                    🔗 {selectedEventos.size < 2 ? 'Selecciona 2+' : 'Crear PKL'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de fusión a PKL */}
+            {showMergeModal && (
+                <MergeEventosToPKLModal
+                    isOpen={showMergeModal}
+                    onClose={() => setShowMergeModal(false)}
+                    eventos={eventosSeleccionadosData}
+                    clientes={clientes}
+                    onSuccess={() => {
+                        setShowMergeModal(false);
+                        setSelectedEventos(new Set());
+                        setMergeSelectionMode(false);
+                    }}
+                />
             )}
         </div>
     );

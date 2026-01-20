@@ -24,7 +24,7 @@ interface PKLPageProps {
 }
 
 export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPageProps) {
-    const { pkls, updatePKL, updatePKLTask, createPKLTask, deletePKLTask, deletePKL } = useDatabase();
+    const { pkls, updatePKL, updatePKLTask, createPKLTask, deletePKLTask, deletePKL, pklParaMerge, setPKLParaMerge } = useDatabase();
     const [selectedPKLId, setSelectedPKLId] = useState<string | null>(initialSelectedPKLId || null);
     const [filterEstado, setFilterEstado] = useState<EstadoPKL | 'todos'>('todos');
     const [filterTipo, setFilterTipo] = useState<TipoOperacionPKL | 'todos'>('todos');
@@ -63,8 +63,8 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
     // Stats
     const stats = useMemo(() => {
         const total = pkls.length;
-        const cerrados = pkls.filter(p => p.estado.actual === 'cerrado_ok' || p.estado.actual === 'cerrado_parcial').length;
-        const enCurso = pkls.filter(p => ['recibido', 'en_produccion', 'en_curso'].includes(p.estado.actual)).length;
+        const cerrados = pkls.filter(p => p.estado.actual === 'cerrado_ok').length;
+        const enCurso = pkls.filter(p => ['recibido', 'cotizado', 'en_produccion', 'para_recoger'].includes(p.estado.actual)).length;
         const enPausa = pkls.filter(p => p.estado.actual === 'en_pausa').length;
         const totalCosto = pkls.reduce((sum, p) => sum + (p.costos.total || 0), 0);
         const totalTasks = pkls.reduce((sum, p) => sum + p.tasks.length, 0);
@@ -77,7 +77,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">PKL - Primary Key Logistica</h1>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <p className="text-gray-800 dark:text-gray-400 text-sm mt-1">
                         Trazabilidad end-to-end de requerimientos logisticos
                     </p>
                 </div>
@@ -88,29 +88,29 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-white">{stats.total}</div>
-                    <div className="text-gray-400 text-sm">Total PKLs</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">Total PKLs</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-green-400">{stats.cerrados}</div>
-                    <div className="text-gray-400 text-sm">Cerrados</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.cerrados}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">Cerrados</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-cyan-400">{stats.enCurso}</div>
-                    <div className="text-gray-400 text-sm">En Curso</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
+                    <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{stats.enCurso}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">En Curso</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-yellow-400">{stats.enPausa}</div>
-                    <div className="text-gray-400 text-sm">En Pausa</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
+                    <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.enPausa}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">En Pausa</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-white">S/ {stats.totalCosto.toFixed(2)}</div>
-                    <div className="text-gray-400 text-sm">Costo Total</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">S/ {stats.totalCosto.toFixed(2)}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">Costo Total</div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-purple-400">{stats.totalTasks}</div>
-                    <div className="text-gray-400 text-sm">Tasks Ejecutados</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.totalTasks}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm">Tasks Ejecutados</div>
                 </div>
             </div>
 
@@ -121,12 +121,12 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                     placeholder="Buscar por ID, cliente o descripcion..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="flex-1 min-w-[200px] px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                    className="flex-1 min-w-[200px] px-4 py-2 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-500"
                 />
                 <select
                     value={filterEstado}
                     onChange={e => setFilterEstado(e.target.value as EstadoPKL | 'todos')}
-                    className="px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                    className="px-4 py-2 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500"
                 >
                     <option value="todos">Todos los estados</option>
                     {ESTADOS_PKL.map(e => (
@@ -136,7 +136,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                 <select
                     value={filterTipo}
                     onChange={e => setFilterTipo(e.target.value as TipoOperacionPKL | 'todos')}
-                    className="px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+                    className="px-4 py-2 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500"
                 >
                     <option value="todos">Todos los tipos</option>
                     {TIPOS_OPERACION_PKL.map(t => (
@@ -161,39 +161,91 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                             const estadoConfig = getEstadoConfig(pkl.estado.actual);
                             const tipoConfig = getTipoOperacionConfig(pkl.clasificacion.tipo_operacion);
                             const isSelected = selectedPKL?.pkl_id === pkl.pkl_id;
+                            const isForMerge = pklParaMerge === pkl.pkl_id;
 
                             return (
                                 <div
                                     key={pkl.pkl_id}
-                                    onClick={() => setSelectedPKLId(pkl.pkl_id)}
                                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
                                         isSelected
                                             ? 'bg-cyan-900/30 border-cyan-500'
-                                            : 'bg-gray-800/50 border-gray-700/50 hover:border-gray-600'
+                                            : isForMerge
+                                                ? 'bg-purple-900/30 border-purple-500 ring-2 ring-purple-500'
+                                                : 'bg-gray-800/50 border-gray-700/50 hover:border-gray-600'
                                     }`}
                                 >
-                                    <div className="flex items-start justify-between mb-2">
-                                        <span className="font-mono text-cyan-400 text-sm">{pkl.pkl_id}</span>
-                                        <span className={`px-2 py-0.5 text-xs rounded-full ${estadoConfig.color} text-black font-semibold`}>
-                                            {estadoConfig.label}
-                                        </span>
-                                    </div>
-                                    <div className="font-medium text-white mb-1">{pkl.cliente.nombre}</div>
-                                    {pkl.cliente.proyecto && (
-                                        <div className="text-gray-400 text-sm mb-2">
-                                            Proyecto: {pkl.cliente.proyecto}
+                                    <div className="flex items-start gap-3">
+                                        {/* Círculo de selección para merge */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isForMerge) {
+                                                    setPKLParaMerge(null);
+                                                } else {
+                                                    setPKLParaMerge(pkl.pkl_id);
+                                                }
+                                            }}
+                                            className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all mt-1 ${
+                                                isForMerge
+                                                    ? 'bg-purple-500 border-purple-500 text-white scale-110'
+                                                    : 'border-gray-500 hover:border-purple-400 hover:bg-purple-500/20'
+                                            }`}
+                                            title={isForMerge ? 'Deseleccionar para merge' : 'Seleccionar para agregar eventos'}
+                                        >
+                                            {isForMerge && (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            )}
+                                        </button>
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between mb-2">
+                                                <span className="font-mono text-cyan-400 text-sm cursor-pointer" onClick={() => setSelectedPKLId(pkl.pkl_id)}>{pkl.pkl_id}</span>
+                                                {/* Estado dropdown en la lista */}
+                                                <div className="relative group/estado">
+                                                    <span
+                                                        className={`px-2 py-0.5 text-xs rounded-full ${estadoConfig.color} text-black font-semibold cursor-pointer hover:ring-2 hover:ring-white/30`}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {estadoConfig.label}
+                                                    </span>
+                                                    <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover/estado:opacity-100 group-hover/estado:visible transition-all min-w-[140px]">
+                                                        {ESTADOS_PKL.filter(e => e.value !== 'recibido').map(estado => (
+                                                            <button
+                                                                key={estado.value}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updatePKL(pkl.pkl_id, { estado: { ...pkl.estado, actual: estado.value } });
+                                                                }}
+                                                                className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} text-black font-medium`}
+                                                            >
+                                                                {estado.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="cursor-pointer" onClick={() => setSelectedPKLId(pkl.pkl_id)}>
+                                                <div className="font-medium text-white mb-1">{pkl.cliente.nombre}</div>
+                                                {pkl.cliente.proyecto && (
+                                                    <div className="text-gray-800 dark:text-gray-400 text-sm mb-2">
+                                                        Proyecto: {pkl.cliente.proyecto}
+                                                    </div>
+                                                )}
+                                                <div className="text-gray-500 text-sm line-clamp-2 mb-3">
+                                                    {pkl.origen.descripcion_inicial}
+                                                </div>
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <span className={`px-2 py-0.5 rounded ${tipoConfig.color} !text-white`}>
+                                                        {tipoConfig.label}
+                                                    </span>
+                                                    <span className="text-gray-500">
+                                                        {pkl.tasks.length} tasks | S/ {(pkl.costos.total || 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
-                                    <div className="text-gray-500 text-sm line-clamp-2 mb-3">
-                                        {pkl.origen.descripcion_inicial}
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className={`px-2 py-0.5 rounded ${tipoConfig.color} !text-white`}>
-                                            {tipoConfig.label}
-                                        </span>
-                                        <span className="text-gray-500">
-                                            {pkl.tasks.length} tasks | S/ {(pkl.costos.total || 0).toFixed(2)}
-                                        </span>
                                     </div>
                                 </div>
                             );
@@ -219,9 +271,9 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                             initialTab={initialTab}
                         />
                     ) : (
-                        <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-8 text-center">
-                            <div className="text-gray-500 text-lg mb-2">Selecciona un PKL</div>
-                            <div className="text-gray-600 text-sm">
+                        <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-8 text-center">
+                            <div className="text-gray-600 dark:text-gray-500 text-lg mb-2">Selecciona un PKL</div>
+                            <div className="text-gray-500 dark:text-gray-600 text-sm">
                                 Haz clic en un PKL de la lista para ver sus detalles
                             </div>
                         </div>
@@ -296,9 +348,9 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
     };
 
     return (
-        <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl overflow-hidden">
+        <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl overflow-hidden">
             {/* Header */}
-            <div className="p-6 border-b border-gray-700/50">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700/50">
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
@@ -308,12 +360,12 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                 <span className={`px-3 py-1 rounded-full ${estadoConfig.color} text-black font-semibold text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
                                     {estadoConfig.label}
                                 </span>
-                                <div className="absolute left-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[140px]">
-                                    {ESTADOS_PKL.map(estado => (
+                                <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[140px]">
+                                    {ESTADOS_PKL.filter(e => e.value !== 'recibido').map(estado => (
                                         <button
                                             key={estado.value}
                                             onClick={() => onUpdate({ estado: { actual: estado.value } } as any)}
-                                            className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg ${estado.color} text-black font-medium`}
+                                            className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} text-black font-medium`}
                                         >
                                             {estado.label}
                                         </button>
@@ -329,7 +381,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                 onChange={e => setEditValue(e.target.value)}
                                 onBlur={handleEditSave}
                                 onKeyDown={handleKeyDown}
-                                className="text-xl font-bold bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-white outline-none w-full max-w-md"
+                                className="text-xl font-bold bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white outline-none w-full max-w-md"
                             />
                         ) : (
                             <h2
@@ -354,10 +406,10 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         ) : (
                             <div
                                 onClick={() => handleEditStart('cliente.proyecto', pkl.cliente.proyecto || '')}
-                                className="text-gray-400 cursor-pointer hover:text-cyan-400 transition-colors"
+                                className="text-gray-800 dark:text-gray-400 cursor-pointer hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
                                 title="Click para editar proyecto"
                             >
-                                {pkl.cliente.proyecto ? `Proyecto: ${pkl.cliente.proyecto}` : <span className="text-gray-600 italic">+ Agregar proyecto</span>}
+                                {pkl.cliente.proyecto ? `Proyecto: ${pkl.cliente.proyecto}` : <span className="text-gray-600 dark:text-gray-500 italic">+ Agregar proyecto</span>}
                             </div>
                         )}
                     </div>
@@ -367,12 +419,12 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                             <span className={`px-3 py-1 rounded ${tipoConfig.color} !text-white text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
                                 {tipoConfig.label}
                             </span>
-                            <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[180px]">
+                            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[180px]">
                                 {TIPOS_OPERACION_PKL.map(tipo => (
                                     <button
                                         key={tipo.value}
                                         onClick={() => onUpdate({ clasificacion: { ...pkl.clasificacion, tipo_operacion: tipo.value } } as any)}
-                                        className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
+                                        className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
                                     >
                                         {tipo.label}
                                     </button>
@@ -408,12 +460,12 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         onBlur={handleEditSave}
                         onKeyDown={handleKeyDown}
                         rows={2}
-                        className="text-gray-300 bg-gray-900 border border-cyan-500 rounded px-2 py-1 outline-none w-full resize-none"
+                        className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 outline-none w-full resize-none"
                     />
                 ) : (
                     <p
                         onClick={() => handleEditStart('descripcion', pkl.origen.descripcion_inicial)}
-                        className="text-gray-300 cursor-pointer hover:text-cyan-400 transition-colors"
+                        className="text-gray-800 dark:text-gray-300 cursor-pointer hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
                         title="Click para editar descripción"
                     >
                         {pkl.origen.descripcion_inicial}
@@ -428,7 +480,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                             onChange={e => setEditValue(e.target.value)}
                             onBlur={handleEditSave}
                             onKeyDown={handleKeyDown}
-                            className="bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 outline-none text-sm w-32"
+                            className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 outline-none text-sm w-32"
                         />
                     ) : (
                         <span
@@ -445,7 +497,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 p-2 bg-gray-900/50 border-b border-gray-700/50">
+            <div className="flex gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700/50">
                 {(['overview', 'tasks', 'costos', 'eventos'] as const).map(tab => (
                     <button
                         key={tab}
@@ -453,7 +505,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                             activeTab === tab
                                 ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/30'
-                                : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-white border border-gray-700/50'
+                                : 'bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700/50'
                         }`}
                     >
                         {tab === 'overview' && 'Resumen'}
@@ -477,8 +529,20 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
 
 // Overview Tab
 function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
+    const { proveedores: proveedoresDB } = useDatabase();
     const [editingObs, setEditingObs] = useState(false);
     const [obsValue, setObsValue] = useState(pkl.observaciones || '');
+
+    // Productos editing
+    const [showAddProducto, setShowAddProducto] = useState(false);
+    const [editingProductoId, setEditingProductoId] = useState<string | null>(null);
+    const [productoForm, setProductoForm] = useState({ tipo: '', cantidad: '', descripcion: '' });
+
+    // Proveedores editing
+    const [showAddProveedor, setShowAddProveedor] = useState(false);
+    const [editingProveedorId, setEditingProveedorId] = useState<string | null>(null);
+    const [proveedorForm, setProveedorForm] = useState({ nombre: '', servicio: '', ubicacion: '', contacto: '' });
+    const [proveedorSearch, setProveedorSearch] = useState('');
 
     const tasksCompletados = pkl.tasks.filter(t => t.estado === 'completado').length;
     const tasksTotal = pkl.tasks.length;
@@ -489,15 +553,114 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
         setEditingObs(false);
     };
 
+    // Producto handlers
+    const handleAddProducto = () => {
+        if (!productoForm.tipo.trim()) return;
+        const newProducto = {
+            producto_id: `PROD-${Date.now()}`,
+            tipo: productoForm.tipo.trim(),
+            cantidad: productoForm.cantidad ? parseInt(productoForm.cantidad) : undefined,
+            descripcion: productoForm.descripcion.trim()
+        };
+        onUpdate({ productos: [...pkl.productos, newProducto] } as any);
+        setProductoForm({ tipo: '', cantidad: '', descripcion: '' });
+        setShowAddProducto(false);
+    };
+
+    const handleEditProducto = (prod: typeof pkl.productos[0]) => {
+        setEditingProductoId(prod.producto_id);
+        setProductoForm({
+            tipo: prod.tipo,
+            cantidad: prod.cantidad?.toString() || '',
+            descripcion: prod.descripcion
+        });
+    };
+
+    const handleSaveProducto = () => {
+        if (!editingProductoId) return;
+        const updated = pkl.productos.map(p =>
+            p.producto_id === editingProductoId
+                ? { ...p, tipo: productoForm.tipo, cantidad: productoForm.cantidad ? parseInt(productoForm.cantidad) : undefined, descripcion: productoForm.descripcion }
+                : p
+        );
+        onUpdate({ productos: updated } as any);
+        setEditingProductoId(null);
+        setProductoForm({ tipo: '', cantidad: '', descripcion: '' });
+    };
+
+    const handleDeleteProducto = (productoId: string) => {
+        onUpdate({ productos: pkl.productos.filter(p => p.producto_id !== productoId) } as any);
+    };
+
+    // Proveedor handlers
+    const handleAddProveedor = () => {
+        if (!proveedorForm.nombre.trim()) return;
+        const newProveedor = {
+            proveedor_id: `PROV-${Date.now()}`,
+            nombre: proveedorForm.nombre.trim(),
+            servicio: proveedorForm.servicio.trim(),
+            ubicacion: proveedorForm.ubicacion.trim(),
+            contacto: proveedorForm.contacto.trim()
+        };
+        onUpdate({ proveedores: [...pkl.proveedores, newProveedor] } as any);
+        setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' });
+        setShowAddProveedor(false);
+        setProveedorSearch('');
+    };
+
+    const handleEditProveedor = (prov: typeof pkl.proveedores[0]) => {
+        setEditingProveedorId(prov.proveedor_id);
+        setProveedorForm({
+            nombre: prov.nombre,
+            servicio: prov.servicio || '',
+            ubicacion: prov.ubicacion || '',
+            contacto: prov.contacto || ''
+        });
+    };
+
+    const handleSaveProveedor = () => {
+        if (!editingProveedorId) return;
+        const updated = pkl.proveedores.map(p =>
+            p.proveedor_id === editingProveedorId
+                ? { ...p, ...proveedorForm }
+                : p
+        );
+        onUpdate({ proveedores: updated } as any);
+        setEditingProveedorId(null);
+        setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' });
+    };
+
+    const handleDeleteProveedor = (proveedorId: string) => {
+        onUpdate({ proveedores: pkl.proveedores.filter(p => p.proveedor_id !== proveedorId) } as any);
+    };
+
+    const handleSelectProveedorFromDB = (prov: typeof proveedoresDB[string]) => {
+        setProveedorForm({
+            nombre: prov.nombre,
+            servicio: prov.especialidad || '',
+            ubicacion: prov.direccion || '',
+            contacto: prov.telefono || ''
+        });
+        setProveedorSearch('');
+    };
+
+    // Filter proveedores from DB for autocomplete
+    const filteredProveedoresDB = proveedorSearch.length >= 2
+        ? Object.values(proveedoresDB).filter(p =>
+            p.nombre.toLowerCase().includes(proveedorSearch.toLowerCase()) ||
+            (p.especialidad && p.especialidad.toLowerCase().includes(proveedorSearch.toLowerCase()))
+          ).slice(0, 5)
+        : [];
+
     return (
         <div className="space-y-6">
             {/* Progress */}
             <div>
                 <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-400">Progreso</span>
-                    <span className="text-white">{tasksCompletados}/{tasksTotal}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Progreso</span>
+                    <span className="text-gray-900 dark:text-white">{tasksCompletados}/{tasksTotal}</span>
                 </div>
-                <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 transition-all duration-500"
                         style={{ width: `${progreso}%` }}
@@ -506,48 +669,275 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
             </div>
 
             {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Productos */}
-                <div className="bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-gray-400 text-sm mb-3">Productos</h4>
-                    {pkl.productos.length === 0 ? (
-                        <div className="text-gray-600 italic text-sm">Sin productos</div>
-                    ) : pkl.productos.map(prod => (
-                        <div key={prod.producto_id} className="mb-2">
-                            <div className="text-white font-medium">{prod.tipo}</div>
-                            <div className="text-gray-400 text-sm">
-                                {prod.cantidad && `Cant: ${prod.cantidad} - `}{prod.descripcion}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-gray-700 dark:text-gray-400 text-sm font-medium">Productos</h4>
+                        <button
+                            onClick={() => setShowAddProducto(true)}
+                            className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium rounded transition-colors"
+                        >
+                            + Agregar
+                        </button>
+                    </div>
+
+                    {/* Add Producto Form */}
+                    {showAddProducto && (
+                        <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-cyan-500/30 space-y-2">
+                            <input
+                                type="text"
+                                value={productoForm.tipo}
+                                onChange={e => setProductoForm({ ...productoForm, tipo: e.target.value })}
+                                placeholder="Tipo de producto (ej: Polos, Lanyards...)"
+                                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-cyan-500"
+                                autoFocus
+                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    value={productoForm.cantidad}
+                                    onChange={e => setProductoForm({ ...productoForm, cantidad: e.target.value })}
+                                    placeholder="Cantidad"
+                                    className="w-24 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-cyan-500"
+                                />
+                                <input
+                                    type="text"
+                                    value={productoForm.descripcion}
+                                    onChange={e => setProductoForm({ ...productoForm, descripcion: e.target.value })}
+                                    placeholder="Descripcion detallada"
+                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-cyan-500"
+                                />
                             </div>
+                            <div className="flex gap-2 justify-end">
+                                <button onClick={() => { setShowAddProducto(false); setProductoForm({ tipo: '', cantidad: '', descripcion: '' }); }} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
+                                <button onClick={handleAddProducto} className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs rounded">Guardar</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {pkl.productos.length === 0 ? (
+                        <div className="text-gray-500 dark:text-gray-600 dark:text-gray-500 italic text-sm py-4 text-center">Sin productos agregados</div>
+                    ) : pkl.productos.map(prod => (
+                        <div key={prod.producto_id} className="mb-3 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg group hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                            {editingProductoId === prod.producto_id ? (
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        value={productoForm.tipo}
+                                        onChange={e => setProductoForm({ ...productoForm, tipo: e.target.value })}
+                                        className="w-full bg-gray-50 dark:bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            value={productoForm.cantidad}
+                                            onChange={e => setProductoForm({ ...productoForm, cantidad: e.target.value })}
+                                            placeholder="Cant"
+                                            className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={productoForm.descripcion}
+                                            onChange={e => setProductoForm({ ...productoForm, descripcion: e.target.value })}
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        <button onClick={() => { setEditingProductoId(null); setProductoForm({ tipo: '', cantidad: '', descripcion: '' }); }} className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
+                                        <button onClick={handleSaveProducto} className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs rounded">Guardar</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <div className="text-gray-900 dark:text-white font-medium">{prod.tipo}</div>
+                                        <div className="text-gray-800 dark:text-gray-400 text-sm">
+                                            {prod.cantidad && <span className="text-cyan-400">Cant: {prod.cantidad}</span>}
+                                            {prod.cantidad && prod.descripcion && ' - '}
+                                            {prod.descripcion}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => handleEditProducto(prod)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-cyan-400" title="Editar">✏️</button>
+                                        <button onClick={() => handleDeleteProducto(prod.producto_id)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-400" title="Eliminar">🗑️</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
 
                 {/* Proveedores */}
-                <div className="bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-gray-400 text-sm mb-3">Proveedores</h4>
-                    {pkl.proveedores.length === 0 ? (
-                        <div className="text-gray-600 italic text-sm">Sin proveedores</div>
-                    ) : pkl.proveedores.map(prov => (
-                        <div key={prov.proveedor_id} className="mb-2">
-                            <div className="text-white font-medium">{prov.nombre}</div>
-                            <div className="text-gray-400 text-sm">
-                                {prov.servicio} {prov.ubicacion && `| ${prov.ubicacion}`}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-gray-700 dark:text-gray-400 text-sm font-medium">Proveedores</h4>
+                        <button
+                            onClick={() => setShowAddProveedor(true)}
+                            className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded transition-colors"
+                        >
+                            + Agregar
+                        </button>
+                    </div>
+
+                    {/* Add Proveedor Form */}
+                    {showAddProveedor && (
+                        <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-purple-500/30 space-y-2">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={proveedorSearch || proveedorForm.nombre}
+                                    onChange={e => {
+                                        setProveedorSearch(e.target.value);
+                                        setProveedorForm({ ...proveedorForm, nombre: e.target.value });
+                                    }}
+                                    placeholder="Buscar o escribir nombre del proveedor..."
+                                    className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                    autoFocus
+                                />
+                                {/* Autocomplete dropdown */}
+                                {filteredProveedoresDB.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
+                                        {filteredProveedoresDB.map(prov => (
+                                            <button
+                                                key={prov.nombre}
+                                                onClick={() => handleSelectProveedorFromDB(prov)}
+                                                className="w-full text-left px-3 py-2 hover:bg-gray-700 transition-colors"
+                                            >
+                                                <div className="text-white text-sm font-medium">{prov.nombre}</div>
+                                                <div className="text-gray-400 text-xs">{prov.especialidad} {prov.direccion && `| ${prov.direccion}`}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
+                            <input
+                                type="text"
+                                value={proveedorForm.servicio}
+                                onChange={e => setProveedorForm({ ...proveedorForm, servicio: e.target.value })}
+                                placeholder="Servicio (ej: Bordado, Sublimado...)"
+                                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={proveedorForm.ubicacion}
+                                    onChange={e => setProveedorForm({ ...proveedorForm, ubicacion: e.target.value })}
+                                    placeholder="Ubicacion"
+                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                />
+                                <input
+                                    type="text"
+                                    value={proveedorForm.contacto}
+                                    onChange={e => setProveedorForm({ ...proveedorForm, contacto: e.target.value })}
+                                    placeholder="Contacto/Telefono"
+                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                                <button onClick={() => { setShowAddProveedor(false); setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' }); setProveedorSearch(''); }} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
+                                <button onClick={handleAddProveedor} className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded">Guardar</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {pkl.proveedores.length === 0 ? (
+                        <div className="text-gray-500 dark:text-gray-600 dark:text-gray-500 italic text-sm py-4 text-center">Sin proveedores asignados</div>
+                    ) : pkl.proveedores.map(prov => (
+                        <div key={prov.proveedor_id} className="mb-3 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg group hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                            {editingProveedorId === prov.proveedor_id ? (
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        value={proveedorForm.nombre}
+                                        onChange={e => setProveedorForm({ ...proveedorForm, nombre: e.target.value })}
+                                        placeholder="Nombre"
+                                        className="w-full bg-gray-700 border border-purple-500 rounded px-2 py-1 text-white text-sm outline-none"
+                                        autoFocus
+                                    />
+                                    <input
+                                        type="text"
+                                        value={proveedorForm.servicio}
+                                        onChange={e => setProveedorForm({ ...proveedorForm, servicio: e.target.value })}
+                                        placeholder="Servicio"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                    />
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={proveedorForm.ubicacion}
+                                            onChange={e => setProveedorForm({ ...proveedorForm, ubicacion: e.target.value })}
+                                            placeholder="Ubicacion"
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={proveedorForm.contacto}
+                                            onChange={e => setProveedorForm({ ...proveedorForm, contacto: e.target.value })}
+                                            placeholder="Contacto"
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        <button onClick={() => { setEditingProveedorId(null); setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' }); }} className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
+                                        <button onClick={handleSaveProveedor} className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded">Guardar</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <div className="text-gray-900 dark:text-white font-medium flex items-center gap-2">
+                                            <span className="text-purple-400">🏭</span>
+                                            {prov.nombre}
+                                        </div>
+                                        <div className="text-gray-800 dark:text-gray-400 text-sm mt-1">
+                                            {prov.servicio && <span className="text-purple-300">{prov.servicio}</span>}
+                                            {prov.servicio && prov.ubicacion && ' | '}
+                                            {prov.ubicacion && <span>📍 {prov.ubicacion}</span>}
+                                        </div>
+                                        {prov.contacto && (
+                                            <div className="text-gray-500 text-xs mt-1">📞 {prov.contacto}</div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => handleEditProveedor(prov)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-purple-400" title="Editar">✏️</button>
+                                        <button onClick={() => handleDeleteProveedor(prov.proveedor_id)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-400" title="Eliminar">🗑️</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
 
                 {/* Estado History */}
-                <div className="bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-gray-400 text-sm mb-3">Historial de Estados</h4>
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-gray-600 dark:text-gray-400 text-sm mb-3">Historial de Estados</h4>
                     <div className="space-y-2">
                         {pkl.estado.historial.map((h, i) => {
                             const config = getEstadoConfig(h.estado);
                             return (
-                                <div key={i} className="flex items-center gap-2 text-sm">
+                                <div key={i} className="flex items-center gap-2 text-sm group">
                                     <span className={`w-2 h-2 rounded-full ${config.color}`} />
-                                    <span className="text-white">{config.label}</span>
-                                    <span className="text-gray-500">{h.fecha}</span>
+                                    <span className="text-gray-900 dark:text-white">{config.label}</span>
+                                    <span className="text-gray-700 dark:text-gray-500">{h.fecha}</span>
+                                    <button
+                                        onClick={() => {
+                                            const newHistorial = pkl.estado.historial.filter((_, idx) => idx !== i);
+                                            onUpdate({
+                                                estado: {
+                                                    ...pkl.estado,
+                                                    historial: newHistorial
+                                                }
+                                            } as any);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 ml-auto text-red-400 hover:text-red-300 transition-opacity"
+                                        title="Eliminar del historial"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
                                 </div>
                             );
                         })}
@@ -555,18 +945,18 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                 </div>
 
                 {/* Cierre */}
-                <div className="bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-gray-400 text-sm mb-3">Cierre</h4>
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-gray-600 dark:text-gray-400 text-sm mb-3">Cierre</h4>
                     {pkl.cierre.estado_final ? (
                         <>
-                            <div className="text-white mb-2">
+                            <div className="text-gray-900 dark:text-white mb-2">
                                 Estado: {getEstadoConfig(pkl.cierre.estado_final).label}
                             </div>
-                            <div className="text-gray-400 text-sm">
+                            <div className="text-gray-800 dark:text-gray-400 text-sm">
                                 Fecha: {pkl.cierre.fecha_cierre || 'N/A'}
                             </div>
                             {pkl.cierre.evidencias.length > 0 && (
-                                <div className="text-gray-400 text-sm mt-2">
+                                <div className="text-gray-800 dark:text-gray-400 text-sm mt-2">
                                     Evidencias: {pkl.cierre.evidencias.map(e => e.tipo).join(', ')}
                                 </div>
                             )}
@@ -578,8 +968,8 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
             </div>
 
             {/* Observaciones - Editable */}
-            <div className="bg-gray-900/50 rounded-lg p-4">
-                <h4 className="text-gray-400 text-sm mb-2">Observaciones</h4>
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                <h4 className="text-gray-800 dark:text-gray-400 text-sm mb-2">Observaciones</h4>
                 {editingObs ? (
                     <div className="space-y-2">
                         <textarea
@@ -608,10 +998,10 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                 ) : (
                     <p
                         onClick={() => setEditingObs(true)}
-                        className="text-gray-300 cursor-pointer hover:text-cyan-400 transition-colors min-h-[24px]"
+                        className="text-gray-800 dark:text-gray-300 cursor-pointer hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors min-h-[24px]"
                         title="Click para editar"
                     >
-                        {pkl.observaciones || <span className="text-gray-600 italic">+ Agregar observaciones</span>}
+                        {pkl.observaciones || <span className="text-gray-600 dark:text-gray-500 italic">+ Agregar observaciones</span>}
                     </p>
                 )}
             </div>
@@ -624,7 +1014,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                         <div key={i} className="mb-2">
                             <div className="text-white">{r.descripcion}</div>
                             {r.mitigacion && (
-                                <div className="text-gray-400 text-sm">Mitigacion: {r.mitigacion}</div>
+                                <div className="text-gray-800 dark:text-gray-400 text-sm">Mitigacion: {r.mitigacion}</div>
                             )}
                             {r.costo_referencia && (
                                 <div className="text-gray-500 text-sm">Ref: {r.costo_referencia}</div>
@@ -705,7 +1095,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
         <div className="space-y-0">
             {/* New Task Form */}
             {showNewTask ? (
-                <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-cyan-500/50 shadow-lg">
+                <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-cyan-500/50 shadow-lg">
                     <h4 className="text-white font-semibold mb-3">Nuevo Task</h4>
                     <div className="space-y-3">
                         <div>
@@ -756,7 +1146,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                             <button
                                 onClick={handleCreateTask}
                                 disabled={!newTaskName.trim()}
-                                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded transition-colors"
+                                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-gray-900 dark:text-white font-medium rounded transition-colors"
                             >
                                 Crear Task
                             </button>
@@ -841,7 +1231,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                             if (e.key === 'Enter') handleEditSave(task.task_id);
                                             if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
                                         }}
-                                        className="bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-white font-semibold outline-none w-full"
+                                        className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white font-semibold outline-none w-full"
                                     />
                                 ) : (
                                     <span
@@ -886,16 +1276,16 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                 {/* Tipo - dropdown */}
                                 <div className="relative group">
                                     <button
-                                        className={`px-2 py-0.5 rounded-full ${typeConfig?.color || 'bg-gray-600'} !text-white font-medium hover:ring-2 hover:ring-white/30 transition-all`}
+                                        className={`px-2 py-0.5 rounded-full ${typeConfig?.color || 'bg-gray-600'} !text-gray-900 dark:text-white font-medium hover:ring-2 hover:ring-white/30 transition-all`}
                                     >
                                         {typeConfig?.label || task.tipo}
                                     </button>
-                                    <div className="absolute left-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[150px]">
+                                    <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[150px]">
                                         {TIPOS_TASK_PKL.map(tipo => (
                                             <button
                                                 key={tipo.value}
                                                 onClick={() => handleTipoChange(task.task_id, tipo.value)}
-                                                className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
+                                                className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
                                             >
                                                 {tipo.label}
                                             </button>
@@ -914,7 +1304,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                             if (e.key === 'Enter') handleEditSave(task.task_id);
                                             if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
                                         }}
-                                        className="bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-24"
+                                        className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-24"
                                     />
                                 ) : (
                                     <span
@@ -938,7 +1328,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                             if (e.key === 'Enter') handleEditSave(task.task_id);
                                             if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
                                         }}
-                                        className="bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-16"
+                                        className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-16"
                                     />
                                 ) : (
                                     <span
@@ -977,12 +1367,12 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                             >
                                 {task.estado}
                             </button>
-                            <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[120px]">
+                            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[120px]">
                                 {TASK_ESTADOS.map(estado => (
                                     <button
                                         key={estado.value}
                                         onClick={() => handleEstadoChange(task.task_id, estado.value)}
-                                        className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg ${estado.color}`}
+                                        className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color}`}
                                     >
                                         {estado.label}
                                     </button>
@@ -1066,7 +1456,7 @@ function CostosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
         <div className="space-y-4">
             {/* Total */}
             <div className="bg-gradient-to-r from-emerald-900/30 to-cyan-900/30 rounded-lg p-6 text-center">
-                <div className="text-gray-400 text-sm mb-1">Costo Total</div>
+                <div className="text-gray-800 dark:text-gray-400 text-sm mb-1">Costo Total</div>
                 <div className="text-4xl font-bold text-white">
                     S/ {(pkl.costos.total || 0).toFixed(2)}
                 </div>
@@ -1074,9 +1464,9 @@ function CostosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
             </div>
 
             {/* Desglose */}
-            <div className="bg-gray-900/50 rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-gray-400 text-sm">Desglose de Costos</h4>
+                    <h4 className="text-gray-800 dark:text-gray-400 text-sm">Desglose de Costos</h4>
                     <button
                         onClick={() => setShowNewCosto(true)}
                         className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors"
@@ -1087,14 +1477,14 @@ function CostosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
 
                 {/* Add new costo form */}
                 {showNewCosto && (
-                    <div className="mb-4 p-3 bg-gray-800 rounded-lg border border-emerald-500/30 space-y-3">
+                    <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-emerald-500/30 space-y-3">
                         <div className="flex gap-3">
                             <input
                                 type="text"
                                 value={newConcepto}
                                 onChange={e => setNewConcepto(e.target.value)}
                                 placeholder="Concepto"
-                                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                                className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
                             />
                             <input
                                 type="number"
@@ -1102,11 +1492,11 @@ function CostosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                 onChange={e => setNewMonto(e.target.value)}
                                 placeholder="Monto"
                                 step="0.01"
-                                className="w-28 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                                className="w-28 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
                             />
                         </div>
                         <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 text-gray-400 text-sm cursor-pointer">
+                            <label className="flex items-center gap-2 text-gray-800 dark:text-gray-400 text-sm cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={newIncluyeIgv}
@@ -1146,14 +1536,14 @@ function CostosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                             autoFocus
                                             value={editConcepto}
                                             onChange={e => setEditConcepto(e.target.value)}
-                                            className="flex-1 bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-white text-sm outline-none"
+                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
                                         />
                                         <input
                                             type="number"
                                             value={editMonto}
                                             onChange={e => setEditMonto(e.target.value)}
                                             step="0.01"
-                                            className="w-24 bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-white text-sm outline-none"
+                                            className="w-24 bg-gray-50 dark:bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
                                         />
                                         <button onClick={handleEditSave} className="text-emerald-400 hover:text-emerald-300 text-sm">✓</button>
                                         <button onClick={() => setEditingIndex(null)} className="text-gray-400 hover:text-gray-300 text-sm">✕</button>
@@ -1244,7 +1634,7 @@ function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h4 className="text-gray-400 text-sm">Eventos Externos (terceros)</h4>
+                <h4 className="text-gray-800 dark:text-gray-400 text-sm">Eventos Externos (terceros)</h4>
                 <button
                     onClick={() => setShowNewEvento(true)}
                     className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded transition-colors"
@@ -1255,13 +1645,13 @@ function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
 
             {/* Add new evento form */}
             {showNewEvento && (
-                <div className="p-3 bg-gray-800 rounded-lg border border-purple-500/30 space-y-3">
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-purple-500/30 space-y-3">
                     <textarea
                         value={newEvento.descripcion}
                         onChange={e => setNewEvento({ ...newEvento, descripcion: e.target.value })}
                         placeholder="Descripción del evento"
                         rows={2}
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500 resize-none"
+                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 resize-none"
                     />
                     <div className="flex gap-3">
                         <input
@@ -1269,13 +1659,13 @@ function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                             value={newEvento.proveedor_id}
                             onChange={e => setNewEvento({ ...newEvento, proveedor_id: e.target.value })}
                             placeholder="Proveedor (opcional)"
-                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
+                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
                         />
                         <input
                             type="date"
                             value={newEvento.fecha}
                             onChange={e => setNewEvento({ ...newEvento, fecha: e.target.value })}
-                            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
+                            className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
                         />
                     </div>
                     <div className="flex justify-end gap-2">
@@ -1303,7 +1693,7 @@ function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                     {pkl.eventos_externos.map(evento => (
                         <div
                             key={evento.evento_id}
-                            className="bg-gray-900/50 rounded-lg p-4 group"
+                            className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 group"
                         >
                             <div className="flex items-start justify-between mb-2">
                                 <span className="font-mono text-purple-400 text-sm">{evento.evento_id}</span>
@@ -1333,7 +1723,7 @@ function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                 </div>
                             ) : (
                                 <p
-                                    className="text-white mb-2 cursor-pointer hover:text-cyan-400 transition-colors"
+                                    className="text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-cyan-400 transition-colors"
                                     onClick={() => handleEditStart(evento.evento_id, evento.descripcion)}
                                 >
                                     {evento.descripcion}

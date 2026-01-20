@@ -892,6 +892,42 @@ body {
   background-color: rgba(241, 245, 249, 0.8) !important;
 }
 
+/* ============================================
+   Modal Form Inputs - Dark Mode Override
+   ============================================ */
+
+/* Ensure dark mode inputs remain visible */
+.dark input.bg-gray-800,
+.dark select.bg-gray-800,
+.dark textarea.bg-gray-800,
+:root input.bg-gray-800,
+:root select.bg-gray-800,
+:root textarea.bg-gray-800 {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  border-color: #4b5563 !important;
+}
+
+.dark input.bg-gray-800::placeholder,
+.dark textarea.bg-gray-800::placeholder,
+:root input.bg-gray-800::placeholder,
+:root textarea.bg-gray-800::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Select options in dark mode */
+.dark select.bg-gray-800 option,
+:root select.bg-gray-800 option {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+}
+
+/* Date input color scheme */
+.dark input[type="date"],
+:root input[type="date"] {
+  color-scheme: dark;
+}
+
 /* Text area styling */
 .light textarea.bg-gray-950 {
   background-color: #ffffff !important;

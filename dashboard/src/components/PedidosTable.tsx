@@ -145,20 +145,29 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
         // Calculate dropdown position for fields that use dropdowns
         if (event && (field === 'cliente' || field === 'estado' || field === 'tipoOperacion')) {
             const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const dropdownHeight = 300; // approximate max height
 
-            // Decide if dropdown should open upward or downward
-            const spaceBelow = viewportHeight - rect.bottom;
-            const openUpward = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
-
+            // Posicionar justo debajo del elemento clickeado
             setDropdownPosition({
-                top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
+                top: rect.bottom + 4,
                 left: rect.left,
                 width: Math.max(rect.width, 250)
             });
         }
     };
+
+    // Cerrar dropdown con ESC
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && (editingCell || dropdownPosition)) {
+                setEditingCell(null);
+                setEditValue('');
+                setDropdownPosition(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [editingCell, dropdownPosition]);
 
     const handleEditSave = () => {
         if (editingCell) {
@@ -196,7 +205,17 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                         val = `RL-${year}-${num}`;
                     }
                 }
-                updatePedido(editingCell.id, { [editingCell.field]: val });
+                // Handle date editing for Pedidos
+                if (editingCell.field === 'created_at') {
+                    const dateVal = val.toString();
+                    if (dateVal) {
+                        const [year, month, day] = dateVal.split('-').map(Number);
+                        const fecha = new Date(year, month - 1, day, 12, 0, 0);
+                        updatePedido(editingCell.id, { created_at: fecha.toISOString() });
+                    }
+                } else {
+                    updatePedido(editingCell.id, { [editingCell.field]: val });
+                }
             }
             setEditingCell(null);
         }
@@ -228,14 +247,6 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
             }
             return next;
         });
-    };
-
-    const toggleSelectAll = () => {
-        if (selectedIds.size === filteredPedidos.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(filteredPedidos.map(p => p.id)));
-        }
     };
 
     const handleDeleteConfirm = async () => {
@@ -282,7 +293,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                 created_at: pkl.created_at,
                 cliente: pkl.cliente.nombre,
                 descripcion: pkl.origen.descripcion_inicial,
-                descripcion_corta: pkl.productos[0]?.descripcion?.slice(0, 30),
+                descripcion_corta: pkl.origen.descripcion_inicial?.slice(0, 50) || pkl.productos[0]?.descripcion?.slice(0, 30),
                 vendedora: pkl.cliente.ejecutiva_asignada || '',
                 estado: mapPKLStateToTableState(pkl.estado.actual),
                 estadoOriginal: pkl.estado.actual,
@@ -390,24 +401,14 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
         });
     }, [pedidoRows, pklRows, search, filterEstado, filterCliente, sortField, sortDir]);
 
-    // Keep filteredPedidos for backward compatibility (selection, deletion)
-    const filteredPedidos = useMemo(() => {
-        return pedidos.filter(p => {
-            const matchesSearch = !search ||
-                p.id.toLowerCase().includes(search.toLowerCase()) ||
-                p.cliente.toLowerCase().includes(search.toLowerCase()) ||
-                p.descripcion.toLowerCase().includes(search.toLowerCase());
-
-            const matchesEstado = !filterEstado || p.estado === filterEstado;
-            const matchesCliente = !filterCliente || p.cliente === filterCliente;
-
-            return matchesSearch && matchesEstado && matchesCliente;
-        }).sort((a, b) => {
-            const aVal = (a as any)[sortField];
-            const bVal = (b as any)[sortField];
-            return aVal < bVal ? 1 : -1;
-        });
-    }, [pedidos, search, filterEstado, filterCliente, sortField, sortDir]);
+    // Toggle select all - uses filteredRows
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredRows.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredRows.map(p => p.id)));
+        }
+    };
 
     return (
         <div className="glass-card overflow-hidden">
@@ -455,7 +456,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
             )}
 
             {/* Filters Bar */}
-            <div className="flex flex-wrap gap-4 mb-4 items-center bg-gray-900/40 p-3 rounded-lg border border-gray-800">
+            <div className="flex flex-wrap gap-4 mb-4 items-center bg-gray-100 dark:bg-gray-900/40 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
                 {/* Nuevo Pedido Button */}
                 <button
                     onClick={() => setShowNuevoPedidoModal(true)}
@@ -503,7 +504,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                         placeholder="Buscar global..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm "
+                        className="w-full px-4 py-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-gray-900 dark:text-white text-sm "
                     />
                 </div>
 
@@ -511,22 +512,22 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                 <select
                     value={filterCliente}
                     onChange={(e) => setFilterCliente(e.target.value)}
-                    className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm min-w-[200px] ${filterCliente ? 'bg-blue-900/20 border-blue-500 text-blue-200' : 'bg-gray-950 border-gray-700 text-gray-300'}`}
+                    className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm min-w-[200px] ${filterCliente ? 'bg-blue-100 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-200' : 'bg-white dark:bg-gray-950 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}
                 >
-                    <option value="" className="bg-gray-950 text-gray-300">Todos los Clientes</option>
+                    <option value="" className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">Todos los Clientes</option>
                     {clientesList.map(c => (
-                        <option key={c.razonSocial} value={c.razonSocial} className="bg-gray-950 text-gray-300">{c.displayName}</option>
+                        <option key={c.razonSocial} value={c.razonSocial} className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">{c.displayName}</option>
                     ))}
                 </select>
 
                 <select
                     value={filterEstado}
                     onChange={(e) => setFilterEstado(e.target.value)}
-                    className="px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm text-gray-300"
+                    className="px-4 py-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm text-gray-700 dark:text-gray-300"
                 >
-                    <option value="" className="bg-gray-950 text-gray-300">Todos los Estados</option>
+                    <option value="" className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">Todos los Estados</option>
                     {estados.map(estado => (
-                        <option key={estado} value={estado} className="bg-gray-950 text-gray-300">{estado}</option>
+                        <option key={estado} value={estado} className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">{estado}</option>
                     ))}
                 </select>
             </div>
@@ -540,7 +541,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                             <th className="p-4 w-10">
                                 <input
                                     type="checkbox"
-                                    checked={filteredPedidos.length > 0 && selectedIds.size === filteredPedidos.length}
+                                    checked={filteredRows.length > 0 && selectedIds.size === filteredRows.length}
                                     onChange={toggleSelectAll}
                                     className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
                                 />
@@ -586,16 +587,17 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                 >
                                     {/* Row Checkbox */}
                                     <td className="p-4 align-middle">
-                                        {isPKL ? (
-                                            <span className="text-[10px] font-mono bg-cyan-600/30 text-cyan-300 px-1.5 py-0.5 rounded">PKL</span>
-                                        ) : (
+                                        <div className="flex items-center gap-2">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.has(row.id)}
                                                 onChange={() => toggleSelection(row.id)}
                                                 className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-900 cursor-pointer"
                                             />
-                                        )}
+                                            {isPKL && (
+                                                <span className="text-[10px] font-mono bg-cyan-600/30 text-cyan-300 px-1.5 py-0.5 rounded">PKL</span>
+                                            )}
+                                        </div>
                                     </td>
                                     {/* Fecha */}
                                     <td
@@ -610,7 +612,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 onChange={e => setEditValue(e.target.value)}
                                                 onBlur={handleEditSave}
                                                 onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
-                                                className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-sm"
+                                                className="bg-white dark:bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-gray-900 dark:text-white text-sm"
                                             />
                                         ) : (
                                             <span className="text-gray-400 text-sm">
@@ -636,18 +638,18 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                             width: Math.max(dropdownPosition.width, 280),
                                                         }}
                                                     >
-                                                        <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
-                                                            <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-800/50">
-                                                                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Cliente</span>
+                                                        <div className="bg-white dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700/50 rounded-xl shadow-2xl shadow-black/20 dark:shadow-black/50 overflow-hidden">
+                                                            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50">
+                                                                <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Cliente</span>
                                                             </div>
                                                             {/* Alerta si el cliente actual no está en la base de datos */}
                                                             {row.cliente && !clientes[row.cliente] && (
                                                                 <div className="mx-2 mt-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                                                                     <div className="flex items-start gap-2">
-                                                                        <span className="text-amber-400 text-sm">⚠️</span>
+                                                                        <span className="text-amber-600 dark:text-amber-400 text-sm">⚠️</span>
                                                                         <div className="flex-1 min-w-0">
-                                                                            <div className="text-xs text-amber-300 font-medium">Cliente no registrado</div>
-                                                                            <div className="text-[10px] text-amber-400/70 mt-0.5 truncate">"{row.cliente}"</div>
+                                                                            <div className="text-xs text-amber-700 dark:text-amber-300 font-medium">Cliente no registrado</div>
+                                                                            <div className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-0.5 truncate">"{row.cliente}"</div>
                                                                         </div>
                                                                     </div>
                                                                     <button
@@ -665,14 +667,14 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                             setEditValue('');
                                                                             setDropdownPosition(null);
                                                                         }}
-                                                                        className="mt-2 w-full px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-lg text-xs text-amber-300 font-medium transition-all flex items-center justify-center gap-1.5"
+                                                                        className="mt-2 w-full px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-lg text-xs text-amber-700 dark:text-amber-300 font-medium transition-all flex items-center justify-center gap-1.5"
                                                                     >
                                                                         <span>+</span>
                                                                         Agregar "{row.cliente}" como cliente
                                                                     </button>
                                                                 </div>
                                                             )}
-                                                            <div className="p-2 border-b border-gray-700/30">
+                                                            <div className="p-2 border-b border-gray-200 dark:border-gray-700/30">
                                                                 <input
                                                                     autoFocus
                                                                     type="text"
@@ -686,7 +688,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                         }
                                                                     }}
                                                                     placeholder="Buscar cliente..."
-                                                                    className="w-full bg-gray-800/50 border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:border-cyan-500/50 focus:bg-gray-800 outline-none transition-all"
+                                                                    className="w-full bg-gray-100 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600/50 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:border-cyan-500/50 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all"
                                                                 />
                                                             </div>
                                                             <div className="max-h-56 overflow-y-auto py-1">
@@ -708,27 +710,27 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                                     setEditValue('');
                                                                                     setDropdownPosition(null);
                                                                                 }}
-                                                                                className={`w-full text-left px-3 py-2.5 transition-all flex items-center gap-3 hover:bg-white/5 ${isSelected ? 'bg-white/10' : ''}`}
+                                                                                className={`w-full text-left px-3 py-2.5 transition-all flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 ${isSelected ? 'bg-gray-100 dark:bg-white/10' : ''}`}
                                                                             >
                                                                                 {cliente.logo ? (
-                                                                                    <img src={cliente.logo} alt="" className="w-7 h-7 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
+                                                                                    <img src={cliente.logo} alt="" className="w-7 h-7 rounded-lg object-cover flex-shrink-0 ring-1 ring-gray-200 dark:ring-white/10" />
                                                                                 ) : (
-                                                                                    <span className="w-7 h-7 rounded-lg bg-gray-700/50 flex items-center justify-center text-xs flex-shrink-0">🏢</span>
+                                                                                    <span className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700/50 flex items-center justify-center text-xs flex-shrink-0">🏢</span>
                                                                                 )}
                                                                                 <div className="flex-1 min-w-0">
-                                                                                    <div className="text-sm text-gray-200 truncate">{cliente.nombre_comercial || razonSocial}</div>
+                                                                                    <div className="text-sm text-gray-800 dark:text-gray-200 truncate">{cliente.nombre_comercial || razonSocial}</div>
                                                                                     {cliente.nombre_comercial && (
                                                                                         <div className="text-[10px] text-gray-500 truncate">{razonSocial}</div>
                                                                                     )}
                                                                                 </div>
                                                                                 {isSelected && (
-                                                                                    <span className="text-cyan-400 flex-shrink-0">✓</span>
+                                                                                    <span className="text-cyan-600 dark:text-cyan-400 flex-shrink-0">✓</span>
                                                                                 )}
                                                                             </button>
                                                                         );
                                                                     })}
                                                             </div>
-                                                            <div className="border-t border-gray-700/30 p-2">
+                                                            <div className="border-t border-gray-200 dark:border-gray-700/30 p-2">
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
@@ -741,7 +743,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                         setEditValue('');
                                                                         setDropdownPosition(null);
                                                                     }}
-                                                                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-2"
+                                                                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-2"
                                                                 >
                                                                     <span>✕</span>
                                                                     Limpiar cliente
@@ -758,7 +760,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 className="flex items-center gap-3 font-bold text-gray-100 transition-colors group/client hover:text-cyan-400 cursor-pointer"
                                                 onClick={(e) => handleEditStart(row.id, 'cliente', row.cliente, e)}
                                             >
-                                                <div className="relative w-8 h-8 flex-shrink-0 bg-gray-900 rounded-full border border-gray-800 overflow-hidden shadow-inner">
+                                                <div className="relative w-8 h-8 flex-shrink-0 bg-gray-100 dark:bg-gray-900 rounded-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-inner">
                                                     {(() => {
                                                         // For PKLs, use getClienteLogo which searches by name/grupo
                                                         const logoUrl = isPKL
@@ -818,11 +820,11 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                 }}
                                                                 onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setDropdownPosition(null); } }}
                                                             >
-                                                                <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden min-w-[200px]">
-                                                                    <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-800/50">
-                                                                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Tipo de Operación</span>
+                                                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-2xl shadow-black/20 dark:shadow-black/50 overflow-hidden min-w-[220px]">
+                                                                    <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                                                                        <span className="text-xs font-semibold text-gray-700 dark:text-white uppercase tracking-wider">Ciclo de Operación</span>
                                                                     </div>
-                                                                    <div className="py-1 max-h-72 overflow-y-auto">
+                                                                    <div className="py-1 max-h-72 overflow-y-auto bg-white dark:bg-gray-800">
                                                                         {TIPOS_OPERACION_PKL.map(tipo => (
                                                                             <button
                                                                                 key={tipo.value}
@@ -832,12 +834,12 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                                     setEditingCell(null);
                                                                                     setDropdownPosition(null);
                                                                                 }}
-                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-white/5 ${row.tipoOperacion === tipo.value ? 'bg-white/10' : ''}`}
+                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 ${row.tipoOperacion === tipo.value ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
                                                                             >
                                                                                 <span className={`w-3 h-3 rounded-full ${tipo.color}`}></span>
-                                                                                <span className="text-gray-200">{tipo.label}</span>
+                                                                                <span className="text-gray-800 dark:text-white font-medium">{tipo.label}</span>
                                                                                 {row.tipoOperacion === tipo.value && (
-                                                                                    <span className="ml-auto text-cyan-400">✓</span>
+                                                                                    <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
                                                                                 )}
                                                                             </button>
                                                                         ))}
@@ -891,7 +893,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 onChange={e => setEditValue(e.target.value)}
                                                 onBlur={handleEditSave}
                                                 onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
-                                                className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-cyan-400"
+                                                className="bg-white dark:bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-cyan-600 dark:text-cyan-400"
                                             />
                                         ) : (
                                             <div className="text-gray-300 transition-colors font-medium group-hover/seller:text-cyan-400">
@@ -919,9 +921,9 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                         ref={(el) => el?.focus()}
                                                         onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); setDropdownPosition(null); } }}
                                                     >
-                                                        <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden min-w-[180px]">
-                                                            <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-800/50">
-                                                                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Estado</span>
+                                                        <div className="bg-white dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700/50 rounded-xl shadow-2xl shadow-black/20 dark:shadow-black/50 overflow-hidden min-w-[180px]">
+                                                            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50">
+                                                                <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Estado</span>
                                                             </div>
                                                             <div className="py-1 max-h-72 overflow-y-auto">
                                                                 {isPKL ? (
@@ -937,12 +939,12 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                                     setEditingCell(null);
                                                                                     setDropdownPosition(null);
                                                                                 }}
-                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-white/5 ${isSelected ? 'bg-white/10' : ''}`}
+                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 ${isSelected ? 'bg-gray-100 dark:bg-white/10' : ''}`}
                                                                             >
                                                                                 <span className={`w-3 h-3 rounded-full ${estado.color}`}></span>
-                                                                                <span className="text-gray-200">{estado.label}</span>
+                                                                                <span className="text-gray-800 dark:text-gray-200">{estado.label}</span>
                                                                                 {isSelected && (
-                                                                                    <span className="ml-auto text-cyan-400">✓</span>
+                                                                                    <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
                                                                                 )}
                                                                             </button>
                                                                         );
@@ -977,12 +979,12 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                                     setEditingCell(null);
                                                                                     setDropdownPosition(null);
                                                                                 }}
-                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-white/5 ${isSelected ? 'bg-white/10' : ''}`}
+                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 ${isSelected ? 'bg-gray-100 dark:bg-white/10' : ''}`}
                                                                             >
                                                                                 <span className={`w-3 h-3 rounded-full ${colorDots[estadoOpt]}`}></span>
-                                                                                <span className="text-gray-200">{labels[estadoOpt]}</span>
+                                                                                <span className="text-gray-800 dark:text-gray-200">{labels[estadoOpt]}</span>
                                                                                 {isSelected && (
-                                                                                    <span className="ml-auto text-cyan-400">✓</span>
+                                                                                    <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
                                                                                 )}
                                                                             </button>
                                                                         );
@@ -1031,7 +1033,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 onBlur={handleEditSave}
                                                 onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
                                                 placeholder="Ej: 25"
-                                                className="bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-20 outline-none text-cyan-400 font-mono text-xs"
+                                                className="bg-white dark:bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-20 outline-none text-cyan-600 dark:text-cyan-400 font-mono text-xs"
                                             />
                                         ) : (
                                             <span className={`font-mono text-xs transition-colors ${isPKL ? 'text-cyan-400 font-semibold hover:text-cyan-300 hover:underline' : row.rl_numero ? 'text-cyan-400 font-semibold group-hover/rl:text-cyan-300' : 'text-gray-600 italic'}`}>
@@ -1053,7 +1055,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 onBlur={handleEditSave}
                                                 onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
                                                 placeholder="RQ-123"
-                                                className="bg-gray-950 border border-amber-500 rounded px-2 py-1 w-20 outline-none text-amber-400 font-mono text-xs"
+                                                className="bg-white dark:bg-gray-950 border border-amber-500 rounded px-2 py-1 w-20 outline-none text-amber-600 dark:text-amber-400 font-mono text-xs"
                                             />
                                         ) : (
                                             <span className={`font-mono text-xs transition-colors ${!isPKL ? 'group-hover/rq:text-amber-400' : ''} ${row.rq_numero ? 'text-amber-400' : 'text-gray-600 italic'}`}>
@@ -1096,7 +1098,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
 
                                 {/* Expanded Row: Payments Detail (only for Pedidos) */}
                                 {!isPKL && expandedRowId === row.id && pedido && (
-                                    <tr className="bg-gray-900/30">
+                                    <tr className="bg-gray-100 dark:bg-gray-900/30">
                                         <td colSpan={11} className="p-0 border-b border-gray-800">
                                             <div className="p-6 flex flex-col md:flex-row gap-8 animate-in slide-in-from-top-2 duration-200">
                                                 {/* Resumen Financiero */}
@@ -1115,7 +1117,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                                 onChange={e => setEditValue(e.target.value)}
                                                                 onBlur={handleEditSave}
                                                                 onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
-                                                                className="w-full bg-gray-950 border border-cyan-500 rounded p-2 text-white font-mono text-lg outline-none"
+                                                                className="w-full bg-white dark:bg-gray-950 border border-cyan-500 rounded p-2 text-gray-900 dark:text-white font-mono text-lg outline-none"
                                                             />
                                                         ) : (
                                                             <div
@@ -1152,7 +1154,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                             <div className="text-gray-600 italic text-sm py-2">Sin movimientos registrados</div>
                                                         ) : (
                                                             payments.filter(pay => pay.pedidoId === pedido.id).map(pay => (
-                                                                <div key={pay.id} className="flex items-center justify-between p-2 bg-gray-950 rounded border border-gray-800 hover:border-gray-700">
+                                                                <div key={pay.id} className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-950 rounded border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700">
                                                                     <div className="flex flex-col">
                                                                         <span className="text-gray-300 text-sm">{pay.nota}</span>
                                                                         <span className="text-[10px] text-gray-600">{new Date(pay.fecha).toLocaleString()}</span>
@@ -1165,7 +1167,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 </div>
 
                                                 {/* Right: Add Payment Form */}
-                                                <div className="w-full md:w-80 bg-gray-950/50 p-4 rounded-xl border border-gray-800 space-y-3">
+                                                <div className="w-full md:w-80 bg-gray-100 dark:bg-gray-950/50 p-4 rounded-xl border border-gray-200 dark:border-gray-800 space-y-3">
                                                     <h4 className="text-xs uppercase font-bold text-gray-500 tracking-widest">Registrar Pago</h4>
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] text-gray-600 font-bold">Monto (S/.)</label>
@@ -1173,7 +1175,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                             type="number"
                                                             value={newAdelantoMonto}
                                                             onChange={e => setNewAdelantoMonto(e.target.value)}
-                                                            className="w-full bg-gray-950 border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none font-mono"
+                                                            className="w-full bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded p-2 text-gray-900 dark:text-white text-sm focus:border-emerald-500 outline-none font-mono"
                                                             placeholder="0.00"
                                                         />
                                                     </div>
@@ -1183,7 +1185,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                             type="text"
                                                             value={newAdelantoNota}
                                                             onChange={e => setNewAdelantoNota(e.target.value)}
-                                                            className="w-full bg-gray-950 border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none"
+                                                            className="w-full bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded p-2 text-gray-900 dark:text-white text-sm focus:border-emerald-500 outline-none"
                                                             placeholder="Ej: Adelanto efectivo"
                                                         />
                                                     </div>
@@ -1289,7 +1291,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                         onClick={() => setShowMergeModal(false)}
                     >
                         <div
-                            className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200"
                             onClick={e => e.stopPropagation()}
                         >
                             {/* Header */}
@@ -1386,16 +1388,16 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                     tabIndex={0}
                     ref={(el) => el?.focus()}
                 >
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
                         {/* Header */}
-                        <div className="flex items-center justify-between p-5 border-b border-gray-800">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <span className="text-xl">📝</span>
                                 Editar Descripción
                             </h2>
                             <button
                                 onClick={() => setDescripcionModalPedidoId(null)}
-                                className="w-8 h-8 rounded-full hover:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-white transition-colors"
+                                className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                             >
                                 ✕
                             </button>
@@ -1405,26 +1407,26 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                         <div className="p-5 space-y-4">
                             {/* Título corto (opcional) */}
                             <div className="space-y-2">
-                                <label className="text-xs text-gray-400 font-bold uppercase tracking-wide flex items-center gap-2">
+                                <label className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide flex items-center gap-2">
                                     Título corto
-                                    <span className="text-gray-600 font-normal normal-case">(opcional - se muestra en tabla)</span>
+                                    <span className="text-gray-500 dark:text-gray-600 font-normal normal-case">(opcional - se muestra en tabla)</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={descripcionCortaModalValue}
                                     onChange={(e) => setDescripcionCortaModalValue(e.target.value.toUpperCase())}
                                     placeholder="Ej: LANYARDS EVENTO, POLOS CAMPAÑA..."
-                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none transition-colors"
+                                    className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none transition-colors"
                                     autoFocus
                                 />
-                                <p className="text-[10px] text-gray-600">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-600">
                                     Si lo dejas vacío, se mostrará la descripción completa truncada
                                 </p>
                             </div>
 
                             {/* Descripción completa */}
                             <div className="space-y-2">
-                                <label className="text-xs text-gray-400 font-bold uppercase tracking-wide">
+                                <label className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide">
                                     Descripción completa
                                 </label>
                                 <textarea
@@ -1432,13 +1434,13 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                     onChange={(e) => setDescripcionModalValue(e.target.value.toUpperCase())}
                                     rows={4}
                                     placeholder="Descripción detallada del pedido..."
-                                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-3 text-white focus:border-cyan-500 outline-none transition-colors resize-none"
+                                    className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none transition-colors resize-none"
                                 />
                             </div>
                         </div>
 
                         {/* Footer */}
-                        <div className="flex justify-end gap-3 p-5 border-t border-gray-800">
+                        <div className="flex justify-end gap-3 p-5 border-t border-gray-200 dark:border-gray-800">
                             <button
                                 onClick={() => setDescripcionModalPedidoId(null)}
                                 className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
