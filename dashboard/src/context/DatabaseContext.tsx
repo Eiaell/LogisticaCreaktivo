@@ -26,6 +26,7 @@ interface DatabaseContextType {
     createPKLTask: (pklId: string, task: Omit<TaskPKL, 'task_id'>) => Promise<void>;
     deletePKLTask: (pklId: string, taskId: string) => Promise<void>;
     deletePKL: (id: string) => Promise<void>;
+    mergePKLs: (primaryId: string, secondaryIds: string[]) => Promise<void>;
 
     // CRUD Pedidos
     createPedido: (data: Omit<Pedido, 'id' | 'created_at' | 'updated_at'>) => Promise<Pedido>;
@@ -771,6 +772,166 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             }
         } catch (err) {
             console.error('Error deleting PKL:', err);
+        }
+    };
+
+    // Merge multiple PKLs into one
+    const mergePKLs = async (primaryId: string, secondaryIds: string[]) => {
+        const now = new Date().toISOString();
+
+        // Find all PKLs
+        const primaryPkl = pkls.find(p => p.pkl_id === primaryId);
+        const secondaryPkls = pkls.filter(p => secondaryIds.includes(p.pkl_id));
+
+        if (!primaryPkl || secondaryPkls.length === 0) {
+            console.error('PKLs not found for merge');
+            return;
+        }
+
+        // Merge data from secondary PKLs into primary
+        const mergedTasks = [...(primaryPkl.tasks || [])];
+        const mergedCostos = [...(primaryPkl.costos?.detalle || [])];
+        const mergedEventos = [...(primaryPkl.eventos_externos || [])];
+        const mergedProductos = [...(primaryPkl.productos || [])];
+        const mergedProveedores = [...(primaryPkl.proveedores || [])];
+        const mergedObservaciones = primaryPkl.observaciones || '';
+        const mergedDescriptions: string[] = [];
+
+        for (const secondary of secondaryPkls) {
+            // Merge tasks with new IDs to avoid conflicts
+            if (secondary.tasks) {
+                for (const task of secondary.tasks) {
+                    mergedTasks.push({
+                        ...task,
+                        task_id: `${task.task_id}-merged-${Date.now()}`,
+                    });
+                }
+            }
+
+            // Merge costos
+            if (secondary.costos?.detalle) {
+                for (const costo of secondary.costos.detalle) {
+                    mergedCostos.push({
+                        ...costo,
+                        concepto: `[${secondary.pkl_id}] ${costo.concepto}`,
+                    });
+                }
+            }
+
+            // Merge eventos
+            if (secondary.eventos_externos) {
+                for (const evento of secondary.eventos_externos) {
+                    mergedEventos.push({
+                        ...evento,
+                        evento_id: `${evento.evento_id}-merged`,
+                        descripcion: `[${secondary.pkl_id}] ${evento.descripcion}`,
+                    });
+                }
+            }
+
+            // Merge productos
+            if (secondary.productos) {
+                mergedProductos.push(...secondary.productos);
+            }
+
+            // Merge proveedores (avoid duplicates)
+            if (secondary.proveedores) {
+                for (const prov of secondary.proveedores) {
+                    if (!mergedProveedores.some(p => p.proveedor_id === prov.proveedor_id)) {
+                        mergedProveedores.push(prov);
+                    }
+                }
+            }
+
+            // Collect descriptions for observaciones
+            mergedDescriptions.push(`[Fusionado de ${secondary.pkl_id}]: ${secondary.origen.descripcion_inicial}`);
+        }
+
+        // Calculate new total cost
+        const newTotalCost = mergedCostos.reduce((sum, c) => sum + (c.monto || 0), 0);
+
+        // Build updated primary PKL
+        const updatedPrimary: PKL = {
+            ...primaryPkl,
+            updated_at: now,
+            tasks: mergedTasks,
+            costos: {
+                ...primaryPkl.costos,
+                detalle: mergedCostos,
+                total: newTotalCost,
+            },
+            eventos_externos: mergedEventos,
+            productos: mergedProductos,
+            proveedores: mergedProveedores,
+            observaciones: mergedObservaciones + (mergedObservaciones ? '\n\n' : '') + mergedDescriptions.join('\n'),
+        };
+
+        // Update state - update primary, remove secondaries
+        setPkls(prev => {
+            const filtered = prev.filter(p => !secondaryIds.includes(p.pkl_id));
+            return filtered.map(p => p.pkl_id === primaryId ? updatedPrimary : p);
+        });
+
+        // Persist to Supabase
+        try {
+            // Update primary PKL
+            const { error: updateError } = await supabase.from('pkls').upsert({
+                pkl_id: updatedPrimary.pkl_id,
+                version: updatedPrimary.version,
+                created_at: updatedPrimary.created_at,
+                updated_at: now,
+                tipo_operacion: updatedPrimary.clasificacion.tipo_operacion,
+                area: updatedPrimary.clasificacion.area,
+                cliente: updatedPrimary.cliente,
+                origen: updatedPrimary.origen,
+                productos: updatedPrimary.productos,
+                inputs: updatedPrimary.inputs,
+                proveedores: updatedPrimary.proveedores,
+                estado_actual: updatedPrimary.estado.actual,
+                estado_historial: updatedPrimary.estado.historial,
+                eventos_externos: updatedPrimary.eventos_externos,
+                costos: updatedPrimary.costos,
+                cierre: updatedPrimary.cierre,
+                alertas: updatedPrimary.alertas,
+                riesgos_identificados: updatedPrimary.riesgos_identificados,
+                observaciones: updatedPrimary.observaciones
+            }, { onConflict: 'pkl_id' });
+
+            if (updateError) {
+                console.error('Error updating primary PKL:', updateError);
+            }
+
+            // Update tasks for primary PKL
+            // First delete existing tasks
+            await supabase.from('pkl_tasks').delete().eq('pkl_id', primaryId);
+            // Then insert all merged tasks
+            if (mergedTasks.length > 0) {
+                const tasksToInsert = mergedTasks.map(task => ({
+                    pkl_id: primaryId,
+                    task_id: task.task_id,
+                    tipo: task.tipo,
+                    nombre: task.nombre,
+                    descripcion: task.descripcion,
+                    estado: task.estado,
+                    orden: task.orden,
+                    responsable: task.responsable,
+                    proveedor_id: task.proveedor_id,
+                    es_happy_path: task.es_happy_path,
+                    duracion_min: task.duracion_min,
+                    ubicacion: task.ubicacion,
+                }));
+                await supabase.from('pkl_tasks').insert(tasksToInsert);
+            }
+
+            // Delete secondary PKLs and their tasks
+            for (const secondaryId of secondaryIds) {
+                await supabase.from('pkl_tasks').delete().eq('pkl_id', secondaryId);
+                await supabase.from('pkls').delete().eq('pkl_id', secondaryId);
+            }
+
+            console.log(`✓ Merged ${secondaryIds.length} PKLs into ${primaryId}`);
+        } catch (err) {
+            console.error('Error merging PKLs:', err);
         }
     };
 
@@ -2059,6 +2220,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             createPKLTask,
             deletePKLTask,
             deletePKL,
+            mergePKLs,
             // CRUD Pedidos
             createPedido, updatePedido, deletePedido, deletePedidos,
             // Pagos

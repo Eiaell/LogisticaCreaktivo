@@ -72,7 +72,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     // Get shared state
     const pedidos = usePedidos();
     const pkls = usePKLs();
-    const { updatePedido, updatePKL, addPayment, payments, selectedStateFilter, clientes, updateCliente, createCliente, uploadLogo, deletePedido, deletePedidos, deletePKL, getClienteLogo } = useDatabase();
+    const { updatePedido, updatePKL, addPayment, payments, selectedStateFilter, clientes, updateCliente, createCliente, uploadLogo, deletePedido, deletePedidos, deletePKL, mergePKLs, getClienteLogo } = useDatabase();
 
     // Refs
     const heroFileInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +99,8 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     // Selection state
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [confirmDelete, setConfirmDelete] = useState<{ type: 'single' | 'batch', ids: string[] } | null>(null);
+    const [showMergeModal, setShowMergeModal] = useState(false);
+    const [mergePrimaryId, setMergePrimaryId] = useState<string | null>(null);
 
     // Dropdown position tracking for portal
     const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -463,15 +465,36 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                     Nuevo Pedido
                 </button>
 
-                {/* Batch Delete Button */}
+                {/* Batch Actions */}
                 {selectedIds.size > 0 && (
-                    <button
-                        onClick={() => setConfirmDelete({ type: 'batch', ids: Array.from(selectedIds) })}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 shadow-lg shadow-red-900/30 animate-in fade-in duration-200"
-                    >
-                        <span>🗑️</span>
-                        Eliminar ({selectedIds.size})
-                    </button>
+                    <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                        {/* Merge Button - Only show when 2+ PKLs selected */}
+                        {(() => {
+                            const selectedPKLIds = Array.from(selectedIds).filter(id => id.startsWith('PKL-'));
+                            if (selectedPKLIds.length >= 2) {
+                                return (
+                                    <button
+                                        onClick={() => {
+                                            setMergePrimaryId(selectedPKLIds[0]);
+                                            setShowMergeModal(true);
+                                        }}
+                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 shadow-lg shadow-purple-900/30"
+                                    >
+                                        <span>🔗</span>
+                                        Fusionar PKLs ({selectedPKLIds.length})
+                                    </button>
+                                );
+                            }
+                            return null;
+                        })()}
+                        <button
+                            onClick={() => setConfirmDelete({ type: 'batch', ids: Array.from(selectedIds) })}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 shadow-lg shadow-red-900/30"
+                        >
+                            <span>🗑️</span>
+                            Eliminar ({selectedIds.size})
+                        </button>
+                    </div>
                 )}
 
                 <div className="flex-1 min-w-[200px]">
@@ -1254,6 +1277,106 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                 onConfirm={handleDeleteConfirm}
                 onCancel={() => setConfirmDelete(null)}
             />
+
+            {/* Modal Fusionar PKLs */}
+            {showMergeModal && (() => {
+                const selectedPKLIds = Array.from(selectedIds).filter(id => id.startsWith('PKL-'));
+                const selectedPKLs = pkls.filter(p => selectedPKLIds.includes(p.pkl_id));
+
+                return (
+                    <div
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+                        onClick={() => setShowMergeModal(false)}
+                    >
+                        <div
+                            className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="p-5 border-b border-gray-800">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                                    <span className="text-2xl">🔗</span>
+                                    Fusionar PKLs
+                                </h2>
+                                <p className="text-sm text-gray-400 mt-1">
+                                    Combina {selectedPKLs.length} PKLs en uno solo
+                                </p>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-5 space-y-4">
+                                <div>
+                                    <label className="text-xs text-gray-400 uppercase tracking-wider mb-2 block">
+                                        Selecciona el PKL principal (conservará su ID)
+                                    </label>
+                                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                                        {selectedPKLs.map(pkl => (
+                                            <button
+                                                key={pkl.pkl_id}
+                                                onClick={() => setMergePrimaryId(pkl.pkl_id)}
+                                                className={`w-full text-left p-3 rounded-lg border transition-all ${
+                                                    mergePrimaryId === pkl.pkl_id
+                                                        ? 'bg-purple-600/20 border-purple-500 ring-1 ring-purple-500'
+                                                        : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <div className="font-mono text-sm text-purple-400">{pkl.pkl_id}</div>
+                                                        <div className="text-white text-sm mt-1">{pkl.origen.descripcion_inicial}</div>
+                                                        <div className="text-xs text-gray-500 mt-1">
+                                                            {pkl.cliente.nombre} • {pkl.tasks?.length || 0} tasks • S/{(pkl.costos?.total || 0).toFixed(2)}
+                                                        </div>
+                                                    </div>
+                                                    {mergePrimaryId === pkl.pkl_id && (
+                                                        <span className="text-purple-400 text-lg">✓</span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                                    <div className="flex items-start gap-2">
+                                        <span className="text-amber-400">⚠️</span>
+                                        <div className="text-xs text-amber-300">
+                                            <strong>Esta acción no se puede deshacer.</strong> Los PKLs secundarios serán eliminados y sus datos (tasks, costos, eventos) se moverán al PKL principal.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-5 border-t border-gray-800 flex justify-end gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowMergeModal(false);
+                                        setMergePrimaryId(null);
+                                    }}
+                                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!mergePrimaryId) return;
+                                        const secondaryIds = selectedPKLIds.filter(id => id !== mergePrimaryId);
+                                        await mergePKLs(mergePrimaryId, secondaryIds);
+                                        setShowMergeModal(false);
+                                        setMergePrimaryId(null);
+                                        setSelectedIds(new Set());
+                                    }}
+                                    disabled={!mergePrimaryId}
+                                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold rounded-lg transition-colors"
+                                >
+                                    Fusionar PKLs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Modal Editar Descripción */}
             {descripcionModalPedidoId && (
