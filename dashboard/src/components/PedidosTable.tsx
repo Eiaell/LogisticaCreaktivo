@@ -72,7 +72,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     // Get shared state
     const pedidos = usePedidos();
     const pkls = usePKLs();
-    const { updatePedido, updatePKL, addPayment, payments, selectedStateFilter, clientes, updateCliente, uploadLogo, deletePedido, deletePedidos, deletePKL, getClienteLogo } = useDatabase();
+    const { updatePedido, updatePKL, addPayment, payments, selectedStateFilter, clientes, updateCliente, createCliente, uploadLogo, deletePedido, deletePedidos, deletePKL, getClienteLogo } = useDatabase();
 
     // Refs
     const heroFileInputRef = useRef<HTMLInputElement>(null);
@@ -617,6 +617,38 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                             <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-800/50">
                                                                 <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Cliente</span>
                                                             </div>
+                                                            {/* Alerta si el cliente actual no está en la base de datos */}
+                                                            {row.cliente && !clientes[row.cliente] && (
+                                                                <div className="mx-2 mt-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                                                                    <div className="flex items-start gap-2">
+                                                                        <span className="text-amber-400 text-sm">⚠️</span>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="text-xs text-amber-300 font-medium">Cliente no registrado</div>
+                                                                            <div className="text-[10px] text-amber-400/70 mt-0.5 truncate">"{row.cliente}"</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            // Crear el cliente con el nombre actual
+                                                                            createCliente({
+                                                                                razon_social: row.cliente,
+                                                                                nombre_comercial: row.cliente,
+                                                                                estado: 'activo',
+                                                                                prioridad: 'medio',
+                                                                                tipo_cliente: 'pyme'
+                                                                            });
+                                                                            setEditingCell(null);
+                                                                            setEditValue('');
+                                                                            setDropdownPosition(null);
+                                                                        }}
+                                                                        className="mt-2 w-full px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-lg text-xs text-amber-300 font-medium transition-all flex items-center justify-center gap-1.5"
+                                                                    >
+                                                                        <span>+</span>
+                                                                        Agregar "{row.cliente}" como cliente
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                             <div className="p-2 border-b border-gray-700/30">
                                                                 <input
                                                                     autoFocus
