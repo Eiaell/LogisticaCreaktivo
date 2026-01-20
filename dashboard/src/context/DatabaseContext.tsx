@@ -506,6 +506,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         // Deep merge for nested objects
         const updated: PKL = { ...currentPkl, updated_at: now };
 
+        // Handle created_at changes (direct override)
+        if (changes.created_at) {
+            updated.created_at = changes.created_at;
+        }
+
         // Handle cliente changes (partial merge)
         if (changes.cliente) {
             updated.cliente = { ...currentPkl.cliente, ...changes.cliente };
@@ -546,6 +551,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             const { error } = await supabase.from('pkls').upsert({
                 pkl_id: updated.pkl_id,
                 version: updated.version,
+                created_at: updated.created_at,
                 updated_at: now,
                 tipo_operacion: updated.clasificacion.tipo_operacion,
                 area: updated.clasificacion.area,
