@@ -212,85 +212,63 @@ export function ProcessGraph() {
                 />
             </div>
 
-            {/* Detail Panel */}
+            {/* Detail Panel - Clean List Design */}
             {selectedStateFilter && (
-                <div className="glass-card mb-8 w-1/3 flex flex-col animate-in slide-in-from-right duration-300">
-                    <div className="p-4 border-b border-gray-700 bg-gray-800/50 rounded-t-lg">
-                        <h3 className="font-bold text-lg text-white capitalize">{selectedStateFilter.replace('_', ' ')}</h3>
-                        <div className="text-xs text-gray-400">{selectedItemsSummary.length} items activos</div>
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-8 w-1/3 flex flex-col animate-in slide-in-from-right duration-300">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                        <h3 className="font-semibold text-gray-900 capitalize">{selectedStateFilter.replace('_', ' ')}</h3>
+                        <div className="text-xs text-gray-500">{selectedItemsSummary.length} items</div>
                     </div>
-                    <div className="p-4 overflow-y-auto max-h-[300px] space-y-3">
+                    <div className="overflow-y-auto max-h-[350px] divide-y divide-gray-100">
                         {selectedItemsSummary.length > 0 ? selectedItemsSummary.map(item => {
                             const clientDetails = clientes[item.cliente];
                             const isPKL = item.type === 'pkl';
 
                             return (
-                                <div key={item.id} className={`p-3 rounded border transition-colors shadow-sm ${isPKL ? 'bg-cyan-950/30 border-cyan-700/50 hover:border-cyan-500' : 'bg-gray-800 border-gray-700 hover:border-cyan-500/50'}`}>
-                                    <div className="flex justify-between items-start mb-1">
-                                        <div className="flex items-center gap-2">
-                                            {isPKL && (
-                                                <span className="text-[10px] font-mono bg-cyan-600/30 text-cyan-300 px-1.5 py-0.5 rounded">PKL</span>
+                                <div key={item.id} className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
+                                    {/* Header: Logo + Cliente + ID */}
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {clientDetails?.logo && (
+                                                <img src={clientDetails.logo} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                                             )}
-                                            <div className="font-bold text-cyan-400 text-sm">{item.label}</div>
+                                            <span className="font-medium text-gray-900 truncate">{item.label}</span>
                                         </div>
-                                        <div className="text-[10px] text-gray-500 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">
-                                            {item.id.slice(0, 15)}
-                                        </div>
+                                        <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">
+                                            {isPKL ? item.id.replace('PKL-', '').slice(-9) : item.id.slice(0, 8)}
+                                        </span>
                                     </div>
 
-                                    {/* PKL-specific info */}
+                                    {/* PKL Badge + Tasks */}
                                     {isPKL && 'tipoOperacion' in item && (
-                                        <div className="flex flex-wrap gap-1 mb-2">
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.tipoColor} text-white`}>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${item.tipoColor} text-white`}>
                                                 {item.tipoOperacion}
                                             </span>
-                                            {item.costoTotal > 0 && (
-                                                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                                                    S/{item.costoTotal}
-                                                </span>
-                                            )}
-                                            <span className="text-[10px] text-gray-400 bg-gray-700/50 px-1.5 py-0.5 rounded">
+                                            <span className="text-[10px] text-gray-400">
                                                 {item.tasksCompletadas}/{item.tasksTotal} tasks
                                             </span>
                                         </div>
                                     )}
 
-                                    {/* Description */}
+                                    {/* Description - truncated to 1 line */}
                                     {item.full && (
-                                        <p className="text-[11px] text-gray-400 mb-2 line-clamp-2">{item.full}</p>
+                                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">{item.full}</p>
                                     )}
 
-                                    {/* Cliente con Logo */}
-                                    {item.cliente && !isPKL && (
-                                        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700">
-                                            <span className="text-xs text-gray-500">Cliente:</span>
-                                            <div className="flex items-center gap-1">
-                                                {clientDetails?.logo && (
-                                                    <img src={clientDetails.logo} alt="Logo" className="w-4 h-4 rounded-full object-cover" />
-                                                )}
-                                                <span className="text-xs text-gray-300">{item.cliente}</span>
-                                            </div>
-                                        </div>
+                                    {/* Provider - subtle link */}
+                                    {item.proveedor && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setSelectedProvider(item.proveedor); }}
+                                            className="text-[11px] text-purple-600 hover:text-purple-700 mt-1.5 flex items-center gap-1"
+                                        >
+                                            <span className="opacity-60">→</span> {item.proveedor}
+                                        </button>
                                     )}
-
-                                    {/* Provider Link */}
-                                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700">
-                                        <span className="text-xs text-gray-500">Prov:</span>
-                                        {item.proveedor ? (
-                                            <button
-                                                onClick={() => setSelectedProvider(item.proveedor)}
-                                                className="text-xs text-purple-400 hover:text-purple-300 hover:underline cursor-pointer flex items-center gap-1 transition-colors"
-                                            >
-                                                🏭 {item.proveedor}
-                                            </button>
-                                        ) : (
-                                            <span className="text-xs text-gray-600 italic">No asignado</span>
-                                        )}
-                                    </div>
                                 </div>
                             );
                         }) : (
-                            <div className="text-gray-500 italic text-center py-4">Sin items en esta etapa</div>
+                            <div className="text-gray-400 italic text-center py-8 text-sm">Sin items en esta etapa</div>
                         )}
                     </div>
                 </div>

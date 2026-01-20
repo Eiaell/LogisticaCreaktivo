@@ -141,7 +141,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
     const documentos = cliente.documentos || [];
 
     return (
-        <div className="min-h-screen p-6">
+        <div className="min-h-screen p-6 bg-theme-primary text-theme-primary">
             {/* Header */}
             <header className="mb-8">
                 <button
@@ -283,7 +283,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                 {/* Left Column: Details */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Contact Information */}
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-900/50 border border-blue-500/10 rounded-2xl p-6">
+                    <div className="bg-theme-card border border-blue-500/20 rounded-2xl p-6">
                         <h2 className="text-lg font-bold text-blue-300 mb-4 flex items-center gap-2">
                             <span>📋</span> Información de Contacto
                         </h2>
@@ -298,7 +298,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 type="text"
                                                 value={editData.ruc ?? cliente.ruc ?? ''}
                                                 onChange={(e) => handleEditChange('ruc', e.target.value)}
-                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                                className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -308,7 +308,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 value={editData.grupo_empresarial ?? cliente.grupo_empresarial ?? ''}
                                                 onChange={(e) => handleEditChange('grupo_empresarial', e.target.value)}
                                                 placeholder="Ej: Grupo Lar"
-                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                                className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                             />
                                         </div>
                                     </div>
@@ -319,7 +319,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 type="text"
                                                 value={editData.proyecto ?? cliente.proyecto ?? ''}
                                                 onChange={(e) => handleEditChange('proyecto', e.target.value)}
-                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                                className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -328,7 +328,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                                 type="text"
                                                 value={editData.proyecto_codigo ?? cliente.proyecto_codigo ?? ''}
                                                 onChange={(e) => handleEditChange('proyecto_codigo', e.target.value)}
-                                                className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                                className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                             />
                                         </div>
                                     </div>
@@ -338,7 +338,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                             type="text"
                                             value={editData.contacto ?? cliente.contacto ?? ''}
                                             onChange={(e) => handleEditChange('contacto', e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -347,7 +347,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                             type="tel"
                                             value={editData.telefono ?? cliente.telefono ?? ''}
                                             onChange={(e) => handleEditChange('telefono', e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -356,7 +356,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                             type="email"
                                             value={editData.email ?? cliente.email ?? ''}
                                             onChange={(e) => handleEditChange('email', e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -365,27 +365,27 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                             type="text"
                                             value={editData.direccion ?? cliente.direccion ?? ''}
                                             onChange={(e) => handleEditChange('direccion', e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
                                 </>
                             ) : (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <p className="text-xs text-gray-500 mb-1">CONTACTO</p>
-                                        <p className="text-white">{cliente.contacto || '—'}</p>
+                                        <p className="text-xs text-theme-muted mb-1">CONTACTO</p>
+                                        <p className="text-theme-primary">{cliente.contacto || '—'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-500 mb-1">TELÉFONO</p>
-                                        <p className="text-white">{cliente.telefono || '—'}</p>
+                                        <p className="text-xs text-theme-muted mb-1">TELÉFONO</p>
+                                        <p className="text-theme-primary">{cliente.telefono || '—'}</p>
                                     </div>
                                     <div className="col-span-2">
-                                        <p className="text-xs text-gray-500 mb-1">EMAIL</p>
-                                        <p className="text-white break-all">{cliente.email || '—'}</p>
+                                        <p className="text-xs text-theme-muted mb-1">EMAIL</p>
+                                        <p className="text-theme-primary break-all">{cliente.email || '—'}</p>
                                     </div>
                                     <div className="col-span-2">
-                                        <p className="text-xs text-gray-500 mb-1">DIRECCIÓN</p>
-                                        <p className="text-white">{cliente.direccion || '—'}</p>
+                                        <p className="text-xs text-theme-muted mb-1">DIRECCIÓN</p>
+                                        <p className="text-theme-primary">{cliente.direccion || '—'}</p>
                                     </div>
                                 </div>
                             )}
@@ -393,7 +393,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                     </div>
 
                     {/* Commercial Information */}
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-900/50 border border-cyan-500/10 rounded-2xl p-6">
+                    <div className="bg-theme-card border border-cyan-500/20 rounded-2xl p-6">
                         <h2 className="text-lg font-bold text-cyan-300 mb-4 flex items-center gap-2">
                             <span>💼</span> Información Comercial
                         </h2>
@@ -408,7 +408,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                             value={editData.terminos_comerciales ?? cliente.terminos_comerciales ?? ''}
                                             onChange={(e) => handleEditChange('terminos_comerciales', e.target.value)}
                                             placeholder="Ej: Crédito 30 días"
-                                            className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -418,19 +418,19 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                             value={editData.vendedor_asignado ?? cliente.vendedor_asignado ?? ''}
                                             onChange={(e) => handleEditChange('vendedor_asignado', e.target.value)}
                                             placeholder="Nombre del vendedor"
-                                            className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                            className="w-full px-3 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
                                 </>
                             ) : (
                                 <div className="space-y-3">
                                     <div>
-                                        <p className="text-xs text-gray-500 mb-1">TÉRMINOS COMERCIALES</p>
-                                        <p className="text-white">{cliente.terminos_comerciales || '—'}</p>
+                                        <p className="text-xs text-theme-muted mb-1">TÉRMINOS COMERCIALES</p>
+                                        <p className="text-theme-primary">{cliente.terminos_comerciales || '—'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-500 mb-1">VENDEDOR ASIGNADO</p>
-                                        <p className="text-white">{cliente.vendedor_asignado || '—'}</p>
+                                        <p className="text-xs text-theme-muted mb-1">VENDEDOR ASIGNADO</p>
+                                        <p className="text-theme-primary">{cliente.vendedor_asignado || '—'}</p>
                                     </div>
                                 </div>
                             )}
@@ -438,7 +438,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                     </div>
 
                     {/* Notes */}
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-900/50 border border-purple-500/10 rounded-2xl p-6">
+                    <div className="bg-theme-card border border-purple-500/20 rounded-2xl p-6">
                         <h2 className="text-lg font-bold text-purple-300 mb-4 flex items-center gap-2">
                             <span>📝</span> Notas
                         </h2>
@@ -452,7 +452,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
                                 className="w-full px-3 py-2 bg-gray-950/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 resize-none"
                             />
                         ) : (
-                            <p className="text-white whitespace-pre-wrap">{cliente.notas || '—'}</p>
+                            <p className="text-theme-primary whitespace-pre-wrap">{cliente.notas || '—'}</p>
                         )}
                     </div>
 
@@ -470,7 +470,7 @@ export function ClienteFichaPage({ razonSocial, onBack }: ClienteFichaPageProps)
 
                 {/* Right Column: Documents */}
                 <div className="lg:col-span-1">
-                    <div className="bg-gradient-to-br from-gray-900 to-gray-900/50 border border-orange-500/10 rounded-2xl p-6 sticky top-6">
+                    <div className="bg-theme-card border border-orange-500/20 rounded-2xl p-6 sticky top-6">
                         <h2 className="text-lg font-bold text-orange-300 mb-4 flex items-center gap-2">
                             <span>📄</span> Documentos & Facturas
                         </h2>

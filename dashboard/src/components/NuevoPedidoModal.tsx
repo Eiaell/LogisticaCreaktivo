@@ -258,7 +258,7 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
             onKeyDown={(e) => { if (e.key === 'Escape' && !isDropdownOpen && !isEstadoDropdownOpen) onClose(); }}
         >
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-800">
                     <h2 className="text-xl font-bold text-white flex items-center gap-3">
@@ -297,10 +297,10 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                                 </span>
                             </button>
 
-                            {/* Dropdown Content */}
+                            {/* Dropdown Content - Opens upward with more height */}
                             {isDropdownOpen && (
                                 <div
-                                    className="absolute top-full left-0 right-0 mt-1 bg-gray-950 border border-gray-700 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto"
+                                    className="absolute bottom-full left-0 right-0 mb-1 bg-gray-950 border border-gray-700 rounded-lg shadow-2xl z-[100] max-h-80 overflow-y-auto"
                                     tabIndex={0}
                                     ref={(el) => el?.focus()}
                                     onKeyDown={(e) => { if (e.key === 'Escape') setIsDropdownOpen(false); }}

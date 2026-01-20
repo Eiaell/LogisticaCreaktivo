@@ -113,7 +113,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
     const ClientCard = ({ cliente }: { cliente: Cliente }) => (
         <div
             onClick={() => onSelectCliente?.(cliente.razon_social)}
-            className="bg-gradient-to-br from-gray-900 to-gray-900/50 border border-gray-800 hover:border-blue-500/30 rounded-xl p-5 transition-all group cursor-pointer hover:shadow-lg hover:shadow-blue-500/20"
+            className="bg-theme-card border border-theme rounded-xl p-5 transition-all group cursor-pointer hover:shadow-lg hover:shadow-blue-500/20 hover:border-blue-500/30"
         >
             {/* Logo y Nombre */}
             <div className="flex items-start gap-4 mb-4">
@@ -131,7 +131,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                     </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-white truncate text-base">{cliente.nombre_comercial || cliente.razon_social}</h3>
+                    <h3 className="font-bold text-theme-primary truncate text-base">{cliente.nombre_comercial || cliente.razon_social}</h3>
                     {cliente.nombre_comercial && cliente.razon_social !== cliente.nombre_comercial && (
                         <p className="text-xs text-gray-400 truncate">{cliente.razon_social}</p>
                     )}
@@ -158,7 +158,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
             </div>
 
             {/* Info */}
-            <div className="space-y-2 text-sm border-t border-gray-800 pt-3">
+            <div className="space-y-2 text-sm border-t border-theme pt-3">
                 {cliente.contacto && (
                     <div className="flex items-center gap-2 text-gray-400">
                         <span className="text-xs">👤</span>
@@ -186,7 +186,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
             </div>
 
             {/* Actions */}
-            <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="mt-4 pt-4 border-t border-theme flex justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
@@ -210,7 +210,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
     );
 
     return (
-        <div className="min-h-screen p-6">
+        <div className="min-h-screen p-6 bg-theme-primary text-theme-primary">
             {/* Header */}
             <header className="mb-8">
                 <button
@@ -249,7 +249,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                         placeholder="Buscar por razón social, grupo, proyecto, RUC o contacto..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-all"
+                        className="w-full px-4 py-3 bg-theme-secondary border border-theme rounded-xl text-theme-primary placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-all"
                     />
                 </div>
                 <div className="flex gap-2">
@@ -258,7 +258,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                         className={`px-4 py-3 rounded-xl font-medium transition-all ${
                             viewMode === 'hierarchical'
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                : 'bg-gray-800 text-gray-400 hover:text-white'
+                                : 'bg-theme-card text-theme-secondary hover:text-theme-primary border border-theme'
                         }`}
                     >
                         📊 Jerárquica
@@ -268,7 +268,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                         className={`px-4 py-3 rounded-xl font-medium transition-all ${
                             viewMode === 'flat'
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                : 'bg-gray-800 text-gray-400 hover:text-white'
+                                : 'bg-theme-card text-theme-secondary hover:text-theme-primary border border-theme'
                         }`}
                     >
                         📋 Lista
@@ -310,7 +310,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                                 {/* Accordion Header */}
                                 <button
                                     onClick={() => toggleGroupExpand(grupoKey)}
-                                    className="w-full flex items-center justify-between gap-4 p-4 border border-gray-700 rounded-xl bg-gray-900/30 hover:bg-gray-800/50 transition-colors mb-4"
+                                    className="w-full flex items-center justify-between gap-4 p-4 border border-theme rounded-xl bg-theme-secondary hover:bg-theme-card transition-colors mb-4"
                                 >
                                     <div className="flex items-center gap-4 flex-1 min-w-0">
                                         {/* Group Logo - Clickable to upload */}
@@ -346,7 +346,7 @@ export function ClientesPage({ onBack, onSelectCliente }: ClientesPageProps) {
                                         </div>
                                         <div className="text-left min-w-0 flex-1">
                                             <h2 className="text-lg font-bold text-cyan-400 truncate">{grupoKey}</h2>
-                                            <p className="text-sm text-gray-500 truncate">
+                                            <p className="text-sm text-theme-muted truncate">
                                                 {clientesInGrupo.length} cliente{clientesInGrupo.length !== 1 ? 's' : ''}
                                             </p>
                                         </div>

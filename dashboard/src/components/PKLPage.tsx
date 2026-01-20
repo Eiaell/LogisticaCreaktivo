@@ -20,9 +20,10 @@ const getTaskTypeConfig = (tipo: string) => {
 
 interface PKLPageProps {
     initialSelectedPKLId?: string | null;
+    initialTab?: 'overview' | 'tasks' | 'costos' | 'eventos';
 }
 
-export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
+export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPageProps) {
     const { pkls, updatePKL, updatePKLTask, createPKLTask, deletePKLTask, deletePKL } = useDatabase();
     const [selectedPKLId, setSelectedPKLId] = useState<string | null>(initialSelectedPKLId || null);
     const [filterEstado, setFilterEstado] = useState<EstadoPKL | 'todos'>('todos');
@@ -215,6 +216,7 @@ export default function PKLPage({ initialSelectedPKLId }: PKLPageProps) {
                                     setSelectedPKLId(null);
                                 }
                             }}
+                            initialTab={initialTab}
                         />
                     ) : (
                         <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-8 text-center">
@@ -237,15 +239,16 @@ type CreateTaskFn = (task: Omit<import('../types').TaskPKL, 'task_id'>) => void;
 type DeleteTaskFn = (taskId: string) => void;
 
 // PKL Detail Component
-function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, onDelete }: {
+function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, onDelete, initialTab }: {
     pkl: PKL;
     onUpdate: UpdatePKLFn;
     onUpdateTask: UpdateTaskFn;
     onCreateTask: CreateTaskFn;
     onDeleteTask: DeleteTaskFn;
     onDelete: () => void;
+    initialTab?: 'overview' | 'tasks' | 'costos' | 'eventos';
 }) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'costos' | 'eventos'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'costos' | 'eventos'>(initialTab || 'overview');
     const [editingField, setEditingField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
 
@@ -376,6 +379,15 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                 ))}
                             </div>
                         </div>
+                        {/* Quick Add Task Button */}
+                        <button
+                            onClick={() => setActiveTab('tasks')}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                            title="Agregar Task"
+                        >
+                            <span className="text-base">+</span>
+                            Task
+                        </button>
                         <button
                             onClick={onDelete}
                             className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -456,8 +468,8 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
             <div className="p-6">
                 {activeTab === 'overview' && <OverviewTab pkl={pkl} onUpdate={onUpdate} />}
                 {activeTab === 'tasks' && <TasksTab pkl={pkl} onUpdateTask={onUpdateTask} onCreateTask={onCreateTask} onDeleteTask={onDeleteTask} />}
-                {activeTab === 'costos' && <CostosTab pkl={pkl} />}
-                {activeTab === 'eventos' && <EventosTab pkl={pkl} />}
+                {activeTab === 'costos' && <CostosTab pkl={pkl} onUpdate={onUpdate} />}
+                {activeTab === 'eventos' && <EventosTab pkl={pkl} onUpdate={onUpdate} />}
             </div>
         </div>
     );
@@ -1000,7 +1012,56 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
 }
 
 // Costos Tab
-function CostosTab({ pkl }: { pkl: PKL }) {
+function CostosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [editConcepto, setEditConcepto] = useState('');
+    const [editMonto, setEditMonto] = useState('');
+    const [showNewCosto, setShowNewCosto] = useState(false);
+    const [newConcepto, setNewConcepto] = useState('');
+    const [newMonto, setNewMonto] = useState('');
+    const [newIncluyeIgv, setNewIncluyeIgv] = useState(false);
+
+    const handleEditStart = (index: number, concepto: string, monto: number) => {
+        setEditingIndex(index);
+        setEditConcepto(concepto);
+        setEditMonto(monto.toString());
+    };
+
+    const handleEditSave = () => {
+        if (editingIndex === null) return;
+        const newDetalle = [...pkl.costos.detalle];
+        newDetalle[editingIndex] = {
+            ...newDetalle[editingIndex],
+            concepto: editConcepto,
+            monto: parseFloat(editMonto) || 0
+        };
+        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
+        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
+        setEditingIndex(null);
+    };
+
+    const handleDeleteCosto = (index: number) => {
+        const newDetalle = pkl.costos.detalle.filter((_, i) => i !== index);
+        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
+        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
+    };
+
+    const handleAddCosto = () => {
+        if (!newConcepto.trim() || !newMonto) return;
+        const newCosto = {
+            concepto: newConcepto.trim(),
+            monto: parseFloat(newMonto) || 0,
+            incluye_igv: newIncluyeIgv
+        };
+        const newDetalle = [...pkl.costos.detalle, newCosto];
+        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
+        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
+        setNewConcepto('');
+        setNewMonto('');
+        setNewIncluyeIgv(false);
+        setShowNewCosto(false);
+    };
+
     return (
         <div className="space-y-4">
             {/* Total */}
@@ -1014,25 +1075,116 @@ function CostosTab({ pkl }: { pkl: PKL }) {
 
             {/* Desglose */}
             <div className="bg-gray-900/50 rounded-lg p-4">
-                <h4 className="text-gray-400 text-sm mb-4">Desglose de Costos</h4>
+                <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-gray-400 text-sm">Desglose de Costos</h4>
+                    <button
+                        onClick={() => setShowNewCosto(true)}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors"
+                    >
+                        + Agregar
+                    </button>
+                </div>
+
+                {/* Add new costo form */}
+                {showNewCosto && (
+                    <div className="mb-4 p-3 bg-gray-800 rounded-lg border border-emerald-500/30 space-y-3">
+                        <div className="flex gap-3">
+                            <input
+                                type="text"
+                                value={newConcepto}
+                                onChange={e => setNewConcepto(e.target.value)}
+                                placeholder="Concepto"
+                                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                            />
+                            <input
+                                type="number"
+                                value={newMonto}
+                                onChange={e => setNewMonto(e.target.value)}
+                                placeholder="Monto"
+                                step="0.01"
+                                className="w-28 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                            />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 text-gray-400 text-sm cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={newIncluyeIgv}
+                                    onChange={e => setNewIncluyeIgv(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-600 bg-gray-700"
+                                />
+                                Incluye IGV
+                            </label>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowNewCosto(false)}
+                                    className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleAddCosto}
+                                    disabled={!newConcepto.trim() || !newMonto}
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-600 text-white text-xs rounded"
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {pkl.costos.detalle.length === 0 ? (
                     <div className="text-gray-500 text-center py-4">Sin costos registrados</div>
                 ) : (
                     <div className="space-y-2">
                         {pkl.costos.detalle.map((d, i) => (
-                            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-800">
-                                <div>
-                                    <span className="text-white">{d.concepto}</span>
-                                    {d.task_id && (
-                                        <span className="text-gray-500 text-sm ml-2">({d.task_id})</span>
-                                    )}
-                                    {d.incluye_igv && (
-                                        <span className="text-green-400 text-xs ml-2">+IGV</span>
-                                    )}
-                                </div>
-                                <span className="text-emerald-400 font-medium">
-                                    S/ {d.monto.toFixed(2)}
-                                </span>
+                            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-800 group">
+                                {editingIndex === i ? (
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <input
+                                            autoFocus
+                                            value={editConcepto}
+                                            onChange={e => setEditConcepto(e.target.value)}
+                                            className="flex-1 bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-white text-sm outline-none"
+                                        />
+                                        <input
+                                            type="number"
+                                            value={editMonto}
+                                            onChange={e => setEditMonto(e.target.value)}
+                                            step="0.01"
+                                            className="w-24 bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-white text-sm outline-none"
+                                        />
+                                        <button onClick={handleEditSave} className="text-emerald-400 hover:text-emerald-300 text-sm">✓</button>
+                                        <button onClick={() => setEditingIndex(null)} className="text-gray-400 hover:text-gray-300 text-sm">✕</button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div
+                                            onClick={() => handleEditStart(i, d.concepto, d.monto)}
+                                            className="cursor-pointer hover:text-cyan-400 transition-colors"
+                                        >
+                                            <span className="text-white">{d.concepto}</span>
+                                            {d.task_id && (
+                                                <span className="text-gray-500 text-sm ml-2">({d.task_id})</span>
+                                            )}
+                                            {d.incluye_igv && (
+                                                <span className="text-green-400 text-xs ml-2">+IGV</span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-emerald-400 font-medium">
+                                                S/ {d.monto.toFixed(2)}
+                                            </span>
+                                            <button
+                                                onClick={() => handleDeleteCosto(i)}
+                                                className="p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -1050,10 +1202,100 @@ function CostosTab({ pkl }: { pkl: PKL }) {
 }
 
 // Eventos Tab
-function EventosTab({ pkl }: { pkl: PKL }) {
+function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
+    const [editingEventoId, setEditingEventoId] = useState<string | null>(null);
+    const [editDescripcion, setEditDescripcion] = useState('');
+    const [showNewEvento, setShowNewEvento] = useState(false);
+    const [newEvento, setNewEvento] = useState({ descripcion: '', proveedor_id: '', fecha: new Date().toISOString().split('T')[0] });
+
+    const handleEditStart = (eventoId: string, descripcion: string) => {
+        setEditingEventoId(eventoId);
+        setEditDescripcion(descripcion);
+    };
+
+    const handleEditSave = () => {
+        if (!editingEventoId) return;
+        const newEventos = pkl.eventos_externos.map(e =>
+            e.evento_id === editingEventoId ? { ...e, descripcion: editDescripcion } : e
+        );
+        onUpdate({ eventos_externos: newEventos } as any);
+        setEditingEventoId(null);
+    };
+
+    const handleDeleteEvento = (eventoId: string) => {
+        const newEventos = pkl.eventos_externos.filter(e => e.evento_id !== eventoId);
+        onUpdate({ eventos_externos: newEventos } as any);
+    };
+
+    const handleAddEvento = () => {
+        if (!newEvento.descripcion.trim()) return;
+        const nuevo = {
+            evento_id: `EVT-${Date.now()}`,
+            tipo: 'otro' as const,
+            descripcion: newEvento.descripcion.trim(),
+            fecha: newEvento.fecha,
+            proveedor_id: newEvento.proveedor_id || undefined,
+        };
+        onUpdate({ eventos_externos: [...pkl.eventos_externos, nuevo] } as any);
+        setNewEvento({ descripcion: '', proveedor_id: '', fecha: new Date().toISOString().split('T')[0] });
+        setShowNewEvento(false);
+    };
+
     return (
         <div className="space-y-4">
-            <h4 className="text-gray-400 text-sm">Eventos Externos (terceros)</h4>
+            <div className="flex items-center justify-between">
+                <h4 className="text-gray-400 text-sm">Eventos Externos (terceros)</h4>
+                <button
+                    onClick={() => setShowNewEvento(true)}
+                    className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded transition-colors"
+                >
+                    + Agregar
+                </button>
+            </div>
+
+            {/* Add new evento form */}
+            {showNewEvento && (
+                <div className="p-3 bg-gray-800 rounded-lg border border-purple-500/30 space-y-3">
+                    <textarea
+                        value={newEvento.descripcion}
+                        onChange={e => setNewEvento({ ...newEvento, descripcion: e.target.value })}
+                        placeholder="Descripción del evento"
+                        rows={2}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500 resize-none"
+                    />
+                    <div className="flex gap-3">
+                        <input
+                            type="text"
+                            value={newEvento.proveedor_id}
+                            onChange={e => setNewEvento({ ...newEvento, proveedor_id: e.target.value })}
+                            placeholder="Proveedor (opcional)"
+                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
+                        />
+                        <input
+                            type="date"
+                            value={newEvento.fecha}
+                            onChange={e => setNewEvento({ ...newEvento, fecha: e.target.value })}
+                            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            onClick={() => setShowNewEvento(false)}
+                            className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleAddEvento}
+                            disabled={!newEvento.descripcion.trim()}
+                            className="px-3 py-1 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 text-white text-xs rounded"
+                        >
+                            Guardar
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {pkl.eventos_externos.length === 0 ? (
                 <div className="text-gray-500 text-center py-8">Sin eventos externos registrados</div>
             ) : (
@@ -1061,13 +1303,42 @@ function EventosTab({ pkl }: { pkl: PKL }) {
                     {pkl.eventos_externos.map(evento => (
                         <div
                             key={evento.evento_id}
-                            className="bg-gray-900/50 rounded-lg p-4"
+                            className="bg-gray-900/50 rounded-lg p-4 group"
                         >
                             <div className="flex items-start justify-between mb-2">
                                 <span className="font-mono text-purple-400 text-sm">{evento.evento_id}</span>
-                                <span className="text-gray-500 text-sm">{evento.fecha}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-500 text-sm">{evento.fecha}</span>
+                                    <button
+                                        onClick={() => handleDeleteEvento(evento.evento_id)}
+                                        className="p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
-                            <p className="text-white mb-2">{evento.descripcion}</p>
+                            {editingEventoId === evento.evento_id ? (
+                                <div className="space-y-2">
+                                    <textarea
+                                        autoFocus
+                                        value={editDescripcion}
+                                        onChange={e => setEditDescripcion(e.target.value)}
+                                        rows={2}
+                                        className="w-full bg-gray-700 border border-purple-500 rounded px-3 py-2 text-white text-sm outline-none resize-none"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={handleEditSave} className="text-emerald-400 hover:text-emerald-300 text-sm">✓ Guardar</button>
+                                        <button onClick={() => setEditingEventoId(null)} className="text-gray-400 hover:text-gray-300 text-sm">Cancelar</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p
+                                    className="text-white mb-2 cursor-pointer hover:text-cyan-400 transition-colors"
+                                    onClick={() => handleEditStart(evento.evento_id, evento.descripcion)}
+                                >
+                                    {evento.descripcion}
+                                </p>
+                            )}
                             <div className="flex flex-wrap gap-3 text-sm">
                                 {evento.proveedor_id && (
                                     <span className="text-gray-400">Proveedor: {evento.proveedor_id}</span>
