@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import type { MovimientoLogistico, Rendicion, EventoProduccion } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
@@ -871,11 +871,14 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         getClienteLogo,
         createPedido, updatePedido, addPayment,
         updateMovimientoLogistico, updateRendicion, updateEventoProduccion,
-        createProduccion
+        createProduccion,
+        // Eventos importados
+        eventosImportados, importarEventosJSON, convertirEventoAPKL, eliminarResumenImportado
     } = useDatabase();
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
-    const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion'>('all');
+    const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion' | 'importados'>('all');
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: string; id: string; itemType: string } | null>(null);
     const [editModal, setEditModal] = useState<{ isOpen: boolean; tipo: 'movimiento' | 'rendicion' | 'produccion'; id: string } | null>(null);
     const [syncModal, setSyncModal] = useState<{
@@ -895,6 +898,28 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [showCalendar, setShowCalendar] = useState(false);
+    const [showImportados, setShowImportados] = useState(false);
+
+    // Handler para importar JSON
+    const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const content = event.target?.result as string;
+            const result = await importarEventosJSON(content, file.name);
+            if (result) {
+                setShowImportados(true);
+            }
+        };
+        reader.readAsText(file);
+
+        // Reset input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
     // Agrupar eventos por fecha
     const eventosPorFecha = useMemo(() => {
@@ -1190,6 +1215,29 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     >
                         🏭 Producción
                     </button>
+                    <button
+                        onClick={() => setShowImportados(!showImportados)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            showImportados ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        📥 Importados {eventosImportados.length > 0 && `(${eventosImportados.length})`}
+                    </button>
+                    <div className="border-l border-gray-700 h-8 mx-2"></div>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".json"
+                        onChange={handleFileImport}
+                        className="hidden"
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                        <span>📄</span>
+                        Importar JSON
+                    </button>
                 </div>
             </header>
 
@@ -1216,6 +1264,136 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     <div className="text-xs text-amber-400/70 uppercase tracking-wider">Monto Total</div>
                 </div>
             </div>
+
+            {/* Panel de Eventos Importados */}
+            {showImportados && (
+                <div className="mb-8 bg-purple-900/20 border border-purple-500/30 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-purple-400 flex items-center gap-2">
+                            <span>📥</span> Eventos Importados
+                        </h2>
+                        <button
+                            onClick={() => setShowImportados(false)}
+                            className="text-gray-400 hover:text-white"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    {eventosImportados.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>No hay eventos importados.</p>
+                            <p className="text-sm mt-2">Usa el botón "Importar JSON" para cargar eventos.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {eventosImportados.map(resumen => (
+                                <div key={resumen.id} className="bg-gray-900/50 rounded-xl p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div>
+                                            <div className="font-bold text-white">{resumen.fecha}</div>
+                                            <div className="text-xs text-gray-500">
+                                                {resumen.archivo_origen} • {resumen.eventos_dia.length} eventos
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('¿Eliminar este resumen importado?')) {
+                                                    eliminarResumenImportado(resumen.id);
+                                                }
+                                            }}
+                                            className="text-gray-500 hover:text-red-400 p-2"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {resumen.eventos_dia.map(evento => (
+                                            <div
+                                                key={evento.id}
+                                                className={`p-3 rounded-lg border ${
+                                                    evento.convertido_a_pkl
+                                                        ? 'bg-emerald-900/20 border-emerald-500/30'
+                                                        : 'bg-gray-800/50 border-gray-700'
+                                                }`}
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                                                evento.tipo === 'orden_produccion' ? 'bg-orange-500/30 text-orange-300' :
+                                                                evento.tipo === 'cotizacion_propuesta' ? 'bg-yellow-500/30 text-yellow-300' :
+                                                                evento.tipo === 'entrega_directa' ? 'bg-green-500/30 text-green-300' :
+                                                                evento.tipo === 'pedido_materiales' ? 'bg-blue-500/30 text-blue-300' :
+                                                                evento.tipo === 'costo_logistico' ? 'bg-red-500/30 text-red-300' :
+                                                                'bg-gray-500/30 text-gray-300'
+                                                            }`}>
+                                                                {evento.tipo.replace(/_/g, ' ')}
+                                                            </span>
+                                                            {evento.cliente && (
+                                                                <span className="text-xs text-cyan-400">{evento.cliente}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-sm text-white">
+                                                            {evento.producto || evento.descripcion}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2">
+                                                            {evento.proveedor && <span>Prov: {evento.proveedor}</span>}
+                                                            {evento.cantidad && <span>Cant: {evento.cantidad}</span>}
+                                                            {evento.detalle?.precio_total && (
+                                                                <span className="text-emerald-400">S/ {evento.detalle.precio_total}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-shrink-0">
+                                                        {evento.convertido_a_pkl ? (
+                                                            <span className="text-xs text-emerald-400 flex items-center gap-1">
+                                                                ✓ {evento.convertido_a_pkl}
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    const pklId = await convertirEventoAPKL(evento.id, resumen.id);
+                                                                    if (pklId) {
+                                                                        alert(`PKL creado: ${pklId}`);
+                                                                    }
+                                                                }}
+                                                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-lg transition-colors"
+                                                            >
+                                                                → PKL
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Botón para convertir todos */}
+                                    {resumen.eventos_dia.some(e => !e.convertido_a_pkl && ['orden_produccion', 'cotizacion_propuesta'].includes(e.tipo)) && (
+                                        <button
+                                            onClick={async () => {
+                                                const convertibles = resumen.eventos_dia.filter(
+                                                    e => !e.convertido_a_pkl && ['orden_produccion', 'cotizacion_propuesta'].includes(e.tipo)
+                                                );
+                                                if (confirm(`¿Convertir ${convertibles.length} eventos a PKLs?`)) {
+                                                    for (const evento of convertibles) {
+                                                        await convertirEventoAPKL(evento.id, resumen.id);
+                                                    }
+                                                }
+                                            }}
+                                            className="mt-4 w-full py-2 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/30 text-purple-300 rounded-lg text-sm font-medium transition-colors"
+                                        >
+                                            Convertir todos a PKLs
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Contenido principal */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

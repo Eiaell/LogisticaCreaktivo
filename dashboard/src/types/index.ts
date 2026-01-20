@@ -823,3 +823,59 @@ export interface PKL {
     // Observaciones generales
     observaciones?: string;
 }
+
+// ============================================
+// Eventos Importados (JSON del Bot)
+// ============================================
+
+export type TipoEventoImportado =
+    | 'cotizacion_propuesta'
+    | 'orden_produccion'
+    | 'pedido_materiales'
+    | 'entrega_directa'
+    | 'costo_logistico'
+    | 'recojo'
+    | 'traslado'
+    | 'otro';
+
+export interface EventoImportado {
+    id: string;                          // Generated UUID
+    tipo: TipoEventoImportado;
+    fecha: string;                       // From parent JSON
+    cliente?: string;
+    proveedor?: string;
+    producto?: string;
+    cantidad?: number;
+    estado?: string;
+    descripcion?: string;
+    medio?: string;
+    materiales?: string[];
+    origen?: string;
+    destino?: string;
+    detalle?: {
+        precio_unitario?: number;
+        precio_total?: number;
+        costo_soles?: number;
+        concepto?: string;
+        material?: string;
+        medidas?: string;
+        especificaciones?: string;
+        fecha_compromiso?: string;
+        facturado?: boolean;
+        igv_incluido?: boolean;
+        cantidad?: number;
+        incluye?: string;
+        impresion?: string;
+    };
+    // Estado en el dashboard
+    convertido_a_pkl?: string;           // PKL ID if converted
+    importado_at: string;                // When it was imported
+}
+
+export interface ResumenDiarioImportado {
+    id: string;                          // Generated UUID
+    fecha: string;
+    eventos_dia: EventoImportado[];
+    importado_at: string;
+    archivo_origen?: string;             // Original filename
+}
