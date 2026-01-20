@@ -598,81 +598,103 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                     <td className="p-4 align-middle relative">
                                         {editingCell?.id === row.id && editingCell?.field === 'cliente' && dropdownPosition ? (
                                             createPortal(
-                                                <div
-                                                    className="fixed bg-gray-950 border border-gray-700 rounded-lg shadow-2xl z-[9999] max-h-72 overflow-hidden"
-                                                    style={{
-                                                        top: dropdownPosition.top,
-                                                        left: dropdownPosition.left,
-                                                        width: dropdownPosition.width,
-                                                    }}
-                                                >
-                                                    <div className="p-2 border-b border-gray-800">
-                                                        <input
-                                                            autoFocus
-                                                            type="text"
-                                                            value={editValue}
-                                                            onChange={(e) => setEditValue(e.target.value)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Escape') {
-                                                                    setEditingCell(null);
-                                                                    setEditValue('');
-                                                                    setDropdownPosition(null);
-                                                                }
-                                                            }}
-                                                            placeholder="Buscar cliente..."
-                                                            className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white text-xs focus:border-cyan-500 outline-none"
-                                                        />
-                                                    </div>
-                                                    <div className="max-h-52 overflow-y-auto">
-                                                        {Object.entries(clientes)
-                                                            .filter(([key]) => !editValue || key.toLowerCase().includes(editValue.toLowerCase()) || clientes[key].nombre_comercial?.toLowerCase().includes(editValue.toLowerCase()))
-                                                            .map(([razonSocial, cliente]) => (
+                                                <>
+                                                    {/* Backdrop para cerrar al hacer clic fuera */}
+                                                    <div
+                                                        className="fixed inset-0 z-[9998]"
+                                                        onClick={() => { setEditingCell(null); setEditValue(''); setDropdownPosition(null); }}
+                                                    />
+                                                    {/* Dropdown elegante */}
+                                                    <div
+                                                        className="fixed z-[9999] animate-in fade-in slide-in-from-top-2 duration-150"
+                                                        style={{
+                                                            top: dropdownPosition.top,
+                                                            left: dropdownPosition.left,
+                                                            width: Math.max(dropdownPosition.width, 280),
+                                                        }}
+                                                    >
+                                                        <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
+                                                            <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-800/50">
+                                                                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Cliente</span>
+                                                            </div>
+                                                            <div className="p-2 border-b border-gray-700/30">
+                                                                <input
+                                                                    autoFocus
+                                                                    type="text"
+                                                                    value={editValue}
+                                                                    onChange={(e) => setEditValue(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Escape') {
+                                                                            setEditingCell(null);
+                                                                            setEditValue('');
+                                                                            setDropdownPosition(null);
+                                                                        }
+                                                                    }}
+                                                                    placeholder="Buscar cliente..."
+                                                                    className="w-full bg-gray-800/50 border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:border-cyan-500/50 focus:bg-gray-800 outline-none transition-all"
+                                                                />
+                                                            </div>
+                                                            <div className="max-h-56 overflow-y-auto py-1">
+                                                                {Object.entries(clientes)
+                                                                    .filter(([key]) => !editValue || key.toLowerCase().includes(editValue.toLowerCase()) || clientes[key].nombre_comercial?.toLowerCase().includes(editValue.toLowerCase()))
+                                                                    .map(([razonSocial, cliente]) => {
+                                                                        const isSelected = row.cliente === razonSocial;
+                                                                        return (
+                                                                            <button
+                                                                                key={razonSocial}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    if (isPKL) {
+                                                                                        updatePKL(row.id, { cliente: { nombre: razonSocial } } as any);
+                                                                                    } else {
+                                                                                        updatePedido(row.id, { cliente: razonSocial });
+                                                                                    }
+                                                                                    setEditingCell(null);
+                                                                                    setEditValue('');
+                                                                                    setDropdownPosition(null);
+                                                                                }}
+                                                                                className={`w-full text-left px-3 py-2.5 transition-all flex items-center gap-3 hover:bg-white/5 ${isSelected ? 'bg-white/10' : ''}`}
+                                                                            >
+                                                                                {cliente.logo ? (
+                                                                                    <img src={cliente.logo} alt="" className="w-7 h-7 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
+                                                                                ) : (
+                                                                                    <span className="w-7 h-7 rounded-lg bg-gray-700/50 flex items-center justify-center text-xs flex-shrink-0">🏢</span>
+                                                                                )}
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className="text-sm text-gray-200 truncate">{cliente.nombre_comercial || razonSocial}</div>
+                                                                                    {cliente.nombre_comercial && (
+                                                                                        <div className="text-[10px] text-gray-500 truncate">{razonSocial}</div>
+                                                                                    )}
+                                                                                </div>
+                                                                                {isSelected && (
+                                                                                    <span className="text-cyan-400 flex-shrink-0">✓</span>
+                                                                                )}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                            </div>
+                                                            <div className="border-t border-gray-700/30 p-2">
                                                                 <button
-                                                                    key={razonSocial}
                                                                     type="button"
                                                                     onClick={() => {
                                                                         if (isPKL) {
-                                                                            updatePKL(row.id, { cliente: { nombre: razonSocial } } as any);
+                                                                            updatePKL(row.id, { cliente: { nombre: '' } } as any);
                                                                         } else {
-                                                                            updatePedido(row.id, { cliente: razonSocial });
+                                                                            updatePedido(row.id, { cliente: '' });
                                                                         }
                                                                         setEditingCell(null);
                                                                         setEditValue('');
                                                                         setDropdownPosition(null);
                                                                     }}
-                                                                    className="w-full text-left px-3 py-2 hover:bg-gray-900 border-b border-gray-800 last:border-b-0 transition-colors flex items-center gap-2"
+                                                                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-2"
                                                                 >
-                                                                    {cliente.logo ? (
-                                                                        <img src={cliente.logo} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
-                                                                    ) : (
-                                                                        <span className="w-5 h-5 rounded bg-gray-800 flex items-center justify-center text-[10px] flex-shrink-0">🏢</span>
-                                                                    )}
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="text-xs text-gray-300 truncate">{cliente.nombre_comercial || razonSocial}</div>
-                                                                        <div className="text-[10px] text-gray-600">{razonSocial}</div>
-                                                                    </div>
+                                                                    <span>✕</span>
+                                                                    Limpiar cliente
                                                                 </button>
-                                                            ))}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="border-t border-gray-800 p-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                if (isPKL) {
-                                                                    updatePKL(row.id, { cliente: { nombre: '' } } as any);
-                                                                } else {
-                                                                    updatePedido(row.id, { cliente: '' });
-                                                                }
-                                                                setEditingCell(null);
-                                                                setEditValue('');
-                                                                setDropdownPosition(null);
-                                                            }}
-                                                            className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-900 rounded transition-colors"
-                                                        >
-                                                            ✕ Limpiar cliente
-                                                        </button>
-                                                    </div>
-                                                </div>,
+                                                </>,
                                                 document.body
                                             )
                                         ) : null}
@@ -726,29 +748,48 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                             <>
                                                 {editingCell?.id === row.id && editingCell?.field === 'tipoOperacion' && dropdownPosition ? (
                                                     createPortal(
-                                                        <div
-                                                            className="fixed bg-gray-950 border border-gray-700 rounded-lg shadow-2xl z-[9999] max-h-64 overflow-y-auto"
-                                                            style={{
-                                                                top: dropdownPosition.top,
-                                                                left: dropdownPosition.left,
-                                                                minWidth: 180
-                                                            }}
-                                                        >
-                                                            {TIPOS_OPERACION_PKL.map(tipo => (
-                                                                <button
-                                                                    key={tipo.value}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        updatePKL(row.id, { clasificacion: { tipo_operacion: tipo.value as TipoOperacionPKL } } as any);
-                                                                        setEditingCell(null);
-                                                                        setDropdownPosition(null);
-                                                                    }}
-                                                                    className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs transition-colors hover:bg-gray-800 ${tipo.color} !text-white`}
-                                                                >
-                                                                    {tipo.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>,
+                                                        <>
+                                                            {/* Backdrop para cerrar al hacer clic fuera */}
+                                                            <div
+                                                                className="fixed inset-0 z-[9998]"
+                                                                onClick={() => { setEditingCell(null); setDropdownPosition(null); }}
+                                                            />
+                                                            {/* Dropdown elegante */}
+                                                            <div
+                                                                className="fixed z-[9999] animate-in fade-in slide-in-from-top-2 duration-150"
+                                                                style={{
+                                                                    top: dropdownPosition.top,
+                                                                    left: dropdownPosition.left,
+                                                                }}
+                                                                onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setDropdownPosition(null); } }}
+                                                            >
+                                                                <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden min-w-[200px]">
+                                                                    <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-800/50">
+                                                                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Tipo de Operación</span>
+                                                                    </div>
+                                                                    <div className="py-1 max-h-72 overflow-y-auto">
+                                                                        {TIPOS_OPERACION_PKL.map(tipo => (
+                                                                            <button
+                                                                                key={tipo.value}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    updatePKL(row.id, { clasificacion: { tipo_operacion: tipo.value as TipoOperacionPKL } } as any);
+                                                                                    setEditingCell(null);
+                                                                                    setDropdownPosition(null);
+                                                                                }}
+                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-white/5 ${row.tipoOperacion === tipo.value ? 'bg-white/10' : ''}`}
+                                                                            >
+                                                                                <span className={`w-3 h-3 rounded-full ${tipo.color}`}></span>
+                                                                                <span className="text-gray-200">{tipo.label}</span>
+                                                                                {row.tipoOperacion === tipo.value && (
+                                                                                    <span className="ml-auto text-cyan-400">✓</span>
+                                                                                )}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </>,
                                                         document.body
                                                     )
                                                 ) : null}
@@ -806,64 +847,96 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                     <td className="p-4 align-middle">
                                         {editingCell?.id === row.id && editingCell?.field === 'estado' && dropdownPosition ? (
                                             createPortal(
-                                                <div
-                                                    className="fixed bg-gray-950 border border-gray-700 rounded-lg shadow-2xl z-[9999] max-h-64 overflow-y-auto"
-                                                    style={{
-                                                        top: dropdownPosition.top,
-                                                        left: dropdownPosition.left,
-                                                        minWidth: 180
-                                                    }}
-                                                    tabIndex={0}
-                                                    ref={(el) => el?.focus()}
-                                                    onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); setDropdownPosition(null); } }}
-                                                >
-                                                    {isPKL ? (
-                                                        // PKL estados
-                                                        ESTADOS_PKL.map(estado => (
-                                                            <button
-                                                                key={estado.value}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    updatePKL(row.id, { estado: { actual: estado.value as EstadoPKL } } as any);
-                                                                    setEditingCell(null);
-                                                                    setDropdownPosition(null);
-                                                                }}
-                                                                className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs font-semibold transition-colors hover:bg-gray-800 ${estado.color} !text-white`}
-                                                            >
-                                                                {estado.label}
-                                                            </button>
-                                                        ))
-                                                    ) : (
-                                                        // Pedido estados
-                                                        ['cotizacion', 'aprobado', 'en_produccion', 'listo', 'entregado', 'cerrado'].map(estadoOpt => {
-                                                            const colors: Record<string, string> = {
-                                                                'cotizacion': 'bg-yellow-600/40 text-yellow-300 border-yellow-500/50 hover:bg-yellow-600/60',
-                                                                'aprobado': 'bg-green-600/40 text-green-300 border-green-500/50 hover:bg-green-600/60',
-                                                                'en_produccion': 'bg-blue-600/40 text-blue-300 border-blue-500/50 hover:bg-blue-600/60',
-                                                                'listo': 'bg-cyan-600/40 text-cyan-300 border-cyan-500/50 hover:bg-cyan-600/60',
-                                                                'entregado': 'bg-teal-600/40 text-teal-300 border-teal-500/50 hover:bg-teal-600/60',
-                                                                'cerrado': 'bg-gray-600/40 text-gray-300 border-gray-500/50 hover:bg-gray-600/60',
-                                                            };
-                                                            return (
-                                                                <button
-                                                                    key={estadoOpt}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const newVal = estadoOpt as 'cotizacion' | 'aprobado' | 'en_produccion' | 'listo' | 'entregado' | 'cerrado';
-                                                                        updatePedido(row.id, { estado: newVal });
-                                                                        setEditingCell(null);
-                                                                        setDropdownPosition(null);
-                                                                    }}
-                                                                    className={`block w-full text-left px-3 py-2 border-b border-gray-700 last:border-b-0 text-xs font-semibold uppercase tracking-wide transition-colors ${colors[estadoOpt]}`}
-                                                                >
-                                                                    {estadoOpt === 'cotizacion' ? 'Cotización' :
-                                                                     estadoOpt === 'en_produccion' ? 'En Producción' :
-                                                                     estadoOpt.charAt(0).toUpperCase() + estadoOpt.slice(1)}
-                                                                </button>
-                                                            );
-                                                        })
-                                                    )}
-                                                </div>,
+                                                <>
+                                                    {/* Backdrop para cerrar al hacer clic fuera */}
+                                                    <div
+                                                        className="fixed inset-0 z-[9998]"
+                                                        onClick={() => { setEditingCell(null); setEditValue(''); setDropdownPosition(null); }}
+                                                    />
+                                                    {/* Dropdown elegante */}
+                                                    <div
+                                                        className="fixed z-[9999] animate-in fade-in slide-in-from-top-2 duration-150"
+                                                        style={{
+                                                            top: dropdownPosition.top,
+                                                            left: dropdownPosition.left,
+                                                        }}
+                                                        tabIndex={0}
+                                                        ref={(el) => el?.focus()}
+                                                        onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); setDropdownPosition(null); } }}
+                                                    >
+                                                        <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden min-w-[180px]">
+                                                            <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-800/50">
+                                                                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Estado</span>
+                                                            </div>
+                                                            <div className="py-1 max-h-72 overflow-y-auto">
+                                                                {isPKL ? (
+                                                                    // PKL estados
+                                                                    ESTADOS_PKL.map(estado => {
+                                                                        const isSelected = row.estadoOriginal === estado.value;
+                                                                        return (
+                                                                            <button
+                                                                                key={estado.value}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    updatePKL(row.id, { estado: { actual: estado.value as EstadoPKL } } as any);
+                                                                                    setEditingCell(null);
+                                                                                    setDropdownPosition(null);
+                                                                                }}
+                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-white/5 ${isSelected ? 'bg-white/10' : ''}`}
+                                                                            >
+                                                                                <span className={`w-3 h-3 rounded-full ${estado.color}`}></span>
+                                                                                <span className="text-gray-200">{estado.label}</span>
+                                                                                {isSelected && (
+                                                                                    <span className="ml-auto text-cyan-400">✓</span>
+                                                                                )}
+                                                                            </button>
+                                                                        );
+                                                                    })
+                                                                ) : (
+                                                                    // Pedido estados
+                                                                    ['cotizacion', 'aprobado', 'en_produccion', 'listo', 'entregado', 'cerrado'].map(estadoOpt => {
+                                                                        const colorDots: Record<string, string> = {
+                                                                            'cotizacion': 'bg-yellow-500',
+                                                                            'aprobado': 'bg-green-500',
+                                                                            'en_produccion': 'bg-blue-500',
+                                                                            'listo': 'bg-cyan-500',
+                                                                            'entregado': 'bg-teal-500',
+                                                                            'cerrado': 'bg-gray-500',
+                                                                        };
+                                                                        const labels: Record<string, string> = {
+                                                                            'cotizacion': 'Cotización',
+                                                                            'aprobado': 'Aprobado',
+                                                                            'en_produccion': 'En Producción',
+                                                                            'listo': 'Listo',
+                                                                            'entregado': 'Entregado',
+                                                                            'cerrado': 'Cerrado',
+                                                                        };
+                                                                        const isSelected = row.estado === estadoOpt;
+                                                                        return (
+                                                                            <button
+                                                                                key={estadoOpt}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const newVal = estadoOpt as 'cotizacion' | 'aprobado' | 'en_produccion' | 'listo' | 'entregado' | 'cerrado';
+                                                                                    updatePedido(row.id, { estado: newVal });
+                                                                                    setEditingCell(null);
+                                                                                    setDropdownPosition(null);
+                                                                                }}
+                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-white/5 ${isSelected ? 'bg-white/10' : ''}`}
+                                                                            >
+                                                                                <span className={`w-3 h-3 rounded-full ${colorDots[estadoOpt]}`}></span>
+                                                                                <span className="text-gray-200">{labels[estadoOpt]}</span>
+                                                                                {isSelected && (
+                                                                                    <span className="ml-auto text-cyan-400">✓</span>
+                                                                                )}
+                                                                            </button>
+                                                                        );
+                                                                    })
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </>,
                                                 document.body
                                             )
                                         ) : null}
