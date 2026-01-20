@@ -21,6 +21,7 @@ interface DatabaseContextType {
     setPedidos: React.Dispatch<React.SetStateAction<Pedido[]>>;
 
     // CRUD PKLs
+    createPKL: (pkl: PKL) => Promise<void>;
     updatePKL: (id: string, changes: Partial<PKL>) => Promise<void>;
     updatePKLTask: (pklId: string, taskId: string, changes: Partial<TaskPKL>) => Promise<void>;
     createPKLTask: (pklId: string, task: Omit<TaskPKL, 'task_id'>) => Promise<void>;
@@ -497,6 +498,81 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // Create new PKL - persists to Supabase first, then updates state
+    const createPKL = async (pkl: PKL) => {
+        const now = new Date().toISOString();
+
+        // Persist to Supabase FIRST
+        try {
+            // Create the PKL
+            const pklData = {
+                pkl_id: pkl.pkl_id,
+                version: pkl.version,
+                created_at: pkl.created_at,
+                updated_at: now,
+                tipo_operacion: pkl.clasificacion.tipo_operacion,
+                area: pkl.clasificacion.area,
+                cliente: pkl.cliente,
+                origen: pkl.origen,
+                productos: pkl.productos,
+                inputs: pkl.inputs,
+                proveedores: pkl.proveedores,
+                estado_actual: pkl.estado.actual,
+                estado_historial: pkl.estado.historial,
+                eventos_externos: pkl.eventos_externos,
+                costos: pkl.costos,
+                cierre: pkl.cierre,
+                alertas: pkl.alertas,
+                riesgos_identificados: pkl.riesgos_identificados,
+                observaciones: pkl.observaciones
+            };
+
+            console.log('📤 Enviando PKL a Supabase:', pkl.pkl_id, pklData);
+
+            const { error: pklError } = await supabase.from('pkls').insert(pklData);
+
+            if (pklError) {
+                console.error('❌ Error creating PKL in Supabase:', pklError);
+                alert(`Error creando PKL: ${pklError.message}`);
+                return;
+            }
+
+            // Then create the tasks
+            if (pkl.tasks && pkl.tasks.length > 0) {
+                const tasksToInsert = pkl.tasks.map(task => ({
+                    task_id: task.task_id,
+                    pkl_id: pkl.pkl_id,
+                    nombre: task.nombre,
+                    descripcion: task.descripcion || task.nombre || 'Sin descripción',
+                    tipo: task.tipo || (task as any).tipo_origen || 'general', // Campo requerido
+                    estado: task.estado,
+                    orden: task.orden,
+                    fecha_completado: task.fecha_completado || null,
+                    costo: task.costo || null,
+                    responsable: task.responsable || 'Huber', // Campo requerido
+                    created_at: now,
+                    updated_at: now
+                }));
+
+                console.log('📤 Enviando tasks a Supabase:', tasksToInsert.length, 'tasks');
+
+                const { error: tasksError } = await supabase.from('pkl_tasks').insert(tasksToInsert);
+                if (tasksError) {
+                    console.error('❌ Error creating PKL tasks:', tasksError);
+                    alert(`Error creando tasks: ${tasksError.message}`);
+                }
+            }
+
+            // Only add to state AFTER successful persistence
+            setPkls(prev => [pkl, ...prev]);
+
+            console.log('✅ PKL created in Supabase:', pkl.pkl_id);
+        } catch (err) {
+            console.error('❌ Error creating PKL:', err);
+            alert(`Error inesperado: ${err}`);
+        }
+    };
+
     // Update PKL - persists to Supabase
     // Uses deep partial merge - only updates fields that are provided
     const updatePKL = async (id: string, changes: Partial<PKL>) => {
@@ -562,6 +638,26 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         // Handle origen changes (partial merge)
         if (changes.origen) {
             updated.origen = { ...currentPkl.origen, ...changes.origen };
+        }
+
+        // Handle productos changes (full replace)
+        if (changes.productos !== undefined) {
+            updated.productos = changes.productos;
+        }
+
+        // Handle proveedores changes (full replace)
+        if (changes.proveedores !== undefined) {
+            updated.proveedores = changes.proveedores;
+        }
+
+        // Handle costos changes (merge with detalle replace)
+        if (changes.costos) {
+            updated.costos = { ...currentPkl.costos, ...changes.costos };
+        }
+
+        // Handle observaciones changes (direct replace)
+        if (changes.observaciones !== undefined) {
+            updated.observaciones = changes.observaciones;
         }
 
         // Update state
@@ -2235,6 +2331,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             db, events, pedidos, payments, proveedores, clientes, cotizaciones, itemsCotizacion, lineasPedido, historicoPrecio, pkls,
             setPedidos,
             // CRUD PKLs
+            createPKL,
             updatePKL,
             updatePKLTask,
             createPKLTask,

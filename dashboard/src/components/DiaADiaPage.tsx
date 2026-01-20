@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL } from '../types';
+import { TIPOS_OPERACION_PKL } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
 import { SincronizarEventoModal } from './SincronizarEventoModal';
 
@@ -659,12 +660,10 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo, isS
                             </span>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, movimiento.id); }}
-                                className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors"
+                                className="px-2 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors text-xs font-medium flex items-center gap-1"
                                 title="Desvincular de PKL"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                                </svg>
+                                🔓 Desvincular
                             </button>
                         </div>
                     ) : movimiento.pedido_id ? (
@@ -812,12 +811,10 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo, isSel
                             </span>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, rendicion.id); }}
-                                className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors"
+                                className="px-2 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors text-xs font-medium flex items-center gap-1"
                                 title="Desvincular de PKL"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                                </svg>
+                                🔓 Desvincular
                             </button>
                         </div>
                     ) : rendicion.pedido_id ? (
@@ -966,12 +963,10 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelec
                             </span>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, evento.id); }}
-                                className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors"
+                                className="px-2 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors text-xs font-medium flex items-center gap-1"
                                 title="Desvincular de PKL"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                                </svg>
+                                🔓 Desvincular
                             </button>
                         </div>
                     ) : evento.pedido_id ? (
@@ -1035,23 +1030,78 @@ function ConfirmDeleteModal({ isOpen, onClose, onConfirm, itemType }: {
     );
 }
 
-// Modal para fusionar eventos en un PKL
-function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess }: {
+// Modal para fusionar eventos en un PKL o editar PKL existente
+function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess, existingPKL }: {
     isOpen: boolean;
     onClose: () => void;
     eventos: EventoSeleccionable[];
     clientes: Record<string, any>;
     onSuccess: () => void;
+    existingPKL?: PKL | null; // Si se pasa, es modo edición
 }) {
-    const { updatePKL, pkls } = useDatabase();
+    const { createPKL, updatePKL, deletePKLTask, createPKLTask, pkls } = useDatabase();
+    const isEditMode = !!existingPKL;
     const [pklNombre, setPklNombre] = useState('');
     const [selectedCliente, setSelectedCliente] = useState('');
     const [tipoOperacion, setTipoOperacion] = useState<string>('produccion');
     const [isCreating, setIsCreating] = useState(false);
 
-    // Auto-detectar cliente más común
+    // Cerrar con ESC
     useEffect(() => {
-        if (eventos.length > 0) {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    // Tasks manuales adicionales
+    const [tasksAdicionales, setTasksAdicionales] = useState<Array<{
+        id: string;
+        tipo: string;
+        descripcion: string;
+        monto?: number;
+        proveedor?: string;
+        cantidad?: number;
+        precioUnitario?: number;
+        incluyeIgv?: boolean;
+    }>>([]);
+    const [showAddTask, setShowAddTask] = useState(false);
+    const [newTaskTipo, setNewTaskTipo] = useState('recojo');
+    const [newTaskDesc, setNewTaskDesc] = useState('');
+    const [newTaskMonto, setNewTaskMonto] = useState('');
+    const [newTaskProveedor, setNewTaskProveedor] = useState('');
+    // Para cotización
+    const [newTaskCantidad, setNewTaskCantidad] = useState('');
+    const [newTaskPrecioUnitario, setNewTaskPrecioUnitario] = useState('');
+    const [newTaskEsPrecioUnitario, setNewTaskEsPrecioUnitario] = useState(true);
+    const [newTaskIncluyeIgv, setNewTaskIncluyeIgv] = useState(false);
+
+    // Calcular monto total para cotización
+    const calcularMontoTask = () => {
+        if (newTaskTipo === 'cotizacion' && newTaskEsPrecioUnitario && newTaskCantidad && newTaskPrecioUnitario) {
+            const cant = parseFloat(newTaskCantidad) || 0;
+            const precio = parseFloat(newTaskPrecioUnitario) || 0;
+            let total = cant * precio;
+            if (!newTaskIncluyeIgv) {
+                total = total * 1.18; // Agregar IGV
+            }
+            return total;
+        }
+        return parseFloat(newTaskMonto) || 0;
+    };
+
+    // Cargar datos del PKL existente o auto-detectar desde eventos
+    useEffect(() => {
+        if (existingPKL) {
+            // Modo edición: cargar datos del PKL
+            setPklNombre(existingPKL.origen?.descripcion_inicial || existingPKL.pkl_id);
+            setSelectedCliente(existingPKL.cliente?.nombre || '');
+            setTipoOperacion(existingPKL.clasificacion?.tipo_operacion || 'produccion');
+        } else if (eventos.length > 0) {
+            // Modo creación: auto-detectar desde eventos
             const clienteCounts: Record<string, number> = {};
             eventos.forEach(e => {
                 if (e.cliente) {
@@ -1079,11 +1129,13 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
             } else if (hasProduccion && hasRecojo && hasEntrega) {
                 setTipoOperacion('produccion_recojo_entrega');
             } else if (hasCotizacion && hasProduccion && hasEntrega && !hasRecojo) {
-                setTipoOperacion('produccion_motorizado');
+                setTipoOperacion('cotizacion_produccion_motorizado');
+            } else if (hasCotizacion && hasRecojo && hasEntrega) {
+                setTipoOperacion('cotizacion_recojo_entrega');
+            } else if (hasCotizacion && hasRecojo && !hasEntrega) {
+                setTipoOperacion('cotizacion_recojo');
             } else if (hasRecojo && hasEntrega) {
                 setTipoOperacion('recojo_entrega');
-            } else if (hasRecojo && !hasEntrega) {
-                setTipoOperacion('solo_recojo');
             } else if (hasEntrega && !hasRecojo) {
                 setTipoOperacion('solo_entrega');
             } else if (hasCotizacion) {
@@ -1092,7 +1144,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
                 setTipoOperacion('produccion_recojo_entrega');
             }
         }
-    }, [eventos]);
+    }, [eventos, existingPKL]);
 
     const handleCreate = async () => {
         if (!pklNombre.trim()) return;
@@ -1101,34 +1153,77 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
         try {
             const now = new Date().toISOString();
             const year = new Date().getFullYear();
-            const nextNum = pkls.length + 1;
+
+            // Buscar el número más alto existente para evitar duplicados
+            const existingNumbers = pkls
+                .map(p => {
+                    const match = p.pkl_id.match(/PKL-\d{4}-(\d+)/);
+                    return match ? parseInt(match[1], 10) : 0;
+                })
+                .filter(n => !isNaN(n));
+            const maxNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+            const nextNum = maxNum + 1;
             const pklId = `PKL-${year}-${String(nextNum).padStart(4, '0')}`;
 
             // Crear tasks a partir de los eventos
-            const tasks = eventos.map((evento, idx) => {
+            const tasksFromEventos = eventos.map((evento, idx) => {
                 const tipoEmoji = evento.tipo_evento === 'movimiento' ? '🚚' :
                                  evento.tipo_evento === 'rendicion' ? '💰' : '🏭';
                 return {
                     task_id: `TASK-${Date.now()}-${idx}`,
                     nombre: `${tipoEmoji} ${evento.tipo.toUpperCase()}: ${evento.descripcion}`.substring(0, 100),
                     descripcion: evento.descripcion,
-                    estado: 'completada' as const,
+                    tipo: evento.tipo || evento.tipo_evento, // Campo requerido por Supabase
+                    estado: 'completado' as const,
                     orden: idx + 1,
                     tipo_origen: evento.tipo_evento,
                     evento_origen_id: evento.id,
-                    fecha_completada: evento.fecha,
+                    fecha_completado: evento.fecha,
                 };
             });
 
-            // Calcular costos
-            const totalCostos = eventos.reduce((sum, e) => sum + (e.monto || 0), 0);
-            const costoDetalle = eventos
+            // Agregar tasks manuales
+            const tasksFromManual = tasksAdicionales.map((task, idx) => {
+                const tipoEmojis: Record<string, string> = {
+                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
+                    produccion: '🏭', pago: '💰', coordinacion: '📞'
+                };
+                return {
+                    task_id: `TASK-${Date.now()}-manual-${idx}`,
+                    nombre: `${tipoEmojis[task.tipo] || '📋'} ${task.tipo.toUpperCase()}: ${task.descripcion || task.tipo}`.substring(0, 100),
+                    descripcion: task.descripcion || task.tipo,
+                    tipo: task.tipo, // Campo requerido por Supabase
+                    estado: 'completado' as const,
+                    orden: tasksFromEventos.length + idx + 1,
+                    tipo_origen: 'manual',
+                    fecha_completado: eventos[0]?.fecha || new Date().toISOString().split('T')[0],
+                };
+            });
+
+            const tasks = [...tasksFromEventos, ...tasksFromManual];
+
+            // Calcular costos (eventos + tasks manuales con monto)
+            const totalCostosEventos = eventos.reduce((sum, e) => sum + (e.monto || 0), 0);
+            const totalCostosManual = tasksAdicionales.reduce((sum, t) => sum + (t.monto || 0), 0);
+            const totalCostos = totalCostosEventos + totalCostosManual;
+
+            const costoDetalleEventos = eventos
                 .filter(e => e.monto && e.monto > 0)
                 .map(e => ({
                     concepto: `${e.tipo}: ${e.descripcion}`.substring(0, 50),
                     monto: e.monto || 0,
                     fecha: e.fecha,
                 }));
+
+            const costoDetalleManual = tasksAdicionales
+                .filter(t => t.monto && t.monto > 0)
+                .map(t => ({
+                    concepto: `${t.tipo}: ${t.descripcion}`.substring(0, 50),
+                    monto: t.monto || 0,
+                    fecha: eventos[0]?.fecha || new Date().toISOString().split('T')[0],
+                }));
+
+            const costoDetalle = [...costoDetalleEventos, ...costoDetalleManual];
 
             // Crear el PKL
             const newPKL = {
@@ -1141,7 +1236,9 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
                     area: 'logistica' as const,
                 },
                 cliente: {
-                    nombre: selectedCliente || 'Sin cliente',
+                    nombre: selectedCliente
+                        ? (clientes[selectedCliente]?.nombre_comercial || clientes[selectedCliente]?.razon_social || selectedCliente)
+                        : 'Sin cliente',
                     ejecutiva_asignada: 'Angélica',
                 },
                 origen: {
@@ -1160,9 +1257,9 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
                 inputs: {},
                 proveedores: [] as any[],
                 estado: {
-                    actual: 'cerrado' as const,
+                    actual: 'cerrado_ok' as const,
                     historial: [{
-                        estado: 'cerrado' as const,
+                        estado: 'cerrado_ok' as const,
                         fecha: now,
                         motivo: `PKL creado por fusión de ${eventos.length} eventos`,
                     }],
@@ -1188,13 +1285,63 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
                 observaciones: `PKL creado por fusión de ${eventos.length} eventos del día ${eventos[0].fecha}`,
             };
 
-            // Usar updatePKL para crear (se comporta como upsert)
-            await updatePKL(pklId, newPKL as any);
+            // Crear el PKL
+            await createPKL(newPKL as any);
 
             console.log(`✅ PKL ${pklId} creado con ${tasks.length} tasks`);
             onSuccess();
         } catch (error) {
             console.error('Error creando PKL:', error);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    // Handler para guardar cambios en modo edición
+    const handleSave = async () => {
+        if (!existingPKL) return;
+
+        setIsCreating(true);
+        try {
+            // Actualizar los datos básicos del PKL
+            const clienteNombre = selectedCliente
+                ? (clientes[selectedCliente]?.nombre_comercial || clientes[selectedCliente]?.razon_social || selectedCliente)
+                : existingPKL.cliente?.nombre || 'Sin cliente';
+
+            await updatePKL(existingPKL.pkl_id, {
+                origen: {
+                    ...existingPKL.origen,
+                    descripcion_inicial: pklNombre,
+                },
+                cliente: {
+                    ...existingPKL.cliente,
+                    nombre: clienteNombre,
+                },
+                clasificacion: {
+                    ...existingPKL.clasificacion,
+                    tipo_operacion: tipoOperacion as any,
+                },
+            });
+
+            // Agregar tasks adicionales si hay
+            for (const task of tasksAdicionales) {
+                const tipoEmojis: Record<string, string> = {
+                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
+                    produccion: '🏭', pago: '💰', coordinacion: '📞'
+                };
+                await createPKLTask(existingPKL.pkl_id, {
+                    nombre: `${tipoEmojis[task.tipo] || '📋'} ${task.tipo.toUpperCase()}: ${task.descripcion || task.tipo}`.substring(0, 100),
+                    descripcion: task.descripcion || task.tipo,
+                    tipo: task.tipo,
+                    estado: 'completado',
+                    costo: task.monto,
+                });
+            }
+
+            console.log(`✅ PKL ${existingPKL.pkl_id} actualizado`);
+            onSuccess();
+        } catch (error) {
+            console.error('Error actualizando PKL:', error);
         } finally {
             setIsCreating(false);
         }
@@ -1208,30 +1355,48 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
     }));
 
     // Ciclo de Operación basado en el nivel de involucramiento
-    const tiposOperacion = [
-        { value: 'ciclo_completo', label: '🔄 Ciclo Completo', desc: 'Cotizo → Producción → Recojo → Entrega' },
-        { value: 'produccion_recojo_entrega', label: '🏭 Producción + Recojo + Entrega', desc: 'Sin cotización' },
-        { value: 'produccion_motorizado', label: '🏭📦 Producción + Motorizado', desc: 'Cotizo, produzco, motorizado entrega' },
-        { value: 'recojo_entrega', label: '🚚📦 Recojo + Entrega', desc: 'Solo logística, sin producción' },
-        { value: 'solo_recojo', label: '🚚 Solo Recojo', desc: 'Recoger de proveedor/cliente' },
-        { value: 'solo_entrega', label: '📦 Solo Entrega', desc: 'Entregar al cliente' },
-        { value: 'cotizacion', label: '💬 Solo Cotización', desc: 'Pendiente de aprobación' },
-    ];
+    // Mapear TIPOS_OPERACION_PKL a formato con iconos
+    const tiposOperacion = TIPOS_OPERACION_PKL.map(t => {
+        const icons: Record<string, string> = {
+            'ciclo_completo': '🔄',
+            'produccion_recojo_entrega': '🏭',
+            'cotizacion_recojo_entrega': '💬🚚',
+            'cotizacion_recojo': '💬🚚',
+            'recojo_entrega': '🚚📦',
+            'solo_entrega': '📦',
+            'cotizacion_produccion_motorizado': '💬🏭',
+            'solo_motorizado': '🛵',
+            'cotizacion': '💬',
+            'ciclo_completo_instalacion': '🔄🔧',
+            'feria_evento': '🎪',
+            'compra_insumo': '🛒',
+        };
+        return {
+            value: t.value,
+            label: `${icons[t.value] || '📋'} ${t.label}`,
+            color: t.color
+        };
+    });
 
     return (
         <div
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <div className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <span className="text-3xl">🔗</span>
+                            <span className="text-3xl">{isEditMode ? '📋' : '🔗'}</span>
                             <div>
-                                <h2 className="text-xl font-bold text-white">Fusionar Eventos a PKL</h2>
-                                <p className="text-white/70 text-sm">{eventos.length} eventos seleccionados</p>
+                                <h2 className="text-xl font-bold text-white">
+                                    {isEditMode ? existingPKL?.pkl_id : 'Fusionar Eventos a PKL'}
+                                </h2>
+                                <p className="text-white/70 text-sm">
+                                    {isEditMode
+                                        ? `${existingPKL?.tasks?.length || 0} tasks`
+                                        : `${eventos.length} eventos seleccionados`}
+                                </p>
                             </div>
                         </div>
                         <button
@@ -1290,11 +1455,53 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
 
                     {/* Preview de eventos como tasks */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                            Eventos → Tasks ({eventos.length})
-                        </label>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-gray-400">
+                                {isEditMode ? 'Tasks' : 'Eventos → Tasks'} ({isEditMode ? (existingPKL?.tasks?.length || 0) : eventos.length + tasksAdicionales.length})
+                            </label>
+                            <button
+                                onClick={() => setShowAddTask(true)}
+                                className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+                            >
+                                + Agregar Task
+                            </button>
+                        </div>
                         <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-60 overflow-y-auto">
-                            {eventos.map((evento, idx) => (
+                            {/* En modo edición, mostrar tasks del PKL */}
+                            {isEditMode && existingPKL?.tasks?.map((task, idx) => {
+                                const tipoEmojis: Record<string, string> = {
+                                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
+                                    produccion: '🏭', pago: '💰', coordinacion: '📞',
+                                    movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭'
+                                };
+                                return (
+                                    <div key={task.task_id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0">
+                                        <span className="text-gray-500 text-sm font-mono w-6">{idx + 1}</span>
+                                        <span className="text-lg">
+                                            {tipoEmojis[task.tipo || ''] || '📋'}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-white text-sm font-medium truncate">
+                                                {task.nombre || task.descripcion}
+                                            </p>
+                                            <p className="text-gray-500 text-xs">
+                                                {task.tipo?.toUpperCase()} • {task.estado}
+                                                {task.costo ? ` • S/. ${Number(task.costo).toFixed(2)}` : ''}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                await deletePKLTask(existingPKL.pkl_id, task.task_id);
+                                            }}
+                                            className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500/30"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                            {/* En modo creación, mostrar eventos seleccionados */}
+                            {!isEditMode && eventos.map((evento, idx) => (
                                 <div key={evento.id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0">
                                     <span className="text-gray-500 text-sm font-mono w-6">{idx + 1}</span>
                                     <span className={`text-lg ${
@@ -1318,16 +1525,182 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
                                     </span>
                                 </div>
                             ))}
+                            {/* Tasks adicionales agregadas manualmente */}
+                            {tasksAdicionales.map((task, idx) => (
+                                <div key={task.id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0 bg-purple-900/20">
+                                    <span className="text-gray-500 text-sm font-mono w-6">{eventos.length + idx + 1}</span>
+                                    <span className="text-lg text-purple-400">
+                                        {task.tipo === 'recojo' ? '🚚' : task.tipo === 'entrega' ? '📦' : task.tipo === 'cotizacion' ? '💬' : task.tipo === 'produccion' ? '🏭' : '📋'}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-white text-sm font-medium truncate">
+                                            {task.tipo.toUpperCase()}: {task.descripcion}
+                                        </p>
+                                        <p className="text-gray-500 text-xs">
+                                            {task.proveedor && <span className="text-purple-300">{task.proveedor} • </span>}
+                                            {task.cantidad && <span>Cant: {task.cantidad} • </span>}
+                                            {task.monto ? <span className="text-amber-400">S/. {task.monto.toFixed(2)}</span> : 'Sin monto'}
+                                            {task.incluyeIgv && <span className="text-green-400 ml-1">(inc. IGV)</span>}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setTasksAdicionales(prev => prev.filter(t => t.id !== task.id))}
+                                        className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500/30"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
                         </div>
+
+                        {/* Form para agregar task */}
+                        {showAddTask && (
+                            <div className="mt-3 p-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-400 dark:border-purple-500/30 rounded-lg space-y-3">
+                                {/* Fila 1: Tipo y Descripción */}
+                                <div className="flex gap-2">
+                                    <select
+                                        value={newTaskTipo}
+                                        onChange={(e) => setNewTaskTipo(e.target.value)}
+                                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    >
+                                        <option value="recojo">🚚 Recojo</option>
+                                        <option value="entrega">📦 Entrega</option>
+                                        <option value="cotizacion">💬 Cotización</option>
+                                        <option value="produccion">🏭 Producción</option>
+                                        <option value="pago">💰 Pago</option>
+                                        <option value="coordinacion">📞 Coordinación</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={newTaskDesc}
+                                        onChange={(e) => setNewTaskDesc(e.target.value)}
+                                        placeholder="Descripción del task..."
+                                        className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    />
+                                </div>
+
+                                {/* Fila 2: Proveedor */}
+                                <input
+                                    type="text"
+                                    value={newTaskProveedor}
+                                    onChange={(e) => setNewTaskProveedor(e.target.value)}
+                                    placeholder="Proveedor (opcional)"
+                                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                />
+
+                                {/* Fila 3: Precio - cambia según tipo */}
+                                {newTaskTipo === 'cotizacion' ? (
+                                    <div className="space-y-2">
+                                        <div className="flex gap-2 items-center">
+                                            <input
+                                                type="number"
+                                                value={newTaskCantidad}
+                                                onChange={(e) => setNewTaskCantidad(e.target.value)}
+                                                placeholder="Cantidad"
+                                                className="w-24 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                            />
+                                            <span className="text-gray-600 dark:text-gray-400">×</span>
+                                            <input
+                                                type="number"
+                                                value={newTaskPrecioUnitario}
+                                                onChange={(e) => setNewTaskPrecioUnitario(e.target.value)}
+                                                placeholder={newTaskEsPrecioUnitario ? "Precio unit." : "Total"}
+                                                step="0.01"
+                                                className="w-28 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                            />
+                                            <select
+                                                value={newTaskEsPrecioUnitario ? 'unitario' : 'total'}
+                                                onChange={(e) => setNewTaskEsPrecioUnitario(e.target.value === 'unitario')}
+                                                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-xs outline-none"
+                                            >
+                                                <option value="unitario">Precio Unitario</option>
+                                                <option value="total">Precio Total</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-400 text-sm cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newTaskIncluyeIgv}
+                                                    onChange={(e) => setNewTaskIncluyeIgv(e.target.checked)}
+                                                    className="w-4 h-4 rounded"
+                                                />
+                                                Precio incluye IGV
+                                            </label>
+                                            {newTaskCantidad && newTaskPrecioUnitario && (
+                                                <div className="text-amber-600 dark:text-amber-400 text-sm font-medium">
+                                                    Total: S/. {calcularMontoTask().toFixed(2)}
+                                                    {!newTaskIncluyeIgv && <span className="text-gray-500 text-xs ml-1">(+IGV)</span>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="number"
+                                        value={newTaskMonto}
+                                        onChange={(e) => setNewTaskMonto(e.target.value)}
+                                        placeholder="Monto S/. (opcional)"
+                                        step="0.01"
+                                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    />
+                                )}
+
+                                {/* Botones */}
+                                <div className="flex gap-2 justify-end">
+                                    <button
+                                        onClick={() => {
+                                            setShowAddTask(false);
+                                            setNewTaskDesc('');
+                                            setNewTaskMonto('');
+                                            setNewTaskProveedor('');
+                                            setNewTaskCantidad('');
+                                            setNewTaskPrecioUnitario('');
+                                            setNewTaskIncluyeIgv(false);
+                                        }}
+                                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white text-xs rounded"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const monto = newTaskTipo === 'cotizacion' ? calcularMontoTask() : (parseFloat(newTaskMonto) || undefined);
+                                            // Generar descripción automática si está vacía
+                                            const descripcion = newTaskDesc.trim() || `${newTaskTipo.charAt(0).toUpperCase() + newTaskTipo.slice(1)}${newTaskProveedor ? ` - ${newTaskProveedor}` : ''}`;
+                                            setTasksAdicionales(prev => [...prev, {
+                                                id: `manual-${Date.now()}`,
+                                                tipo: newTaskTipo,
+                                                descripcion: descripcion,
+                                                monto: monto,
+                                                proveedor: newTaskProveedor.trim() || undefined,
+                                                cantidad: newTaskCantidad ? parseFloat(newTaskCantidad) : undefined,
+                                                precioUnitario: newTaskPrecioUnitario ? parseFloat(newTaskPrecioUnitario) : undefined,
+                                                incluyeIgv: newTaskIncluyeIgv
+                                            }]);
+                                            setNewTaskDesc('');
+                                            setNewTaskMonto('');
+                                            setNewTaskProveedor('');
+                                            setNewTaskCantidad('');
+                                            setNewTaskPrecioUnitario('');
+                                            setNewTaskIncluyeIgv(false);
+                                            setShowAddTask(false);
+                                        }}
+                                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded"
+                                    >
+                                        Agregar Task
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Resumen de costos */}
-                    {eventos.some(e => e.monto && e.monto > 0) && (
+                    {(eventos.some(e => e.monto && e.monto > 0) || tasksAdicionales.some(t => t.monto && t.monto > 0)) && (
                         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
                             <div className="flex items-center justify-between">
                                 <span className="text-amber-400 font-medium">Costo total del PKL:</span>
                                 <span className="text-amber-400 font-bold text-xl">
-                                    S/. {eventos.reduce((sum, e) => sum + (e.monto || 0), 0).toFixed(2)}
+                                    S/. {(eventos.reduce((sum, e) => sum + (e.monto || 0), 0) + tasksAdicionales.reduce((sum, t) => sum + (t.monto || 0), 0)).toFixed(2)}
                                 </span>
                             </div>
                         </div>
@@ -1340,19 +1713,24 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess 
                         onClick={onClose}
                         className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
                     >
-                        Cancelar
+                        {isEditMode ? 'Cerrar' : 'Cancelar'}
                     </button>
                     <button
-                        onClick={handleCreate}
+                        onClick={isEditMode ? handleSave : handleCreate}
                         disabled={isCreating || !pklNombre.trim()}
                         className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
                     >
                         {isCreating ? (
-                            <span className="animate-pulse">Creando PKL...</span>
+                            <span className="animate-pulse">{isEditMode ? 'Guardando...' : 'Creando PKL...'}</span>
+                        ) : isEditMode ? (
+                            <>
+                                <span>💾</span>
+                                Guardar Cambios
+                            </>
                         ) : (
                             <>
                                 <span>🔗</span>
-                                Crear PKL con {eventos.length} tasks
+                                Crear PKL con {eventos.length + tasksAdicionales.length} tasks
                             </>
                         )}
                     </button>
@@ -1373,6 +1751,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         clientes,
         pkls,
         updatePKL,
+        deletePKLTask,
         pklParaMerge,
         setPKLParaMerge,
     } = useDatabase();
@@ -1401,6 +1780,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     const [selectedEventos, setSelectedEventos] = useState<Set<string>>(new Set());
     const [showMergeModal, setShowMergeModal] = useState(false);
     const [mergeSelectionMode, setMergeSelectionMode] = useState(false);
+    const [pklEditModal, setPklEditModal] = useState<{ isOpen: boolean; pkl: PKL | null }>({ isOpen: false, pkl: null });
 
     // Agrupar eventos por fecha
     const eventosPorFecha = useMemo(() => {
@@ -1554,21 +1934,23 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     // Handler para desvincular un evento de un PKL
     const handleDecoupleFromPKL = async (pklId: string, eventId: string) => {
         const pkl = pkls.find(p => p.pkl_id === pklId);
-        if (!pkl) return;
+        if (!pkl) {
+            console.error('PKL no encontrado:', pklId);
+            return;
+        }
 
-        // Filtrar los tasks para remover el evento
-        const updatedTasks = pkl.tasks.filter(task => (task as any).evento_origen_id !== eventId);
+        // Buscar el task que tiene este evento_origen_id
+        const taskToDelete = pkl.tasks.find(task => (task as any).evento_origen_id === eventId);
 
-        // Si no quedan tasks, podríamos eliminar el PKL o dejarlo vacío
-        const updatedPKL = {
-            ...pkl,
-            tasks: updatedTasks,
-            updated_at: new Date().toISOString(),
-            observaciones: `${pkl.observaciones || ''}\n[${new Date().toISOString()}] Evento ${eventId} desvinculado.`.trim(),
-        };
+        if (!taskToDelete) {
+            console.error('Task no encontrado para evento:', eventId);
+            alert('No se encontró el task vinculado a este evento');
+            return;
+        }
 
-        await updatePKL(pklId, updatedPKL);
-        console.log(`✅ Evento ${eventId} desvinculado de ${pklId}`);
+        // Eliminar el task usando deletePKLTask
+        await deletePKLTask(pklId, taskToDelete.task_id);
+        console.log(`✅ Evento ${eventId} desvinculado de ${pklId} (task: ${taskToDelete.task_id})`);
     };
 
     // Handlers para eliminar
@@ -1600,13 +1982,24 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         }
     };
 
-    // Abrir modal de edición
+    // Abrir modal de edición - si está vinculado a PKL, abrir modal de PKL
     const handleEdit = (type: string, id: string) => {
-        setEditModal({
-            isOpen: true,
-            tipo: type as 'movimiento' | 'rendicion' | 'produccion',
-            id
-        });
+        // Buscar si el evento está vinculado a un PKL
+        const linkedPKL = pkls.find(pkl =>
+            pkl.tasks?.some(task => (task as any).evento_origen_id === id)
+        );
+
+        if (linkedPKL) {
+            // Abrir modal de PKL en modo edición
+            setPklEditModal({ isOpen: true, pkl: linkedPKL });
+        } else {
+            // Abrir modal de edición normal del evento
+            setEditModal({
+                isOpen: true,
+                tipo: type as 'movimiento' | 'rendicion' | 'produccion',
+                id
+            });
+        }
     };
 
     // Abrir modal de sincronización
@@ -2333,6 +2726,18 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                         setSelectedEventos(new Set());
                         setMergeSelectionMode(false);
                     }}
+                />
+            )}
+
+            {/* Modal de edición de PKL */}
+            {pklEditModal.isOpen && pklEditModal.pkl && (
+                <MergeEventosToPKLModal
+                    isOpen={pklEditModal.isOpen}
+                    onClose={() => setPklEditModal({ isOpen: false, pkl: null })}
+                    eventos={[]}
+                    clientes={clientes}
+                    onSuccess={() => setPklEditModal({ isOpen: false, pkl: null })}
+                    existingPKL={pklEditModal.pkl}
                 />
             )}
         </div>

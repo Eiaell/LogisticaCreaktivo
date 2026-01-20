@@ -20,7 +20,7 @@ const getTaskTypeConfig = (tipo: string) => {
 
 interface PKLPageProps {
     initialSelectedPKLId?: string | null;
-    initialTab?: 'overview' | 'tasks' | 'costos' | 'eventos';
+    initialTab?: 'overview' | 'tasks' | 'eventos';
 }
 
 export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPageProps) {
@@ -298,11 +298,13 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
     onCreateTask: CreateTaskFn;
     onDeleteTask: DeleteTaskFn;
     onDelete: () => void;
-    initialTab?: 'overview' | 'tasks' | 'costos' | 'eventos';
+    initialTab?: 'overview' | 'tasks' | 'eventos';
 }) {
-    const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'costos' | 'eventos'>(initialTab || 'overview');
+    const { clientes, createPKLTask, deletePKLTask } = useDatabase();
+    const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'eventos'>(initialTab || 'overview');
     const [editingField, setEditingField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
+    const [showEditModal, setShowEditModal] = useState(false);
 
     const estadoConfig = getEstadoConfig(pkl.estado.actual);
     const tipoConfig = getTipoOperacionConfig(pkl.clasificacion.tipo_operacion);
@@ -440,6 +442,14 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                             <span className="text-base">+</span>
                             Task
                         </button>
+                        {/* Edit PKL Button */}
+                        <button
+                            onClick={() => setShowEditModal(true)}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                            title="Editar PKL"
+                        >
+                            ✏️ Editar
+                        </button>
                         <button
                             onClick={onDelete}
                             className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -498,7 +508,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
 
             {/* Tabs */}
             <div className="flex gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700/50">
-                {(['overview', 'tasks', 'costos', 'eventos'] as const).map(tab => (
+                {(['overview', 'tasks', 'eventos'] as const).map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -510,7 +520,6 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                     >
                         {tab === 'overview' && 'Resumen'}
                         {tab === 'tasks' && `Tasks (${pkl.tasks.length})`}
-                        {tab === 'costos' && 'Costos'}
                         {tab === 'eventos' && `Eventos (${pkl.eventos_externos.length})`}
                     </button>
                 ))}
@@ -520,8 +529,392 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
             <div className="p-6">
                 {activeTab === 'overview' && <OverviewTab pkl={pkl} onUpdate={onUpdate} />}
                 {activeTab === 'tasks' && <TasksTab pkl={pkl} onUpdateTask={onUpdateTask} onCreateTask={onCreateTask} onDeleteTask={onDeleteTask} />}
-                {activeTab === 'costos' && <CostosTab pkl={pkl} onUpdate={onUpdate} />}
                 {activeTab === 'eventos' && <EventosTab pkl={pkl} onUpdate={onUpdate} />}
+            </div>
+
+            {/* Modal de edición PKL */}
+            {showEditModal && (
+                <PKLEditModal
+                    pkl={pkl}
+                    clientes={clientes}
+                    onClose={() => setShowEditModal(false)}
+                    onUpdate={onUpdate}
+                    onCreateTask={createPKLTask}
+                    onDeleteTask={deletePKLTask}
+                />
+            )}
+        </div>
+    );
+}
+
+// PKL Edit Modal - Same style as merge modal (copiado exactamente)
+function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDeleteTask }: {
+    pkl: PKL;
+    clientes: Record<string, any>;
+    onClose: () => void;
+    onUpdate: UpdatePKLFn;
+    onCreateTask: (pklId: string, task: Omit<import('../types').TaskPKL, 'task_id'>) => void;
+    onDeleteTask: (pklId: string, taskId: string) => void;
+}) {
+    const [pklNombre, setPklNombre] = useState(pkl.origen?.descripcion_inicial || pkl.pkl_id);
+    const [selectedCliente, setSelectedCliente] = useState(pkl.cliente?.nombre || '');
+    const [tipoOperacion, setTipoOperacion] = useState(pkl.clasificacion?.tipo_operacion || 'produccion');
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Task form states - copiado del modal de fusión
+    const [showAddTask, setShowAddTask] = useState(false);
+    const [newTaskTipo, setNewTaskTipo] = useState('recojo');
+    const [newTaskDesc, setNewTaskDesc] = useState('');
+    const [newTaskMonto, setNewTaskMonto] = useState('');
+    const [newTaskProveedor, setNewTaskProveedor] = useState('');
+    // Para cotización
+    const [newTaskCantidad, setNewTaskCantidad] = useState('');
+    const [newTaskPrecioUnitario, setNewTaskPrecioUnitario] = useState('');
+    const [newTaskEsPrecioUnitario, setNewTaskEsPrecioUnitario] = useState(true);
+    const [newTaskIncluyeIgv, setNewTaskIncluyeIgv] = useState(false);
+
+    // Calcular monto total para cotización
+    const calcularMontoTask = () => {
+        if (newTaskTipo === 'cotizacion' && newTaskEsPrecioUnitario && newTaskCantidad && newTaskPrecioUnitario) {
+            const cant = parseFloat(newTaskCantidad) || 0;
+            const precio = parseFloat(newTaskPrecioUnitario) || 0;
+            let total = cant * precio;
+            if (!newTaskIncluyeIgv) {
+                total = total * 1.18; // Agregar IGV
+            }
+            return total;
+        }
+        return parseFloat(newTaskMonto) || 0;
+    };
+
+    // Cerrar con ESC
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    const clientesList = Object.entries(clientes).map(([key, c]) => ({
+        id: key,
+        display: c.nombre_comercial || c.razon_social || key
+    }));
+
+    const tiposOperacion = TIPOS_OPERACION_PKL.map(t => {
+        const icons: Record<string, string> = {
+            'ciclo_completo': '🔄', 'produccion_recojo_entrega': '🏭', 'cotizacion_recojo_entrega': '💬🚚',
+            'cotizacion_recojo': '💬🚚', 'recojo_entrega': '🚚📦', 'solo_entrega': '📦',
+            'cotizacion_produccion_motorizado': '💬🏭', 'solo_motorizado': '🛵', 'cotizacion': '💬',
+            'ciclo_completo_instalacion': '🔄🔧', 'feria_evento': '🎪', 'compra_insumo': '🛒',
+        };
+        return { value: t.value, label: `${icons[t.value] || '📋'} ${t.label}`, color: t.color };
+    });
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const clienteNombre = selectedCliente
+                ? (clientes[selectedCliente]?.nombre_comercial || clientes[selectedCliente]?.razon_social || selectedCliente)
+                : pkl.cliente?.nombre || 'Sin cliente';
+
+            await onUpdate({
+                origen: { ...pkl.origen, descripcion_inicial: pklNombre },
+                cliente: { ...pkl.cliente, nombre: clienteNombre },
+                clasificacion: { ...pkl.clasificacion, tipo_operacion: tipoOperacion as any },
+            } as any);
+
+            onClose();
+        } catch (err) {
+            console.error('Error guardando PKL:', err);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleAddTask = async () => {
+        const tipoEmojis: Record<string, string> = {
+            recojo: '🚚', entrega: '📦', cotizacion: '💬',
+            produccion: '🏭', pago: '💰', coordinacion: '📞'
+        };
+        const monto = newTaskTipo === 'cotizacion' ? calcularMontoTask() : (parseFloat(newTaskMonto) || undefined);
+        const descripcion = newTaskDesc.trim() || `${newTaskTipo.charAt(0).toUpperCase() + newTaskTipo.slice(1)}${newTaskProveedor ? ` - ${newTaskProveedor}` : ''}`;
+
+        await onCreateTask(pkl.pkl_id, {
+            nombre: `${tipoEmojis[newTaskTipo] || '📋'} ${newTaskTipo.toUpperCase()}: ${descripcion}`.substring(0, 100),
+            descripcion,
+            tipo: newTaskTipo,
+            estado: 'completado',
+            orden: (pkl.tasks?.length || 0) + 1,
+            costo: monto,
+        });
+
+        // Reset form
+        setNewTaskDesc('');
+        setNewTaskMonto('');
+        setNewTaskProveedor('');
+        setNewTaskCantidad('');
+        setNewTaskPrecioUnitario('');
+        setNewTaskIncluyeIgv(false);
+        setShowAddTask(false);
+    };
+
+    const resetTaskForm = () => {
+        setShowAddTask(false);
+        setNewTaskDesc('');
+        setNewTaskMonto('');
+        setNewTaskProveedor('');
+        setNewTaskCantidad('');
+        setNewTaskPrecioUnitario('');
+        setNewTaskIncluyeIgv(false);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-t-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl">📋</span>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">{pkl.pkl_id}</h2>
+                                <p className="text-white/70 text-sm">{pkl.tasks?.length || 0} tasks</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Nombre del PKL */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-1">Nombre del PKL</label>
+                        <input
+                            type="text"
+                            value={pklNombre}
+                            onChange={(e) => setPklNombre(e.target.value)}
+                            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
+                            placeholder="Ej: GRUPO LAR - Recojo + Entrega"
+                        />
+                    </div>
+
+                    {/* Cliente y Tipo */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Cliente</label>
+                            <select
+                                value={selectedCliente}
+                                onChange={(e) => setSelectedCliente(e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                <option value="">Seleccionar cliente...</option>
+                                {clientesList.map(c => (
+                                    <option key={c.id} value={c.id}>{c.display}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Ciclo de Operación</label>
+                            <select
+                                value={tipoOperacion}
+                                onChange={(e) => setTipoOperacion(e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                {tiposOperacion.map(t => (
+                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Tasks */}
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-gray-400">Tasks ({pkl.tasks?.length || 0})</label>
+                            <button
+                                onClick={() => setShowAddTask(true)}
+                                className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+                            >
+                                + Agregar Task
+                            </button>
+                        </div>
+                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-60 overflow-y-auto">
+                            {pkl.tasks?.map((task, idx) => {
+                                const tipoEmojis: Record<string, string> = {
+                                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
+                                    produccion: '🏭', pago: '💰', coordinacion: '📞',
+                                    movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭'
+                                };
+                                return (
+                                    <div key={task.task_id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0">
+                                        <span className="text-gray-500 text-sm font-mono w-6">{idx + 1}</span>
+                                        <span className="text-lg">{tipoEmojis[task.tipo || ''] || '📋'}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-white text-sm font-medium truncate">{task.nombre || task.descripcion}</p>
+                                            <p className="text-gray-500 text-xs">
+                                                {task.tipo?.toUpperCase()} • {task.estado}
+                                                {task.costo ? ` • S/. ${Number(task.costo).toFixed(2)}` : ''}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => onDeleteTask(pkl.pkl_id, task.task_id)}
+                                            className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500/30"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                            {(!pkl.tasks || pkl.tasks.length === 0) && (
+                                <p className="text-gray-500 text-sm text-center py-4">No hay tasks</p>
+                            )}
+                        </div>
+
+                        {/* Form para agregar task - COPIADO EXACTAMENTE del modal de fusión */}
+                        {showAddTask && (
+                            <div className="mt-3 p-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-400 dark:border-purple-500/30 rounded-lg space-y-3">
+                                {/* Fila 1: Tipo y Descripción */}
+                                <div className="flex gap-2">
+                                    <select
+                                        value={newTaskTipo}
+                                        onChange={(e) => setNewTaskTipo(e.target.value)}
+                                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    >
+                                        <option value="recojo">🚚 Recojo</option>
+                                        <option value="entrega">📦 Entrega</option>
+                                        <option value="cotizacion">💬 Cotización</option>
+                                        <option value="produccion">🏭 Producción</option>
+                                        <option value="pago">💰 Pago</option>
+                                        <option value="coordinacion">📞 Coordinación</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={newTaskDesc}
+                                        onChange={(e) => setNewTaskDesc(e.target.value)}
+                                        placeholder="Descripción del task..."
+                                        className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    />
+                                </div>
+
+                                {/* Fila 2: Proveedor */}
+                                <input
+                                    type="text"
+                                    value={newTaskProveedor}
+                                    onChange={(e) => setNewTaskProveedor(e.target.value)}
+                                    placeholder="Proveedor (opcional)"
+                                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                />
+
+                                {/* Fila 3: Precio - cambia según tipo */}
+                                {newTaskTipo === 'cotizacion' ? (
+                                    <div className="space-y-2">
+                                        <div className="flex gap-2 items-center">
+                                            <input
+                                                type="number"
+                                                value={newTaskCantidad}
+                                                onChange={(e) => setNewTaskCantidad(e.target.value)}
+                                                placeholder="Cantidad"
+                                                className="w-24 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                            />
+                                            <span className="text-gray-600 dark:text-gray-400">×</span>
+                                            <input
+                                                type="number"
+                                                value={newTaskPrecioUnitario}
+                                                onChange={(e) => setNewTaskPrecioUnitario(e.target.value)}
+                                                placeholder={newTaskEsPrecioUnitario ? "Precio unit." : "Total"}
+                                                step="0.01"
+                                                className="w-28 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                            />
+                                            <select
+                                                value={newTaskEsPrecioUnitario ? 'unitario' : 'total'}
+                                                onChange={(e) => setNewTaskEsPrecioUnitario(e.target.value === 'unitario')}
+                                                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-xs outline-none"
+                                            >
+                                                <option value="unitario">Precio Unitario</option>
+                                                <option value="total">Precio Total</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-400 text-sm cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newTaskIncluyeIgv}
+                                                    onChange={(e) => setNewTaskIncluyeIgv(e.target.checked)}
+                                                    className="w-4 h-4 rounded"
+                                                />
+                                                Precio incluye IGV
+                                            </label>
+                                            {newTaskCantidad && newTaskPrecioUnitario && (
+                                                <div className="text-amber-600 dark:text-amber-400 text-sm font-medium">
+                                                    Total: S/. {calcularMontoTask().toFixed(2)}
+                                                    {!newTaskIncluyeIgv && <span className="text-gray-500 text-xs ml-1">(+IGV)</span>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="number"
+                                        value={newTaskMonto}
+                                        onChange={(e) => setNewTaskMonto(e.target.value)}
+                                        placeholder="Monto S/. (opcional)"
+                                        step="0.01"
+                                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    />
+                                )}
+
+                                {/* Botones */}
+                                <div className="flex gap-2 justify-end">
+                                    <button
+                                        onClick={resetTaskForm}
+                                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white text-xs rounded"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleAddTask}
+                                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded"
+                                    >
+                                        Agregar Task
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 p-6 border-t border-gray-800">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
+                    >
+                        Cerrar
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                        {isSaving ? (
+                            <span className="animate-pulse">Guardando...</span>
+                        ) : (
+                            <>
+                                <span>💾</span>
+                                Guardar Cambios
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -543,6 +936,11 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     const [editingProveedorId, setEditingProveedorId] = useState<string | null>(null);
     const [proveedorForm, setProveedorForm] = useState({ nombre: '', servicio: '', ubicacion: '', contacto: '' });
     const [proveedorSearch, setProveedorSearch] = useState('');
+
+    // Costos editing
+    const [showAddCosto, setShowAddCosto] = useState(false);
+    const [editingCostoIndex, setEditingCostoIndex] = useState<number | null>(null);
+    const [costoForm, setCostoForm] = useState({ concepto: '', monto: '', incluye_igv: false });
 
     const tasksCompletados = pkl.tasks.filter(t => t.estado === 'completado').length;
     const tasksTotal = pkl.tasks.length;
@@ -651,6 +1049,48 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
             (p.especialidad && p.especialidad.toLowerCase().includes(proveedorSearch.toLowerCase()))
           ).slice(0, 5)
         : [];
+
+    // Costos handlers
+    const handleAddCosto = () => {
+        if (!costoForm.concepto.trim() || !costoForm.monto) return;
+        const newCosto = {
+            concepto: costoForm.concepto.trim(),
+            monto: parseFloat(costoForm.monto) || 0,
+            incluye_igv: costoForm.incluye_igv
+        };
+        const newDetalle = [...pkl.costos.detalle, newCosto];
+        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
+        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
+        setCostoForm({ concepto: '', monto: '', incluye_igv: false });
+        setShowAddCosto(false);
+    };
+
+    const handleEditCosto = (index: number) => {
+        const costo = pkl.costos.detalle[index];
+        setEditingCostoIndex(index);
+        setCostoForm({ concepto: costo.concepto, monto: costo.monto.toString(), incluye_igv: costo.incluye_igv || false });
+    };
+
+    const handleSaveCosto = () => {
+        if (editingCostoIndex === null) return;
+        const newDetalle = [...pkl.costos.detalle];
+        newDetalle[editingCostoIndex] = {
+            ...newDetalle[editingCostoIndex],
+            concepto: costoForm.concepto,
+            monto: parseFloat(costoForm.monto) || 0,
+            incluye_igv: costoForm.incluye_igv
+        };
+        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
+        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
+        setEditingCostoIndex(null);
+        setCostoForm({ concepto: '', monto: '', incluye_igv: false });
+    };
+
+    const handleDeleteCosto = (index: number) => {
+        const newDetalle = pkl.costos.detalle.filter((_, i) => i !== index);
+        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
+        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
+    };
 
     return (
         <div className="space-y-6">
@@ -797,18 +1237,29 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                     autoFocus
                                 />
                                 {/* Autocomplete dropdown */}
-                                {filteredProveedoresDB.length > 0 && (
+                                {proveedorSearch.length >= 2 && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
-                                        {filteredProveedoresDB.map(prov => (
-                                            <button
-                                                key={prov.nombre}
-                                                onClick={() => handleSelectProveedorFromDB(prov)}
-                                                className="w-full text-left px-3 py-2 hover:bg-gray-700 transition-colors"
-                                            >
-                                                <div className="text-white text-sm font-medium">{prov.nombre}</div>
-                                                <div className="text-gray-400 text-xs">{prov.especialidad} {prov.direccion && `| ${prov.direccion}`}</div>
-                                            </button>
-                                        ))}
+                                        {filteredProveedoresDB.length > 0 ? (
+                                            filteredProveedoresDB.map(prov => (
+                                                <button
+                                                    key={prov.nombre}
+                                                    onClick={() => handleSelectProveedorFromDB(prov)}
+                                                    className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                >
+                                                    <div className="text-gray-900 dark:text-white text-sm font-medium">{prov.nombre}</div>
+                                                    <div className="text-gray-500 dark:text-gray-400 text-xs">{prov.especialidad} {prov.direccion && `| ${prov.direccion}`}</div>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-3 py-3 text-center">
+                                                <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">
+                                                    No se encontró "{proveedorSearch}" en la base de datos
+                                                </div>
+                                                <div className="text-purple-600 dark:text-purple-400 text-xs">
+                                                    Completa los datos y guarda para crear nuevo proveedor
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -965,6 +1416,126 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                         <div className="text-yellow-400">Pendiente de cierre</div>
                     )}
                 </div>
+            </div>
+
+            {/* Costos */}
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                        <h4 className="text-gray-600 dark:text-gray-400 text-sm">Costos</h4>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                            S/ {(pkl.costos.total || 0).toFixed(2)}
+                        </span>
+                    </div>
+                    <button
+                        onClick={() => setShowAddCosto(true)}
+                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors"
+                    >
+                        + Agregar
+                    </button>
+                </div>
+
+                {/* Add new costo form */}
+                {showAddCosto && (
+                    <div className="mb-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-emerald-500/30 space-y-3">
+                        <div className="flex gap-3">
+                            <input
+                                type="text"
+                                value={costoForm.concepto}
+                                onChange={e => setCostoForm({ ...costoForm, concepto: e.target.value })}
+                                placeholder="Concepto"
+                                className="flex-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                            />
+                            <input
+                                type="number"
+                                value={costoForm.monto}
+                                onChange={e => setCostoForm({ ...costoForm, monto: e.target.value })}
+                                placeholder="Monto"
+                                step="0.01"
+                                className="w-28 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                            />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-400 text-sm cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={costoForm.incluye_igv}
+                                    onChange={e => setCostoForm({ ...costoForm, incluye_igv: e.target.checked })}
+                                    className="w-4 h-4 rounded border-gray-400 dark:border-gray-600 bg-gray-100 dark:bg-gray-700"
+                                />
+                                Incluye IGV
+                            </label>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => { setShowAddCosto(false); setCostoForm({ concepto: '', monto: '', incluye_igv: false }); }}
+                                    className="px-3 py-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white text-xs rounded transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleAddCosto}
+                                    disabled={!costoForm.concepto.trim() || !costoForm.monto}
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-400 disabled:dark:bg-gray-600 text-white text-xs rounded transition-colors"
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {pkl.costos.detalle.length === 0 ? (
+                    <div className="text-gray-500 text-center py-2 text-sm">Sin costos registrados</div>
+                ) : (
+                    <div className="space-y-1">
+                        {pkl.costos.detalle.map((d, i) => (
+                            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 group">
+                                {editingCostoIndex === i ? (
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <input
+                                            autoFocus
+                                            value={costoForm.concepto}
+                                            onChange={e => setCostoForm({ ...costoForm, concepto: e.target.value })}
+                                            className="flex-1 bg-gray-100 dark:bg-gray-700 border border-emerald-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        />
+                                        <input
+                                            type="number"
+                                            value={costoForm.monto}
+                                            onChange={e => setCostoForm({ ...costoForm, monto: e.target.value })}
+                                            step="0.01"
+                                            className="w-24 bg-gray-100 dark:bg-gray-700 border border-emerald-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        />
+                                        <button onClick={handleSaveCosto} className="text-emerald-500 hover:text-emerald-400 text-sm">✓</button>
+                                        <button onClick={() => { setEditingCostoIndex(null); setCostoForm({ concepto: '', monto: '', incluye_igv: false }); }} className="text-gray-500 hover:text-gray-400 text-sm">✕</button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div
+                                            onClick={() => handleEditCosto(i)}
+                                            className="cursor-pointer hover:text-emerald-500 transition-colors"
+                                        >
+                                            <span className="text-gray-900 dark:text-white">{d.concepto}</span>
+                                            {d.incluye_igv && (
+                                                <span className="text-emerald-500 dark:text-emerald-400 text-xs ml-2">+IGV</span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                                S/ {d.monto.toFixed(2)}
+                                            </span>
+                                            <button
+                                                onClick={() => handleDeleteCosto(i)}
+                                                className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Observaciones - Editable */}
@@ -1397,196 +1968,6 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                     </div>
                 );
             })}
-        </div>
-    );
-}
-
-// Costos Tab
-function CostosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
-    const [editConcepto, setEditConcepto] = useState('');
-    const [editMonto, setEditMonto] = useState('');
-    const [showNewCosto, setShowNewCosto] = useState(false);
-    const [newConcepto, setNewConcepto] = useState('');
-    const [newMonto, setNewMonto] = useState('');
-    const [newIncluyeIgv, setNewIncluyeIgv] = useState(false);
-
-    const handleEditStart = (index: number, concepto: string, monto: number) => {
-        setEditingIndex(index);
-        setEditConcepto(concepto);
-        setEditMonto(monto.toString());
-    };
-
-    const handleEditSave = () => {
-        if (editingIndex === null) return;
-        const newDetalle = [...pkl.costos.detalle];
-        newDetalle[editingIndex] = {
-            ...newDetalle[editingIndex],
-            concepto: editConcepto,
-            monto: parseFloat(editMonto) || 0
-        };
-        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
-        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
-        setEditingIndex(null);
-    };
-
-    const handleDeleteCosto = (index: number) => {
-        const newDetalle = pkl.costos.detalle.filter((_, i) => i !== index);
-        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
-        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
-    };
-
-    const handleAddCosto = () => {
-        if (!newConcepto.trim() || !newMonto) return;
-        const newCosto = {
-            concepto: newConcepto.trim(),
-            monto: parseFloat(newMonto) || 0,
-            incluye_igv: newIncluyeIgv
-        };
-        const newDetalle = [...pkl.costos.detalle, newCosto];
-        const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
-        onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
-        setNewConcepto('');
-        setNewMonto('');
-        setNewIncluyeIgv(false);
-        setShowNewCosto(false);
-    };
-
-    return (
-        <div className="space-y-4">
-            {/* Total */}
-            <div className="bg-gradient-to-r from-emerald-900/30 to-cyan-900/30 rounded-lg p-6 text-center">
-                <div className="text-gray-800 dark:text-gray-400 text-sm mb-1">Costo Total</div>
-                <div className="text-4xl font-bold text-white">
-                    S/ {(pkl.costos.total || 0).toFixed(2)}
-                </div>
-                <div className="text-gray-500 text-sm mt-1">{pkl.costos.moneda}</div>
-            </div>
-
-            {/* Desglose */}
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-gray-800 dark:text-gray-400 text-sm">Desglose de Costos</h4>
-                    <button
-                        onClick={() => setShowNewCosto(true)}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors"
-                    >
-                        + Agregar
-                    </button>
-                </div>
-
-                {/* Add new costo form */}
-                {showNewCosto && (
-                    <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-emerald-500/30 space-y-3">
-                        <div className="flex gap-3">
-                            <input
-                                type="text"
-                                value={newConcepto}
-                                onChange={e => setNewConcepto(e.target.value)}
-                                placeholder="Concepto"
-                                className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
-                            />
-                            <input
-                                type="number"
-                                value={newMonto}
-                                onChange={e => setNewMonto(e.target.value)}
-                                placeholder="Monto"
-                                step="0.01"
-                                className="w-28 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
-                            />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 text-gray-800 dark:text-gray-400 text-sm cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={newIncluyeIgv}
-                                    onChange={e => setNewIncluyeIgv(e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-600 bg-gray-700"
-                                />
-                                Incluye IGV
-                            </label>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setShowNewCosto(false)}
-                                    className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleAddCosto}
-                                    disabled={!newConcepto.trim() || !newMonto}
-                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-600 text-white text-xs rounded"
-                                >
-                                    Guardar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {pkl.costos.detalle.length === 0 ? (
-                    <div className="text-gray-500 text-center py-4">Sin costos registrados</div>
-                ) : (
-                    <div className="space-y-2">
-                        {pkl.costos.detalle.map((d, i) => (
-                            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-800 group">
-                                {editingIndex === i ? (
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <input
-                                            autoFocus
-                                            value={editConcepto}
-                                            onChange={e => setEditConcepto(e.target.value)}
-                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={editMonto}
-                                            onChange={e => setEditMonto(e.target.value)}
-                                            step="0.01"
-                                            className="w-24 bg-gray-50 dark:bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
-                                        />
-                                        <button onClick={handleEditSave} className="text-emerald-400 hover:text-emerald-300 text-sm">✓</button>
-                                        <button onClick={() => setEditingIndex(null)} className="text-gray-400 hover:text-gray-300 text-sm">✕</button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div
-                                            onClick={() => handleEditStart(i, d.concepto, d.monto)}
-                                            className="cursor-pointer hover:text-cyan-400 transition-colors"
-                                        >
-                                            <span className="text-white">{d.concepto}</span>
-                                            {d.task_id && (
-                                                <span className="text-gray-500 text-sm ml-2">({d.task_id})</span>
-                                            )}
-                                            {d.incluye_igv && (
-                                                <span className="text-green-400 text-xs ml-2">+IGV</span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-emerald-400 font-medium">
-                                                S/ {d.monto.toFixed(2)}
-                                            </span>
-                                            <button
-                                                onClick={() => handleDeleteCosto(i)}
-                                                className="p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Nota */}
-            {pkl.costos.nota && (
-                <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
-                    <div className="text-yellow-400 text-sm">Nota: {pkl.costos.nota}</div>
-                </div>
-            )}
         </div>
     );
 }
