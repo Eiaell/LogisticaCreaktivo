@@ -1324,7 +1324,8 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
             });
 
             // Agregar tasks adicionales si hay
-            for (const task of tasksAdicionales) {
+            for (let i = 0; i < tasksAdicionales.length; i++) {
+                const task = tasksAdicionales[i];
                 const tipoEmojis: Record<string, string> = {
                     cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
                     pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋'
@@ -1334,7 +1335,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                     descripcion: task.descripcion || task.tipo,
                     tipo: task.tipo as any,
                     estado: 'completado',
-                    orden: (existingPKL.tasks?.length || 0) + idx + 1,
+                    orden: (existingPKL.tasks?.length || 0) + i + 1,
                     responsable: 'Huber',
                     es_happy_path: false,
                     costo: task.monto ? { monto: task.monto, moneda: 'PEN' } : undefined,

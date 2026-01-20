@@ -587,7 +587,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
     };
 
     const [selectedCliente, setSelectedCliente] = useState(findClienteKey());
-    const [tipoOperacion, setTipoOperacion] = useState(pkl.clasificacion?.tipo_operacion || 'produccion');
+    const [tipoOperacion, setTipoOperacion] = useState<string>(pkl.clasificacion?.tipo_operacion || 'produccion');
     const [isSaving, setIsSaving] = useState(false);
 
     // Estado local de tasks para reflejar cambios inmediatamente
