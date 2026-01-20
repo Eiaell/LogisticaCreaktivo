@@ -1334,6 +1334,9 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                     descripcion: task.descripcion || task.tipo,
                     tipo: task.tipo as any,
                     estado: 'completado',
+                    orden: (existingPKL.tasks?.length || 0) + idx + 1,
+                    responsable: 'Huber',
+                    es_happy_path: false,
                     costo: task.monto ? { monto: task.monto, moneda: 'PEN' } : undefined,
                 });
             }
