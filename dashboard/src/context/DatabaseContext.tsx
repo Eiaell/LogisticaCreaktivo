@@ -375,6 +375,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                             ubicacion: task.ubicacion,
                             resultado: task.resultado,
                             fecha_completado: task.fecha_completado,
+                            evento_origen_id: task.evento_origen_id, // Vinculación con evento original
                         });
                         return acc;
                     }, {});
@@ -550,6 +551,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     fecha_completado: task.fecha_completado || null,
                     costo: task.costo || null,
                     responsable: task.responsable || 'Huber', // Campo requerido
+                    evento_origen_id: (task as any).evento_origen_id || null, // Vinculación con evento original
                     created_at: now,
                     updated_at: now
                 }));
@@ -798,27 +800,43 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
         // Persist to Supabase
         try {
-            const { error } = await supabase.from('pkl_tasks').insert({
+            // Convertir costo a formato JSONB si es un número
+            let costoJsonb = null;
+            if (newTask.costo) {
+                if (typeof newTask.costo === 'number') {
+                    costoJsonb = { monto: newTask.costo, moneda: 'PEN' };
+                } else if (typeof newTask.costo === 'object') {
+                    costoJsonb = newTask.costo;
+                }
+            }
+
+            const insertData = {
                 pkl_id: pklId,
                 task_id: taskId,
                 orden: newTask.orden,
                 nombre: newTask.nombre,
-                descripcion: newTask.descripcion,
-                tipo: newTask.tipo,
-                responsable: newTask.responsable,
-                estado: newTask.estado,
+                descripcion: newTask.descripcion || newTask.nombre || 'Sin descripción',
+                tipo: newTask.tipo || 'administrativo',
+                responsable: newTask.responsable || 'Huber',
+                estado: newTask.estado || 'pendiente',
                 duracion_min: newTask.duracion_min,
-                es_happy_path: newTask.es_happy_path,
-                costo: newTask.costo,
+                es_happy_path: newTask.es_happy_path ?? false,
+                costo: costoJsonb,
                 ruta: newTask.ruta,
                 created_at: now,
                 updated_at: now,
-            });
+            };
+            console.log('📤 Insertando task en Supabase:', insertData);
+
+            const { error } = await supabase.from('pkl_tasks').insert(insertData);
 
             if (error) {
-                console.error('Error creating PKL task:', error);
+                console.error('❌ Error creating PKL task:', error);
+                console.error('❌ Error details:', JSON.stringify(error, null, 2));
+                console.error('❌ Insert data was:', JSON.stringify(insertData, null, 2));
+                alert(`Error guardando task: ${error.message}\n\nDetalles: ${error.details || error.hint || 'Sin detalles'}`);
             } else {
-                console.log('✓ PKL Task created:', taskId);
+                console.log('✅ PKL Task created:', taskId);
             }
 
             // Update PKL's updated_at

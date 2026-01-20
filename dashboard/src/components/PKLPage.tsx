@@ -18,6 +18,21 @@ const getTaskTypeConfig = (tipo: string) => {
     return TIPOS_TASK_PKL.find(t => t.value === tipo);
 };
 
+// Helper to get monto from costo (puede ser número directo o objeto CostoTaskPKL)
+const getCostoMonto = (costo: any): number => {
+    if (!costo) return 0;
+    if (typeof costo === 'number') return costo;
+    if (typeof costo === 'object' && costo.monto) return Number(costo.monto);
+    return Number(costo) || 0;
+};
+
+// Helper to calculate total PKL cost (tasks + manual costos)
+const calcularCostoTotalPKL = (pkl: PKL): number => {
+    const costosTasks = pkl.tasks?.reduce((sum, t) => sum + getCostoMonto(t.costo), 0) || 0;
+    const costosDetalle = pkl.costos?.detalle?.reduce((sum, d) => sum + (d.monto || 0), 0) || 0;
+    return costosTasks + costosDetalle;
+};
+
 interface PKLPageProps {
     initialSelectedPKLId?: string | null;
     initialTab?: 'overview' | 'tasks' | 'eventos';
@@ -66,7 +81,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
         const cerrados = pkls.filter(p => p.estado.actual === 'cerrado_ok').length;
         const enCurso = pkls.filter(p => ['recibido', 'cotizado', 'en_produccion', 'para_recoger'].includes(p.estado.actual)).length;
         const enPausa = pkls.filter(p => p.estado.actual === 'en_pausa').length;
-        const totalCosto = pkls.reduce((sum, p) => sum + (p.costos.total || 0), 0);
+        const totalCosto = pkls.reduce((sum, p) => sum + calcularCostoTotalPKL(p), 0);
         const totalTasks = pkls.reduce((sum, p) => sum + p.tasks.length, 0);
         return { total, cerrados, enCurso, enPausa, totalCosto, totalTasks };
     }, [pkls]);
@@ -241,7 +256,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                                                         {tipoConfig.label}
                                                     </span>
                                                     <span className="text-gray-500">
-                                                        {pkl.tasks.length} tasks | S/ {(pkl.costos.total || 0).toFixed(2)}
+                                                        {pkl.tasks.length} tasks | S/ {calcularCostoTotalPKL(pkl).toFixed(2)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -557,13 +572,30 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
     onDeleteTask: (pklId: string, taskId: string) => void;
 }) {
     const [pklNombre, setPklNombre] = useState(pkl.origen?.descripcion_inicial || pkl.pkl_id);
-    const [selectedCliente, setSelectedCliente] = useState(pkl.cliente?.nombre || '');
+
+    // Buscar el cliente por nombre para obtener su RUC/key
+    const findClienteKey = () => {
+        if (!pkl.cliente?.nombre) return '';
+        const clienteNombre = pkl.cliente.nombre;
+        // Buscar en clientes por nombre_comercial o razon_social
+        const entry = Object.entries(clientes).find(([key, c]) =>
+            c.nombre_comercial === clienteNombre ||
+            c.razon_social === clienteNombre ||
+            key === clienteNombre
+        );
+        return entry ? entry[0] : '';
+    };
+
+    const [selectedCliente, setSelectedCliente] = useState(findClienteKey());
     const [tipoOperacion, setTipoOperacion] = useState(pkl.clasificacion?.tipo_operacion || 'produccion');
     const [isSaving, setIsSaving] = useState(false);
 
+    // Estado local de tasks para reflejar cambios inmediatamente
+    const [localTasks, setLocalTasks] = useState(pkl.tasks || []);
+
     // Task form states - copiado del modal de fusión
     const [showAddTask, setShowAddTask] = useState(false);
-    const [newTaskTipo, setNewTaskTipo] = useState('recojo');
+    const [newTaskTipo, setNewTaskTipo] = useState('cotizacion');
     const [newTaskDesc, setNewTaskDesc] = useState('');
     const [newTaskMonto, setNewTaskMonto] = useState('');
     const [newTaskProveedor, setNewTaskProveedor] = useState('');
@@ -575,14 +607,26 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
 
     // Calcular monto total para cotización
     const calcularMontoTask = () => {
-        if (newTaskTipo === 'cotizacion' && newTaskEsPrecioUnitario && newTaskCantidad && newTaskPrecioUnitario) {
+        if (newTaskTipo === 'cotizacion') {
             const cant = parseFloat(newTaskCantidad) || 0;
             const precio = parseFloat(newTaskPrecioUnitario) || 0;
-            let total = cant * precio;
-            if (!newTaskIncluyeIgv) {
-                total = total * 1.18; // Agregar IGV
+
+            if (cant > 0 && precio > 0) {
+                // Si es precio unitario, multiplicar; si es total, usar el precio directamente
+                let total = newTaskEsPrecioUnitario ? (cant * precio) : precio;
+                if (!newTaskIncluyeIgv) {
+                    total = total * 1.18; // Agregar IGV
+                }
+                return total;
             }
-            return total;
+            // Si solo tiene precio (sin cantidad), usar el precio
+            if (precio > 0) {
+                let total = precio;
+                if (!newTaskIncluyeIgv) {
+                    total = total * 1.18;
+                }
+                return total;
+            }
         }
         return parseFloat(newTaskMonto) || 0;
     };
@@ -633,21 +677,36 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
     };
 
     const handleAddTask = async () => {
+        console.log('🔥 handleAddTask CALLED!');
+
         const tipoEmojis: Record<string, string> = {
-            recojo: '🚚', entrega: '📦', cotizacion: '💬',
-            produccion: '🏭', pago: '💰', coordinacion: '📞'
+            cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
+            pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋'
         };
         const monto = newTaskTipo === 'cotizacion' ? calcularMontoTask() : (parseFloat(newTaskMonto) || undefined);
         const descripcion = newTaskDesc.trim() || `${newTaskTipo.charAt(0).toUpperCase() + newTaskTipo.slice(1)}${newTaskProveedor ? ` - ${newTaskProveedor}` : ''}`;
 
-        await onCreateTask(pkl.pkl_id, {
+        console.log('📝 Agregando task:', { tipo: newTaskTipo, descripcion, monto });
+
+        const newTaskData = {
             nombre: `${tipoEmojis[newTaskTipo] || '📋'} ${newTaskTipo.toUpperCase()}: ${descripcion}`.substring(0, 100),
             descripcion,
-            tipo: newTaskTipo,
-            estado: 'completado',
-            orden: (pkl.tasks?.length || 0) + 1,
+            tipo: newTaskTipo as any,
+            estado: 'completado' as const,
+            orden: localTasks.length + 1,
             costo: monto,
-        });
+            responsable: 'Huber',
+            es_happy_path: false,
+        };
+
+        // Agregar al estado local inmediatamente
+        const tempTaskId = `${pkl.pkl_id}-T${String(localTasks.length + 1).padStart(3, '0')}`;
+        setLocalTasks(prev => [...prev, { ...newTaskData, task_id: tempTaskId }]);
+
+        // Guardar en base de datos
+        await onCreateTask(pkl.pkl_id, newTaskData);
+
+        console.log('✅ Task agregado');
 
         // Reset form
         setNewTaskDesc('');
@@ -679,7 +738,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                             <span className="text-3xl">📋</span>
                             <div>
                                 <h2 className="text-xl font-bold text-white">{pkl.pkl_id}</h2>
-                                <p className="text-white/70 text-sm">{pkl.tasks?.length || 0} tasks</p>
+                                <p className="text-white/70 text-sm">{localTasks.length} tasks</p>
                             </div>
                         </div>
                         <button
@@ -739,7 +798,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                     {/* Tasks */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <label className="block text-sm font-medium text-gray-400">Tasks ({pkl.tasks?.length || 0})</label>
+                            <label className="block text-sm font-medium text-gray-400">Tasks ({localTasks.length})</label>
                             <button
                                 onClick={() => setShowAddTask(true)}
                                 className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
@@ -748,10 +807,10 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                             </button>
                         </div>
                         <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-60 overflow-y-auto">
-                            {pkl.tasks?.map((task, idx) => {
+                            {localTasks.map((task, idx) => {
                                 const tipoEmojis: Record<string, string> = {
-                                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
-                                    produccion: '🏭', pago: '💰', coordinacion: '📞',
+                                    cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
+                                    pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋',
                                     movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭'
                                 };
                                 return (
@@ -762,11 +821,14 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                             <p className="text-white text-sm font-medium truncate">{task.nombre || task.descripcion}</p>
                                             <p className="text-gray-500 text-xs">
                                                 {task.tipo?.toUpperCase()} • {task.estado}
-                                                {task.costo ? ` • S/. ${Number(task.costo).toFixed(2)}` : ''}
+                                                {task.costo ? ` • S/. ${getCostoMonto(task.costo).toFixed(2)}` : ''}
                                             </p>
                                         </div>
                                         <button
-                                            onClick={() => onDeleteTask(pkl.pkl_id, task.task_id)}
+                                            onClick={() => {
+                                                setLocalTasks(prev => prev.filter(t => t.task_id !== task.task_id));
+                                                onDeleteTask(pkl.pkl_id, task.task_id);
+                                            }}
                                             className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500/30"
                                         >
                                             ✕
@@ -774,7 +836,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                     </div>
                                 );
                             })}
-                            {(!pkl.tasks || pkl.tasks.length === 0) && (
+                            {localTasks.length === 0 && (
                                 <p className="text-gray-500 text-sm text-center py-4">No hay tasks</p>
                             )}
                         </div>
@@ -789,12 +851,14 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         onChange={(e) => setNewTaskTipo(e.target.value)}
                                         className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
                                     >
-                                        <option value="recojo">🚚 Recojo</option>
-                                        <option value="entrega">📦 Entrega</option>
                                         <option value="cotizacion">💬 Cotización</option>
-                                        <option value="produccion">🏭 Producción</option>
+                                        <option value="coordinacion_proveedor">📞 Coordinación</option>
+                                        <option value="compra_insumo">🛒 Compra Insumo</option>
                                         <option value="pago">💰 Pago</option>
-                                        <option value="coordinacion">📞 Coordinación</option>
+                                        <option value="movilidad">🚚 Movilidad</option>
+                                        <option value="instalacion">🔧 Instalación</option>
+                                        <option value="cierre">✅ Cierre</option>
+                                        <option value="administrativo">📋 Administrativo</option>
                                     </select>
                                     <input
                                         type="text"
@@ -1420,13 +1484,35 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
 
             {/* Costos */}
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                        <h4 className="text-gray-600 dark:text-gray-400 text-sm">Costos</h4>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                            S/ {(pkl.costos.total || 0).toFixed(2)}
-                        </span>
-                    </div>
+                {(() => {
+                    // Calcular costos de tasks (usa getCostoMonto global)
+                    const costosFromTasks = pkl.tasks
+                        ?.filter(t => getCostoMonto(t.costo) > 0)
+                        .map(t => ({
+                            concepto: t.nombre || t.descripcion || 'Task',
+                            monto: getCostoMonto(t.costo),
+                            fecha: t.fecha_completado,
+                            fromTask: true
+                        })) || [];
+
+                    // Combinar con costos del detalle
+                    const allCostos = [
+                        ...costosFromTasks,
+                        ...pkl.costos.detalle.map(d => ({ ...d, fromTask: false }))
+                    ];
+
+                    // Total combinado
+                    const totalCombinado = allCostos.reduce((sum, c) => sum + (c.monto || 0), 0);
+
+                    return (
+                        <>
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <h4 className="text-gray-600 dark:text-gray-400 text-sm">Costos</h4>
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                        S/ {totalCombinado.toFixed(2)}
+                                    </span>
+                                </div>
                     <button
                         onClick={() => setShowAddCosto(true)}
                         className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors"
@@ -1484,12 +1570,26 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                     </div>
                 )}
 
-                {pkl.costos.detalle.length === 0 ? (
+                {allCostos.length === 0 ? (
                     <div className="text-gray-500 text-center py-2 text-sm">Sin costos registrados</div>
                 ) : (
                     <div className="space-y-1">
+                        {/* Costos de Tasks */}
+                        {costosFromTasks.map((d, i) => (
+                            <div key={`task-${i}`} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-purple-500 text-xs">📋</span>
+                                    <span className="text-gray-900 dark:text-white text-sm truncate max-w-[200px]">{d.concepto}</span>
+                                    <span className="text-purple-400 text-xs">(task)</span>
+                                </div>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                    S/ {d.monto.toFixed(2)}
+                                </span>
+                            </div>
+                        ))}
+                        {/* Costos manuales del detalle */}
                         {pkl.costos.detalle.map((d, i) => (
-                            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 group">
+                            <div key={`manual-${i}`} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 group">
                                 {editingCostoIndex === i ? (
                                     <div className="flex items-center gap-2 flex-1">
                                         <input
@@ -1536,6 +1636,9 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                         ))}
                     </div>
                 )}
+                        </>
+                    );
+                })()}
             </div>
 
             {/* Observaciones - Editable */}

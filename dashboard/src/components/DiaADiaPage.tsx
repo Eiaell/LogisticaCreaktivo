@@ -1069,7 +1069,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
         incluyeIgv?: boolean;
     }>>([]);
     const [showAddTask, setShowAddTask] = useState(false);
-    const [newTaskTipo, setNewTaskTipo] = useState('recojo');
+    const [newTaskTipo, setNewTaskTipo] = useState('cotizacion');
     const [newTaskDesc, setNewTaskDesc] = useState('');
     const [newTaskMonto, setNewTaskMonto] = useState('');
     const [newTaskProveedor, setNewTaskProveedor] = useState('');
@@ -1185,8 +1185,8 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
             // Agregar tasks manuales
             const tasksFromManual = tasksAdicionales.map((task, idx) => {
                 const tipoEmojis: Record<string, string> = {
-                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
-                    produccion: '🏭', pago: '💰', coordinacion: '📞'
+                    cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
+                    pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋'
                 };
                 return {
                     task_id: `TASK-${Date.now()}-manual-${idx}`,
@@ -1326,8 +1326,8 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
             // Agregar tasks adicionales si hay
             for (const task of tasksAdicionales) {
                 const tipoEmojis: Record<string, string> = {
-                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
-                    produccion: '🏭', pago: '💰', coordinacion: '📞'
+                    cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
+                    pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋'
                 };
                 await createPKLTask(existingPKL.pkl_id, {
                     nombre: `${tipoEmojis[task.tipo] || '📋'} ${task.tipo.toUpperCase()}: ${task.descripcion || task.tipo}`.substring(0, 100),
@@ -1470,8 +1470,8 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                             {/* En modo edición, mostrar tasks del PKL */}
                             {isEditMode && existingPKL?.tasks?.map((task, idx) => {
                                 const tipoEmojis: Record<string, string> = {
-                                    recojo: '🚚', entrega: '📦', cotizacion: '💬',
-                                    produccion: '🏭', pago: '💰', coordinacion: '📞',
+                                    cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
+                                    pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋',
                                     movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭'
                                 };
                                 return (
@@ -1530,7 +1530,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                 <div key={task.id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0 bg-purple-900/20">
                                     <span className="text-gray-500 text-sm font-mono w-6">{eventos.length + idx + 1}</span>
                                     <span className="text-lg text-purple-400">
-                                        {task.tipo === 'recojo' ? '🚚' : task.tipo === 'entrega' ? '📦' : task.tipo === 'cotizacion' ? '💬' : task.tipo === 'produccion' ? '🏭' : '📋'}
+                                        {task.tipo === 'movilidad' ? '🚚' : task.tipo === 'cotizacion' ? '💬' : task.tipo === 'pago' ? '💰' : task.tipo === 'coordinacion_proveedor' ? '📞' : task.tipo === 'compra_insumo' ? '🛒' : task.tipo === 'instalacion' ? '🔧' : task.tipo === 'cierre' ? '✅' : '📋'}
                                     </span>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-white text-sm font-medium truncate">
@@ -1563,12 +1563,14 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                         onChange={(e) => setNewTaskTipo(e.target.value)}
                                         className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
                                     >
-                                        <option value="recojo">🚚 Recojo</option>
-                                        <option value="entrega">📦 Entrega</option>
                                         <option value="cotizacion">💬 Cotización</option>
-                                        <option value="produccion">🏭 Producción</option>
+                                        <option value="coordinacion_proveedor">📞 Coordinación</option>
+                                        <option value="compra_insumo">🛒 Compra Insumo</option>
                                         <option value="pago">💰 Pago</option>
-                                        <option value="coordinacion">📞 Coordinación</option>
+                                        <option value="movilidad">🚚 Movilidad</option>
+                                        <option value="instalacion">🔧 Instalación</option>
+                                        <option value="cierre">✅ Cierre</option>
+                                        <option value="administrativo">📋 Administrativo</option>
                                     </select>
                                     <input
                                         type="text"
