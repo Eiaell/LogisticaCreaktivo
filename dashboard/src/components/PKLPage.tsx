@@ -694,14 +694,14 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
             tipo: newTaskTipo as any,
             estado: 'completado' as const,
             orden: localTasks.length + 1,
-            costo: monto,
+            costo: monto ? { monto, moneda: 'PEN' as const } : undefined,
             responsable: 'Huber',
             es_happy_path: false,
         };
 
         // Agregar al estado local inmediatamente
         const tempTaskId = `${pkl.pkl_id}-T${String(localTasks.length + 1).padStart(3, '0')}`;
-        setLocalTasks(prev => [...prev, { ...newTaskData, task_id: tempTaskId }]);
+        setLocalTasks(prev => [...prev, { ...newTaskData, task_id: tempTaskId } as any]);
 
         // Guardar en base de datos
         await onCreateTask(pkl.pkl_id, newTaskData);

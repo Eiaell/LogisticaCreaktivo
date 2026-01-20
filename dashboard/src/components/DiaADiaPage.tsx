@@ -1332,9 +1332,9 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                 await createPKLTask(existingPKL.pkl_id, {
                     nombre: `${tipoEmojis[task.tipo] || '📋'} ${task.tipo.toUpperCase()}: ${task.descripcion || task.tipo}`.substring(0, 100),
                     descripcion: task.descripcion || task.tipo,
-                    tipo: task.tipo,
+                    tipo: task.tipo as any,
                     estado: 'completado',
-                    costo: task.monto,
+                    costo: task.monto ? { monto: task.monto, moneda: 'PEN' } : undefined,
                 });
             }
 
