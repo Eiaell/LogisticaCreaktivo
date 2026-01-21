@@ -2764,7 +2764,6 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     onClose={() => setShowVincularPKLModal(false)}
                     eventos={eventosSeleccionadosData}
                     pkls={pkls}
-                    clientes={clientes}
                     getClienteLogo={getClienteLogo}
                     onSuccess={async (pklId) => {
                         // Vincular eventos seleccionados al PKL
@@ -2784,8 +2783,10 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                 tipo: taskTipo as any,
                                 estado: 'completado',
                                 orden: (pkl.tasks?.length || 0) + 1,
-                                costo: evento.monto || 0,
+                                costo: evento.monto ? { monto: evento.monto, moneda: 'PEN' } : undefined,
                                 evento_origen_id: evento.id,
+                                responsable: 'Huber',
+                                es_happy_path: true,
                             });
 
                             // Actualizar el evento con el pkl_id
@@ -2820,12 +2821,11 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
 }
 
 // Modal para seleccionar PKL existente
-function VincularAPKLModal({ isOpen, onClose, eventos, pkls, clientes, getClienteLogo, onSuccess }: {
+function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onSuccess }: {
     isOpen: boolean;
     onClose: () => void;
     eventos: EventoSeleccionable[];
     pkls: PKL[];
-    clientes: Record<string, any>;
     getClienteLogo: (nombre: string) => string | null;
     onSuccess: (pklId: string) => Promise<void>;
 }) {

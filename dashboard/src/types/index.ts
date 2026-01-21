@@ -762,6 +762,8 @@ export interface TaskPKL {
     fecha_completado?: string;
     // Ítems de cotización (para tasks tipo cotización con múltiples líneas)
     items_cotizacion?: ItemCotizacionPKL[];
+    // Referencia a evento externo que originó este task (desde Día a Día)
+    evento_origen_id?: string;
 }
 
 // Evento externo

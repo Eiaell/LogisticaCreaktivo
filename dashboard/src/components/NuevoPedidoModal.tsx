@@ -149,11 +149,12 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
             // Create the PKL
             const newPKL: PKL = {
                 pkl_id: nextPKLId,
-                version: 1,
+                version: '2.0',
                 created_at: now,
                 updated_at: now,
                 origen: {
-                    canal: 'manual',
+                    canal: 'otro',
+                    fecha_solicitud: now,
                     descripcion_inicial: descripcion.trim(),
                 },
                 cliente: {
@@ -162,22 +163,31 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                 },
                 clasificacion: {
                     tipo_operacion: tipoOperacion,
-                    prioridad: 'media',
+                    area: 'logistica',
                 },
                 productos: [],
+                proveedores: [],
                 estado: {
                     actual: estado,
                     historial: [{
                         estado: estado,
                         fecha: now,
-                        nota: 'PKL creado manualmente',
+                        motivo: 'PKL creado manualmente',
                     }],
                 },
                 tasks: [],
-                eventos: [],
+                eventos_externos: [],
                 costos: {
                     total: 0,
-                    desglose: [],
+                    detalle: [],
+                    moneda: 'PEN',
+                },
+                cierre: {
+                    evidencias: [],
+                },
+                alertas: {
+                    dias_sin_actividad: 0,
+                    umbral_pausa_dias: 3,
                 },
             };
 

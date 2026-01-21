@@ -626,10 +626,6 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
         precio_unitario: string;
     }>>([{ id: crypto.randomUUID(), codigo: '', descripcion: '', cantidad: '', precio_unitario: '' }]);
     const [newTaskIncluyeIgv, setNewTaskIncluyeIgv] = useState(false);
-    // Legacy - mantener para otros tipos de task
-    const [newTaskCantidad, setNewTaskCantidad] = useState('');
-    const [newTaskPrecioUnitario, setNewTaskPrecioUnitario] = useState('');
-    const [newTaskEsPrecioUnitario, setNewTaskEsPrecioUnitario] = useState(true);
 
     // Estado para editar task existente
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -819,8 +815,6 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
         setNewTaskDesc('');
         setNewTaskMonto('');
         setNewTaskProveedor('');
-        setNewTaskCantidad('');
-        setNewTaskPrecioUnitario('');
         setNewTaskIncluyeIgv(false);
         setNewTaskItems([{ id: crypto.randomUUID(), codigo: '', descripcion: '', cantidad: '', precio_unitario: '' }]);
     };
@@ -1213,7 +1207,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                     <div className="space-y-2">
                                         {/* Lista de ítems de cotización */}
                                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                                            {newTaskItems.map((item, idx) => (
+                                            {newTaskItems.map((item) => (
                                                 <div key={item.id} className="flex gap-1 items-center bg-gray-100 dark:bg-gray-700/50 p-2 rounded">
                                                     <input
                                                         type="text"

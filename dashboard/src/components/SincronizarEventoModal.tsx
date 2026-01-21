@@ -130,7 +130,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
     const getEventoMonto = (): number => {
         if (tipo === 'movimiento') {
             const mov = evento as MovimientoLogistico;
-            return mov.costo || 0;
+            return mov.costo_movilidad || 0;
         } else if (tipo === 'rendicion') {
             const rend = evento as Rendicion;
             return rend.monto || 0;
@@ -152,11 +152,12 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
 
                 const newPKL: PKL = {
                     pkl_id: newPklId,
-                    version: 1,
+                    version: '2.0',
                     created_at: now,
                     updated_at: now,
                     origen: {
-                        canal: 'dia_a_dia',
+                        canal: 'otro',
+                        fecha_solicitud: now,
                         descripcion_inicial: nuevoPKL.descripcion || getEventoDescripcion(),
                     },
                     cliente: {
@@ -164,22 +165,31 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                     },
                     clasificacion: {
                         tipo_operacion: nuevoPKL.tipoOperacion,
-                        prioridad: 'media',
+                        area: 'logistica',
                     },
                     productos: [],
+                    proveedores: [],
                     estado: {
                         actual: nuevoPKL.estado,
                         historial: [{
                             estado: nuevoPKL.estado,
                             fecha: now,
-                            nota: 'PKL creado desde Día a Día',
+                            motivo: 'PKL creado desde Día a Día',
                         }],
                     },
                     tasks: [],
-                    eventos: [],
+                    eventos_externos: [],
                     costos: {
                         total: 0,
-                        desglose: [],
+                        detalle: [],
+                        moneda: 'PEN',
+                    },
+                    cierre: {
+                        evidencias: [],
+                    },
+                    alertas: {
+                        dias_sin_actividad: 0,
+                        umbral_pausa_dias: 3,
                     },
                 };
 
@@ -207,8 +217,10 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                 tipo: currentConfig.taskTipo,
                 estado: 'completado',
                 orden: 1,
-                costo: monto,
+                costo: monto > 0 ? { monto, moneda: 'PEN' } : undefined,
                 evento_origen_id: evento.id,
+                responsable: 'Huber',
+                es_happy_path: true,
             });
 
             // Actualizar el evento con el pkl_id
