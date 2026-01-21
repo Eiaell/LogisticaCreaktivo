@@ -823,6 +823,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 es_happy_path: newTask.es_happy_path ?? false,
                 costo: costoJsonb,
                 ruta: newTask.ruta,
+                items_cotizacion: newTask.items_cotizacion || null,
                 created_at: now,
                 updated_at: now,
             };
@@ -1999,14 +2000,25 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     // ============================================
     const updateMovimientoLogistico = async (id: string, data: Partial<MovimientoLogistico>): Promise<void> => {
         const updatedData = { ...data, updated_at: new Date().toISOString() };
+
+        // Actualizar estado local inmediatamente
         setMovimientosLogisticos(prev => prev.map(m => m.id === id ? { ...m, ...updatedData } : m));
 
+        // Filtrar campos que no existen en Supabase
+        const { seccion, ...supabaseData } = updatedData as any;
+        void seccion; // Ignorar campo local
+
+        console.log("🔧 updateMovimientoLogistico:", { id, tipo: data.tipo, supabaseData });
+
         try {
-            const { error } = await supabase.from('movimientos_logisticos').update(updatedData).eq('id', id);
-            if (error) console.warn("Error actualizando movimiento:", error.message);
-            else console.log("🚚 Movimiento actualizado:", id);
+            const { error, data: result } = await supabase.from('movimientos_logisticos').update(supabaseData).eq('id', id).select();
+            if (error) {
+                console.error("❌ Error actualizando movimiento en Supabase:", error.message, error);
+            } else {
+                console.log("✅ Movimiento actualizado en Supabase:", id, result);
+            }
         } catch (err) {
-            console.error("Error updating movimiento:", err);
+            console.error("❌ Error updating movimiento:", err);
         }
     };
 

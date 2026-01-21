@@ -26,10 +26,11 @@ const getCostoMonto = (costo: any): number => {
     return Number(costo) || 0;
 };
 
-// Helper to calculate total PKL cost (tasks + manual costos)
+// Helper to calculate total PKL cost (tasks + manual costos sin duplicados)
 const calcularCostoTotalPKL = (pkl: PKL): number => {
     const costosTasks = pkl.tasks?.reduce((sum, t) => sum + getCostoMonto(t.costo), 0) || 0;
-    const costosDetalle = pkl.costos?.detalle?.reduce((sum, d) => sum + (d.monto || 0), 0) || 0;
+    // Solo sumar costos manuales que NO tienen task_id (evitar duplicados)
+    const costosDetalle = pkl.costos?.detalle?.filter(d => !d.task_id).reduce((sum, d) => sum + (d.monto || 0), 0) || 0;
     return costosTasks + costosDetalle;
 };
 
@@ -39,7 +40,7 @@ interface PKLPageProps {
 }
 
 export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPageProps) {
-    const { pkls, updatePKL, updatePKLTask, createPKLTask, deletePKLTask, deletePKL, pklParaMerge, setPKLParaMerge } = useDatabase();
+    const { pkls, updatePKL, updatePKLTask, createPKLTask, deletePKLTask, deletePKL, pklParaMerge, setPKLParaMerge, clientes } = useDatabase();
     const [selectedPKLId, setSelectedPKLId] = useState<string | null>(initialSelectedPKLId || null);
     const [filterEstado, setFilterEstado] = useState<EstadoPKL | 'todos'>('todos');
     const [filterTipo, setFilterTipo] = useState<TipoOperacionPKL | 'todos'>('todos');
@@ -96,7 +97,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                         Trazabilidad end-to-end de requerimientos logisticos
                     </p>
                 </div>
-                <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors">
+                <button className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 !text-white font-medium rounded-lg transition-colors">
                     + Nuevo PKL
                 </button>
             </div>
@@ -220,7 +221,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                                                 {/* Estado dropdown en la lista */}
                                                 <div className="relative group/estado">
                                                     <span
-                                                        className={`px-2 py-0.5 text-xs rounded-full ${estadoConfig.color} text-black font-semibold cursor-pointer hover:ring-2 hover:ring-white/30`}
+                                                        className={`px-3 py-1 text-sm rounded-full ${estadoConfig.color} !text-white font-semibold cursor-pointer hover:ring-2 hover:ring-white/30`}
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
                                                         {estadoConfig.label}
@@ -233,7 +234,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                                                                     e.stopPropagation();
                                                                     updatePKL(pkl.pkl_id, { estado: { ...pkl.estado, actual: estado.value } });
                                                                 }}
-                                                                className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} text-black font-medium`}
+                                                                className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} !text-white font-medium`}
                                                             >
                                                                 {estado.label}
                                                             </button>
@@ -242,7 +243,16 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                                                 </div>
                                             </div>
                                             <div className="cursor-pointer" onClick={() => setSelectedPKLId(pkl.pkl_id)}>
-                                                <div className="font-medium text-white mb-1">{pkl.cliente.nombre}</div>
+                                                <div className="font-medium text-white mb-1">
+                                                    {(() => {
+                                                        // Buscar cliente por nombre o razón social para mostrar nombre_comercial
+                                                        const clienteEntry = Object.entries(clientes).find(([_, c]) =>
+                                                            c.nombre_comercial === pkl.cliente.nombre ||
+                                                            c.razon_social === pkl.cliente.nombre
+                                                        );
+                                                        return clienteEntry?.[1]?.nombre_comercial || pkl.cliente.nombre;
+                                                    })()}
+                                                </div>
                                                 {pkl.cliente.proyecto && (
                                                     <div className="text-gray-800 dark:text-gray-400 text-sm mb-2">
                                                         Proyecto: {pkl.cliente.proyecto}
@@ -374,7 +384,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                             <span className="font-mono text-2xl text-cyan-400">{pkl.pkl_id}</span>
                             {/* Estado - Dropdown editable */}
                             <div className="relative group">
-                                <span className={`px-3 py-1 rounded-full ${estadoConfig.color} text-black font-semibold text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
+                                <span className={`px-3 py-1 rounded-full ${estadoConfig.color} !text-white font-semibold text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
                                     {estadoConfig.label}
                                 </span>
                                 <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[140px]">
@@ -382,7 +392,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                         <button
                                             key={estado.value}
                                             onClick={() => onUpdate({ estado: { actual: estado.value } } as any)}
-                                            className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} text-black font-medium`}
+                                            className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} !text-white font-medium`}
                                         >
                                             {estado.label}
                                         </button>
@@ -406,7 +416,13 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                 className="text-xl font-bold text-white cursor-pointer hover:text-cyan-400 transition-colors"
                                 title="Click para editar"
                             >
-                                {pkl.cliente.nombre}
+                                {(() => {
+                                    const clienteEntry = Object.entries(clientes).find(([_, c]) =>
+                                        c.nombre_comercial === pkl.cliente.nombre ||
+                                        c.razon_social === pkl.cliente.nombre
+                                    );
+                                    return clienteEntry?.[1]?.nombre_comercial || pkl.cliente.nombre;
+                                })()}
                             </h2>
                         )}
                         {/* Proyecto - Editable */}
@@ -451,7 +467,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         {/* Quick Add Task Button */}
                         <button
                             onClick={() => setActiveTab('tasks')}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 !text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
                             title="Agregar Task"
                         >
                             <span className="text-base">+</span>
@@ -460,7 +476,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         {/* Edit PKL Button */}
                         <button
                             onClick={() => setShowEditModal(true)}
-                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                            className="px-4 py-2 bg-purple-700 hover:bg-purple-600 !text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
                             title="Editar PKL"
                         >
                             ✏️ Editar
@@ -556,6 +572,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                     onUpdate={onUpdate}
                     onCreateTask={createPKLTask}
                     onDeleteTask={deletePKLTask}
+                    onUpdateTask={onUpdateTask}
                 />
             )}
         </div>
@@ -563,13 +580,14 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
 }
 
 // PKL Edit Modal - Same style as merge modal (copiado exactamente)
-function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDeleteTask }: {
+function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDeleteTask, onUpdateTask }: {
     pkl: PKL;
     clientes: Record<string, any>;
     onClose: () => void;
     onUpdate: UpdatePKLFn;
     onCreateTask: (pklId: string, task: Omit<import('../types').TaskPKL, 'task_id'>) => void;
     onDeleteTask: (pklId: string, taskId: string) => void;
+    onUpdateTask: (pklId: string, taskId: string, updates: Partial<import('../types').TaskPKL>) => void;
 }) {
     const [pklNombre, setPklNombre] = useState(pkl.origen?.descripcion_inicial || pkl.pkl_id);
 
@@ -599,44 +617,85 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
     const [newTaskDesc, setNewTaskDesc] = useState('');
     const [newTaskMonto, setNewTaskMonto] = useState('');
     const [newTaskProveedor, setNewTaskProveedor] = useState('');
-    // Para cotización
+    // Para cotización - múltiples ítems
+    const [newTaskItems, setNewTaskItems] = useState<Array<{
+        id: string;
+        codigo: string;
+        descripcion: string;
+        cantidad: string;
+        precio_unitario: string;
+    }>>([{ id: crypto.randomUUID(), codigo: '', descripcion: '', cantidad: '', precio_unitario: '' }]);
+    const [newTaskIncluyeIgv, setNewTaskIncluyeIgv] = useState(false);
+    // Legacy - mantener para otros tipos de task
     const [newTaskCantidad, setNewTaskCantidad] = useState('');
     const [newTaskPrecioUnitario, setNewTaskPrecioUnitario] = useState('');
     const [newTaskEsPrecioUnitario, setNewTaskEsPrecioUnitario] = useState(true);
-    const [newTaskIncluyeIgv, setNewTaskIncluyeIgv] = useState(false);
 
-    // Calcular monto total para cotización
+    // Estado para editar task existente
+    const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+    const [editTaskNombre, setEditTaskNombre] = useState('');
+    const [editTaskMonto, setEditTaskMonto] = useState('');
+    const [editTaskTipo, setEditTaskTipo] = useState<import('../types').TipoTaskPKL>('cotizacion');
+    const [editTaskCantidad, setEditTaskCantidad] = useState('');
+    const [editTaskPrecioUnitario, setEditTaskPrecioUnitario] = useState('');
+    const [editTaskEsPrecioUnitario, setEditTaskEsPrecioUnitario] = useState(true);
+    const [editTaskIncluyeIgv, setEditTaskIncluyeIgv] = useState(false);
+
+    // Calcular monto total para cotización (suma de todos los ítems)
     const calcularMontoTask = () => {
         if (newTaskTipo === 'cotizacion') {
-            const cant = parseFloat(newTaskCantidad) || 0;
-            const precio = parseFloat(newTaskPrecioUnitario) || 0;
-
-            if (cant > 0 && precio > 0) {
-                // Si es precio unitario, multiplicar; si es total, usar el precio directamente
-                let total = newTaskEsPrecioUnitario ? (cant * precio) : precio;
-                if (!newTaskIncluyeIgv) {
-                    total = total * 1.18; // Agregar IGV
+            // Sumar todos los ítems
+            let subtotal = 0;
+            for (const item of newTaskItems) {
+                const cant = parseFloat(item.cantidad) || 0;
+                const precio = parseFloat(item.precio_unitario) || 0;
+                if (cant > 0 && precio > 0) {
+                    subtotal += cant * precio;
                 }
-                return total;
             }
-            // Si solo tiene precio (sin cantidad), usar el precio
-            if (precio > 0) {
-                let total = precio;
+            if (subtotal > 0) {
                 if (!newTaskIncluyeIgv) {
-                    total = total * 1.18;
+                    subtotal = subtotal * 1.18; // Agregar IGV
                 }
-                return total;
+                return subtotal;
             }
         }
         return parseFloat(newTaskMonto) || 0;
     };
 
-    // Cerrar con ESC
+    // Funciones para manejar ítems de cotización
+    const addCotizacionItem = () => {
+        setNewTaskItems([...newTaskItems, {
+            id: crypto.randomUUID(),
+            codigo: '',
+            descripcion: '',
+            cantidad: '',
+            precio_unitario: ''
+        }]);
+    };
+
+    const removeCotizacionItem = (id: string) => {
+        if (newTaskItems.length > 1) {
+            setNewTaskItems(newTaskItems.filter(item => item.id !== id));
+        }
+    };
+
+    const updateCotizacionItem = (id: string, field: string, value: string) => {
+        setNewTaskItems(newTaskItems.map(item =>
+            item.id === id ? { ...item, [field]: value } : item
+        ));
+    };
+
+    // Cerrar con ESC y hacer scroll al modal cuando se abre
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
         };
         window.addEventListener('keydown', handleKeyDown);
+
+        // Scroll suave hacia arriba para que el modal sea visible
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onClose]);
 
@@ -688,15 +747,34 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
 
         console.log('📝 Agregando task:', { tipo: newTaskTipo, descripcion, monto });
 
+        // Construir items_cotizacion si es tipo cotización
+        let itemsCotizacion: import('../types').ItemCotizacionPKL[] | undefined;
+        if (newTaskTipo === 'cotizacion') {
+            const itemsValidos = newTaskItems.filter(item =>
+                item.descripcion.trim() && parseFloat(item.cantidad) > 0 && parseFloat(item.precio_unitario) > 0
+            );
+            if (itemsValidos.length > 0) {
+                itemsCotizacion = itemsValidos.map(item => ({
+                    item_id: item.id,
+                    codigo: item.codigo.trim() || undefined,
+                    descripcion: item.descripcion.trim(),
+                    cantidad: parseFloat(item.cantidad),
+                    precio_unitario: parseFloat(item.precio_unitario),
+                    precio_total: parseFloat(item.cantidad) * parseFloat(item.precio_unitario)
+                }));
+            }
+        }
+
         const newTaskData = {
             nombre: `${tipoEmojis[newTaskTipo] || '📋'} ${newTaskTipo.toUpperCase()}: ${descripcion}`.substring(0, 100),
             descripcion,
             tipo: newTaskTipo as any,
             estado: 'completado' as const,
             orden: localTasks.length + 1,
-            costo: monto ? { monto, moneda: 'PEN' as const } : undefined,
+            costo: monto ? { monto, moneda: 'PEN' as const, incluye_igv: newTaskIncluyeIgv } : undefined,
             responsable: 'Huber',
             es_happy_path: false,
+            items_cotizacion: itemsCotizacion,
         };
 
         // Agregar al estado local inmediatamente
@@ -706,16 +784,34 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
         // Guardar en base de datos
         await onCreateTask(pkl.pkl_id, newTaskData);
 
+        // Si es cotización y tiene proveedor, agregarlo a la lista de proveedores del PKL
+        if (newTaskTipo === 'cotizacion' && newTaskProveedor.trim()) {
+            const proveedorExiste = pkl.proveedores?.some(p =>
+                p.nombre.toLowerCase() === newTaskProveedor.trim().toLowerCase()
+            );
+
+            if (!proveedorExiste) {
+                const nuevoProveedor = {
+                    proveedor_id: crypto.randomUUID(),
+                    nombre: newTaskProveedor.trim(),
+                    cotizacion: itemsCotizacion && itemsCotizacion.length > 0 ? {
+                        descripcion: itemsCotizacion.map(i => i.descripcion).join(', '),
+                        cantidad: itemsCotizacion.reduce((sum, i) => sum + i.cantidad, 0),
+                        precio_total: itemsCotizacion.reduce((sum, i) => sum + i.precio_total, 0),
+                        incluye_igv: newTaskIncluyeIgv,
+                    } : undefined,
+                };
+
+                await onUpdate({
+                    proveedores: [...(pkl.proveedores || []), nuevoProveedor]
+                } as any);
+            }
+        }
+
         console.log('✅ Task agregado');
 
         // Reset form
-        setNewTaskDesc('');
-        setNewTaskMonto('');
-        setNewTaskProveedor('');
-        setNewTaskCantidad('');
-        setNewTaskPrecioUnitario('');
-        setNewTaskIncluyeIgv(false);
-        setShowAddTask(false);
+        resetTaskForm();
     };
 
     const resetTaskForm = () => {
@@ -726,18 +822,127 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
         setNewTaskCantidad('');
         setNewTaskPrecioUnitario('');
         setNewTaskIncluyeIgv(false);
+        setNewTaskItems([{ id: crypto.randomUUID(), codigo: '', descripcion: '', cantidad: '', precio_unitario: '' }]);
+    };
+
+    // Calcular monto para edición de task
+    const calcularMontoEditTask = () => {
+        const cant = parseFloat(editTaskCantidad) || 0;
+        const precio = parseFloat(editTaskPrecioUnitario) || 0;
+
+        // Si tiene monto directo (sin cantidad/precio), usar ese
+        if (editTaskMonto && !editTaskCantidad && !editTaskPrecioUnitario) {
+            return parseFloat(editTaskMonto) || 0;
+        }
+
+        if (cant > 0 && precio > 0) {
+            let total = editTaskEsPrecioUnitario ? (cant * precio) : precio;
+            if (!editTaskIncluyeIgv) {
+                total = total * 1.18;
+            }
+            return total;
+        }
+
+        if (precio > 0) {
+            let total = precio;
+            if (!editTaskIncluyeIgv) {
+                total = total * 1.18;
+            }
+            return total;
+        }
+
+        return parseFloat(editTaskMonto) || 0;
+    };
+
+    // Funciones para editar task existente
+    const startEditTask = (task: any) => {
+        setEditingTaskId(task.task_id);
+        setEditTaskNombre(task.nombre || task.descripcion || '');
+        setEditTaskTipo(task.tipo || 'cotizacion');
+
+        // Extraer datos del costo existente
+        const costoActual = getCostoMonto(task.costo);
+        if (costoActual > 0) {
+            setEditTaskMonto(costoActual.toString());
+            // Si el task tiene información de cantidad/precio, usarla
+            if (task.costo?.cantidad && task.costo?.precio_unitario) {
+                setEditTaskCantidad(task.costo.cantidad.toString());
+                setEditTaskPrecioUnitario(task.costo.precio_unitario.toString());
+                setEditTaskEsPrecioUnitario(true);
+            } else {
+                setEditTaskCantidad('');
+                setEditTaskPrecioUnitario(costoActual.toString());
+                setEditTaskEsPrecioUnitario(false); // Es precio total
+            }
+            setEditTaskIncluyeIgv(task.costo?.incluye_igv || false);
+        } else {
+            setEditTaskMonto('');
+            setEditTaskCantidad('');
+            setEditTaskPrecioUnitario('');
+            setEditTaskEsPrecioUnitario(true);
+            setEditTaskIncluyeIgv(false);
+        }
+    };
+
+    const cancelEditTask = () => {
+        setEditingTaskId(null);
+        setEditTaskNombre('');
+        setEditTaskMonto('');
+        setEditTaskTipo('cotizacion');
+        setEditTaskCantidad('');
+        setEditTaskPrecioUnitario('');
+        setEditTaskEsPrecioUnitario(true);
+        setEditTaskIncluyeIgv(false);
+    };
+
+    const saveEditTask = async () => {
+        if (!editingTaskId) return;
+
+        const updatedTask = localTasks.find(t => t.task_id === editingTaskId);
+        if (!updatedTask) return;
+
+        const montoFinal = calcularMontoEditTask();
+        const cant = parseFloat(editTaskCantidad) || undefined;
+        const precioUnit = parseFloat(editTaskPrecioUnitario) || undefined;
+
+        const updatedTaskData = {
+            ...updatedTask,
+            nombre: editTaskNombre,
+            tipo: editTaskTipo,
+            costo: montoFinal > 0 ? {
+                monto: montoFinal,
+                moneda: 'PEN' as const,
+                incluye_igv: editTaskIncluyeIgv,
+                cantidad: cant,
+                precio_unitario: precioUnit,
+                es_precio_unitario: editTaskEsPrecioUnitario
+            } : undefined
+        };
+
+        // Actualizar estado local
+        setLocalTasks(prev => prev.map(t =>
+            t.task_id === editingTaskId ? updatedTaskData : t
+        ));
+
+        // Guardar en base de datos
+        await onUpdateTask(pkl.pkl_id, editingTaskId, updatedTaskData);
+
+        cancelEditTask();
     };
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div
+                className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">📋</span>
                             <div>
-                                <h2 className="text-xl font-bold text-white">{pkl.pkl_id}</h2>
+                                <h2 className="text-xl font-bold !text-white">{pkl.pkl_id}</h2>
                                 <p className="text-white/70 text-sm">{localTasks.length} tasks</p>
                             </div>
                         </div>
@@ -801,38 +1006,163 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                             <label className="block text-sm font-medium text-gray-400">Tasks ({localTasks.length})</label>
                             <button
                                 onClick={() => setShowAddTask(true)}
-                                className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+                                className="px-2 py-1 bg-purple-600 hover:bg-purple-500 !text-white text-xs rounded transition-colors"
                             >
                                 + Agregar Task
                             </button>
                         </div>
-                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-60 overflow-y-auto">
+                        <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-80 overflow-y-auto">
                             {localTasks.map((task, idx) => {
                                 const tipoEmojis: Record<string, string> = {
                                     cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
                                     pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋',
                                     movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭'
                                 };
+                                const isEditing = editingTaskId === task.task_id;
+
                                 return (
-                                    <div key={task.task_id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0">
-                                        <span className="text-gray-500 text-sm font-mono w-6">{idx + 1}</span>
-                                        <span className="text-lg">{tipoEmojis[task.tipo || ''] || '📋'}</span>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-white text-sm font-medium truncate">{task.nombre || task.descripcion}</p>
-                                            <p className="text-gray-500 text-xs">
-                                                {task.tipo?.toUpperCase()} • {task.estado}
-                                                {task.costo ? ` • S/. ${getCostoMonto(task.costo).toFixed(2)}` : ''}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setLocalTasks(prev => prev.filter(t => t.task_id !== task.task_id));
-                                                onDeleteTask(pkl.pkl_id, task.task_id);
-                                            }}
-                                            className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500/30"
-                                        >
-                                            ✕
-                                        </button>
+                                    <div key={task.task_id} className={`p-3 border-b border-gray-700/50 last:border-0 ${isEditing ? 'bg-purple-900/30' : ''}`}>
+                                        {isEditing ? (
+                                            // Formulario de edición completo
+                                            <div className="space-y-3 p-2 bg-purple-900/20 rounded-lg">
+                                                {/* Fila 1: Tipo y Nombre */}
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        value={editTaskTipo}
+                                                        onChange={(e) => setEditTaskTipo(e.target.value as import('../types').TipoTaskPKL)}
+                                                        className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none"
+                                                    >
+                                                        <option value="cotizacion">💬 Cotización</option>
+                                                        <option value="coordinacion_proveedor">📞 Coordinación</option>
+                                                        <option value="compra_insumo">🛒 Compra</option>
+                                                        <option value="pago">💰 Pago</option>
+                                                        <option value="movilidad">🚚 Movilidad</option>
+                                                        <option value="instalacion">🔧 Instalación</option>
+                                                        <option value="cierre">✅ Cierre</option>
+                                                        <option value="administrativo">📋 Admin</option>
+                                                    </select>
+                                                    <input
+                                                        type="text"
+                                                        value={editTaskNombre}
+                                                        onChange={(e) => setEditTaskNombre(e.target.value)}
+                                                        placeholder="Nombre del task"
+                                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm outline-none focus:border-purple-500"
+                                                        autoFocus
+                                                    />
+                                                </div>
+
+                                                {/* Fila 2: Cantidad, Precio y Tipo de precio */}
+                                                <div className="flex gap-2 items-center flex-wrap">
+                                                    <input
+                                                        type="number"
+                                                        value={editTaskCantidad}
+                                                        onChange={(e) => setEditTaskCantidad(e.target.value)}
+                                                        placeholder="Cantidad"
+                                                        className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-purple-500"
+                                                    />
+                                                    <span className="text-gray-400 text-sm">×</span>
+                                                    <input
+                                                        type="number"
+                                                        value={editTaskPrecioUnitario}
+                                                        onChange={(e) => setEditTaskPrecioUnitario(e.target.value)}
+                                                        placeholder={editTaskEsPrecioUnitario ? "P. Unit." : "Total"}
+                                                        step="0.01"
+                                                        className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-purple-500"
+                                                    />
+                                                    <select
+                                                        value={editTaskEsPrecioUnitario ? 'unitario' : 'total'}
+                                                        onChange={(e) => setEditTaskEsPrecioUnitario(e.target.value === 'unitario')}
+                                                        className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-xs outline-none"
+                                                    >
+                                                        <option value="unitario">Precio Unitario</option>
+                                                        <option value="total">Precio Total</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* Fila 3: IGV y Total calculado */}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <label className="flex items-center gap-2 text-gray-300 text-sm cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editTaskIncluyeIgv}
+                                                            onChange={(e) => setEditTaskIncluyeIgv(e.target.checked)}
+                                                            className="w-4 h-4 rounded"
+                                                        />
+                                                        Precio incluye IGV
+                                                    </label>
+                                                    {(editTaskCantidad || editTaskPrecioUnitario) && (
+                                                        <div className="text-amber-400 text-sm font-bold">
+                                                            Total: S/. {calcularMontoEditTask().toFixed(2)}
+                                                            {!editTaskIncluyeIgv && <span className="text-gray-500 text-xs ml-1">(+IGV)</span>}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Fila 4: Botones */}
+                                                <div className="flex gap-2 justify-end pt-2 border-t border-gray-700">
+                                                    <button
+                                                        onClick={cancelEditTask}
+                                                        className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                    <button
+                                                        onClick={saveEditTask}
+                                                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded font-medium"
+                                                    >
+                                                        ✓ Guardar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            // Vista normal del task (clickeable para editar)
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-gray-500 text-sm font-mono w-6">{idx + 1}</span>
+                                                <span className="text-lg">{tipoEmojis[task.tipo || ''] || '📋'}</span>
+                                                <div
+                                                    className="flex-1 min-w-0 cursor-pointer hover:bg-gray-700/50 rounded px-2 py-1 -mx-2 transition-colors"
+                                                    onClick={() => startEditTask(task)}
+                                                    title="Click para editar"
+                                                >
+                                                    <p className="text-white text-sm font-medium truncate">{task.nombre || task.descripcion}</p>
+                                                    <p className="text-gray-500 text-xs">
+                                                        {task.tipo?.toUpperCase()} • {task.estado}
+                                                        {getCostoMonto(task.costo) > 0 ? (
+                                                            <span className="text-emerald-400"> • S/. {getCostoMonto(task.costo).toFixed(2)}</span>
+                                                        ) : (
+                                                            <span className="text-amber-400/60"> • sin costo</span>
+                                                        )}
+                                                    </p>
+                                                    {/* Mostrar ítems de cotización si existen */}
+                                                    {task.items_cotizacion && task.items_cotizacion.length > 0 && (
+                                                        <div className="mt-1 pl-2 border-l-2 border-purple-500/30">
+                                                            {task.items_cotizacion.map((item, i) => (
+                                                                <div key={item.item_id || i} className="text-xs text-gray-400">
+                                                                    {item.cantidad}x {item.descripcion} - S/.{item.precio_total?.toFixed(2) || (item.cantidad * item.precio_unitario).toFixed(2)}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => startEditTask(task)}
+                                                    className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded hover:bg-purple-500/30"
+                                                    title="Editar task"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setLocalTasks(prev => prev.filter(t => t.task_id !== task.task_id));
+                                                        onDeleteTask(pkl.pkl_id, task.task_id);
+                                                    }}
+                                                    className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500/30"
+                                                    title="Eliminar task"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -881,34 +1211,59 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                 {/* Fila 3: Precio - cambia según tipo */}
                                 {newTaskTipo === 'cotizacion' ? (
                                     <div className="space-y-2">
-                                        <div className="flex gap-2 items-center">
-                                            <input
-                                                type="number"
-                                                value={newTaskCantidad}
-                                                onChange={(e) => setNewTaskCantidad(e.target.value)}
-                                                placeholder="Cantidad"
-                                                className="w-24 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
-                                            />
-                                            <span className="text-gray-600 dark:text-gray-400">×</span>
-                                            <input
-                                                type="number"
-                                                value={newTaskPrecioUnitario}
-                                                onChange={(e) => setNewTaskPrecioUnitario(e.target.value)}
-                                                placeholder={newTaskEsPrecioUnitario ? "Precio unit." : "Total"}
-                                                step="0.01"
-                                                className="w-28 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
-                                            />
-                                            <select
-                                                value={newTaskEsPrecioUnitario ? 'unitario' : 'total'}
-                                                onChange={(e) => setNewTaskEsPrecioUnitario(e.target.value === 'unitario')}
-                                                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-xs outline-none"
-                                            >
-                                                <option value="unitario">Precio Unitario</option>
-                                                <option value="total">Precio Total</option>
-                                            </select>
+                                        {/* Lista de ítems de cotización */}
+                                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                                            {newTaskItems.map((item, idx) => (
+                                                <div key={item.id} className="flex gap-1 items-center bg-gray-100 dark:bg-gray-700/50 p-2 rounded">
+                                                    <input
+                                                        type="text"
+                                                        value={item.descripcion}
+                                                        onChange={(e) => updateCotizacionItem(item.id, 'descripcion', e.target.value)}
+                                                        placeholder="Descripción del ítem"
+                                                        className="flex-1 min-w-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-xs outline-none"
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        value={item.cantidad}
+                                                        onChange={(e) => updateCotizacionItem(item.id, 'cantidad', e.target.value)}
+                                                        placeholder="Cant"
+                                                        className="w-14 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-xs outline-none text-center"
+                                                    />
+                                                    <span className="text-gray-500 text-xs">×</span>
+                                                    <input
+                                                        type="number"
+                                                        value={item.precio_unitario}
+                                                        onChange={(e) => updateCotizacionItem(item.id, 'precio_unitario', e.target.value)}
+                                                        placeholder="P.Unit"
+                                                        step="0.01"
+                                                        className="w-20 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-xs outline-none text-right"
+                                                    />
+                                                    <span className="text-white text-xs font-medium w-16 text-right">
+                                                        {(parseFloat(item.cantidad) || 0) * (parseFloat(item.precio_unitario) || 0) > 0
+                                                            ? `S/.${((parseFloat(item.cantidad) || 0) * (parseFloat(item.precio_unitario) || 0)).toFixed(2)}`
+                                                            : ''}
+                                                    </span>
+                                                    {newTaskItems.length > 1 && (
+                                                        <button
+                                                            onClick={() => removeCotizacionItem(item.id)}
+                                                            className="text-red-500 hover:text-red-400 text-sm px-1"
+                                                            title="Eliminar ítem"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
+                                        {/* Botón agregar ítem y totales */}
                                         <div className="flex items-center justify-between">
-                                            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-400 text-sm cursor-pointer">
+                                            <button
+                                                onClick={addCotizacionItem}
+                                                className="text-purple-500 hover:text-purple-400 text-sm font-medium flex items-center gap-1"
+                                            >
+                                                <span>+</span> Agregar ítem
+                                            </button>
+                                            <label className="flex items-center gap-2 text-gray-800 dark:text-gray-200 text-sm cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={newTaskIncluyeIgv}
@@ -917,13 +1272,14 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                                 />
                                                 Precio incluye IGV
                                             </label>
-                                            {newTaskCantidad && newTaskPrecioUnitario && (
-                                                <div className="text-amber-600 dark:text-amber-400 text-sm font-medium">
-                                                    Total: S/. {calcularMontoTask().toFixed(2)}
-                                                    {!newTaskIncluyeIgv && <span className="text-gray-500 text-xs ml-1">(+IGV)</span>}
-                                                </div>
-                                            )}
                                         </div>
+                                        {/* Total general */}
+                                        {calcularMontoTask() > 0 && (
+                                            <div className="text-right text-white text-sm font-bold border-t border-gray-300 dark:border-gray-600 pt-2">
+                                                TOTAL: S/. {calcularMontoTask().toFixed(2)}
+                                                {!newTaskIncluyeIgv && <span className="text-gray-300 text-xs ml-1">(inc. IGV)</span>}
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <input
@@ -946,7 +1302,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                     </button>
                                     <button
                                         onClick={handleAddTask}
-                                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded"
+                                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 !text-white text-xs rounded"
                                     >
                                         Agregar Task
                                     </button>
@@ -967,7 +1323,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                        className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 !text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
                     >
                         {isSaving ? (
                             <span className="animate-pulse">Guardando...</span>
@@ -997,8 +1353,22 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
 
     // Proveedores editing
     const [showAddProveedor, setShowAddProveedor] = useState(false);
+
+    // Costos - expandir task para ver ítems
+    const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
     const [editingProveedorId, setEditingProveedorId] = useState<string | null>(null);
-    const [proveedorForm, setProveedorForm] = useState({ nombre: '', servicio: '', ubicacion: '', contacto: '' });
+    const [proveedorForm, setProveedorForm] = useState({
+        nombre: '', servicio: '', ubicacion: '', contacto: '',
+        // Cotización
+        cotizacion_descripcion: '',
+        cotizacion_cantidad: '',
+        cotizacion_precio_unitario: '',
+        cotizacion_precio_total: '',
+        cotizacion_incluye_igv: false,
+        cotizacion_tiempo_entrega: '',
+        cotizacion_notas: '',
+        elegido: false
+    });
     const [proveedorSearch, setProveedorSearch] = useState('');
 
     // Costos editing
@@ -1009,6 +1379,36 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     const tasksCompletados = pkl.tasks.filter(t => t.estado === 'completado').length;
     const tasksTotal = pkl.tasks.length;
     const progreso = tasksTotal > 0 ? (tasksCompletados / tasksTotal) * 100 : 0;
+
+    // Calcular total de cotización automáticamente
+    const calcularTotalCotizacion = (cantidad: string, precioUnitario: string) => {
+        const cant = parseFloat(cantidad) || 0;
+        const precio = parseFloat(precioUnitario) || 0;
+        if (cant > 0 && precio > 0) {
+            return (cant * precio).toFixed(2);
+        }
+        return '';
+    };
+
+    // Actualizar cantidad y recalcular total
+    const handleCotizacionCantidadChange = (value: string) => {
+        const newTotal = calcularTotalCotizacion(value, proveedorForm.cotizacion_precio_unitario);
+        setProveedorForm({
+            ...proveedorForm,
+            cotizacion_cantidad: value,
+            cotizacion_precio_total: newTotal || proveedorForm.cotizacion_precio_total
+        });
+    };
+
+    // Actualizar precio unitario y recalcular total
+    const handleCotizacionPrecioUnitarioChange = (value: string) => {
+        const newTotal = calcularTotalCotizacion(proveedorForm.cotizacion_cantidad, value);
+        setProveedorForm({
+            ...proveedorForm,
+            cotizacion_precio_unitario: value,
+            cotizacion_precio_total: newTotal || proveedorForm.cotizacion_precio_total
+        });
+    };
 
     const handleSaveObs = () => {
         onUpdate({ observaciones: obsValue } as any);
@@ -1055,17 +1455,42 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     };
 
     // Proveedor handlers
+    const resetProveedorForm = () => {
+        setProveedorForm({
+            nombre: '', servicio: '', ubicacion: '', contacto: '',
+            cotizacion_descripcion: '', cotizacion_cantidad: '', cotizacion_precio_unitario: '',
+            cotizacion_precio_total: '', cotizacion_incluye_igv: false, cotizacion_tiempo_entrega: '',
+            cotizacion_notas: '', elegido: false
+        });
+    };
+
     const handleAddProveedor = () => {
         if (!proveedorForm.nombre.trim()) return;
+
+        // Construir cotización si hay datos
+        const tieneCotizacion = proveedorForm.cotizacion_descripcion.trim() || proveedorForm.cotizacion_precio_total;
+        const cotizacion = tieneCotizacion ? {
+            descripcion: proveedorForm.cotizacion_descripcion.trim(),
+            cantidad: proveedorForm.cotizacion_cantidad ? parseInt(proveedorForm.cotizacion_cantidad) : undefined,
+            precio_unitario: proveedorForm.cotizacion_precio_unitario ? parseFloat(proveedorForm.cotizacion_precio_unitario) : undefined,
+            precio_total: parseFloat(proveedorForm.cotizacion_precio_total) || 0,
+            incluye_igv: proveedorForm.cotizacion_incluye_igv,
+            tiempo_entrega: proveedorForm.cotizacion_tiempo_entrega.trim() || undefined,
+            notas: proveedorForm.cotizacion_notas.trim() || undefined,
+            fecha_cotizacion: new Date().toISOString().split('T')[0]
+        } : undefined;
+
         const newProveedor = {
             proveedor_id: `PROV-${Date.now()}`,
             nombre: proveedorForm.nombre.trim(),
             servicio: proveedorForm.servicio.trim(),
             ubicacion: proveedorForm.ubicacion.trim(),
-            contacto: proveedorForm.contacto.trim()
+            contacto: proveedorForm.contacto.trim(),
+            cotizacion,
+            elegido: proveedorForm.elegido
         };
         onUpdate({ proveedores: [...pkl.proveedores, newProveedor] } as any);
-        setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' });
+        resetProveedorForm();
         setShowAddProveedor(false);
         setProveedorSearch('');
     };
@@ -1076,20 +1501,49 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
             nombre: prov.nombre,
             servicio: prov.servicio || '',
             ubicacion: prov.ubicacion || '',
-            contacto: prov.contacto || ''
+            contacto: prov.contacto || '',
+            cotizacion_descripcion: prov.cotizacion?.descripcion || '',
+            cotizacion_cantidad: prov.cotizacion?.cantidad?.toString() || '',
+            cotizacion_precio_unitario: prov.cotizacion?.precio_unitario?.toString() || '',
+            cotizacion_precio_total: prov.cotizacion?.precio_total?.toString() || '',
+            cotizacion_incluye_igv: prov.cotizacion?.incluye_igv || false,
+            cotizacion_tiempo_entrega: prov.cotizacion?.tiempo_entrega || '',
+            cotizacion_notas: prov.cotizacion?.notas || '',
+            elegido: prov.elegido || false
         });
     };
 
     const handleSaveProveedor = () => {
         if (!editingProveedorId) return;
+
+        // Construir cotización si hay datos
+        const tieneCotizacion = proveedorForm.cotizacion_descripcion.trim() || proveedorForm.cotizacion_precio_total;
+        const cotizacion = tieneCotizacion ? {
+            descripcion: proveedorForm.cotizacion_descripcion.trim(),
+            cantidad: proveedorForm.cotizacion_cantidad ? parseInt(proveedorForm.cotizacion_cantidad) : undefined,
+            precio_unitario: proveedorForm.cotizacion_precio_unitario ? parseFloat(proveedorForm.cotizacion_precio_unitario) : undefined,
+            precio_total: parseFloat(proveedorForm.cotizacion_precio_total) || 0,
+            incluye_igv: proveedorForm.cotizacion_incluye_igv,
+            tiempo_entrega: proveedorForm.cotizacion_tiempo_entrega.trim() || undefined,
+            notas: proveedorForm.cotizacion_notas.trim() || undefined
+        } : undefined;
+
         const updated = pkl.proveedores.map(p =>
             p.proveedor_id === editingProveedorId
-                ? { ...p, ...proveedorForm }
+                ? {
+                    ...p,
+                    nombre: proveedorForm.nombre,
+                    servicio: proveedorForm.servicio,
+                    ubicacion: proveedorForm.ubicacion,
+                    contacto: proveedorForm.contacto,
+                    cotizacion,
+                    elegido: proveedorForm.elegido
+                }
                 : p
         );
         onUpdate({ proveedores: updated } as any);
         setEditingProveedorId(null);
-        setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' });
+        resetProveedorForm();
     };
 
     const handleDeleteProveedor = (proveedorId: string) => {
@@ -1098,12 +1552,22 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
 
     const handleSelectProveedorFromDB = (prov: typeof proveedoresDB[string]) => {
         setProveedorForm({
+            ...proveedorForm,
             nombre: prov.nombre,
             servicio: prov.especialidad || '',
             ubicacion: prov.direccion || '',
             contacto: prov.telefono || ''
         });
         setProveedorSearch('');
+    };
+
+    // Marcar/desmarcar proveedor como elegido
+    const handleToggleElegido = (proveedorId: string) => {
+        const updated = pkl.proveedores.map(p => ({
+            ...p,
+            elegido: p.proveedor_id === proveedorId ? !p.elegido : p.elegido
+        }));
+        onUpdate({ proveedores: updated } as any);
     };
 
     // Filter proveedores from DB for autocomplete
@@ -1180,7 +1644,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                         <h4 className="text-gray-700 dark:text-gray-400 text-sm font-medium">Productos</h4>
                         <button
                             onClick={() => setShowAddProducto(true)}
-                            className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium rounded transition-colors"
+                            className="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 !text-white text-sm font-medium rounded transition-colors"
                         >
                             + Agregar
                         </button>
@@ -1279,7 +1743,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                         <h4 className="text-gray-700 dark:text-gray-400 text-sm font-medium">Proveedores</h4>
                         <button
                             onClick={() => setShowAddProveedor(true)}
-                            className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded transition-colors"
+                            className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 !text-white text-sm font-medium rounded transition-colors"
                         >
                             + Agregar
                         </button>
@@ -1287,7 +1751,27 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
 
                     {/* Add Proveedor Form */}
                     {showAddProveedor && (
-                        <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-purple-500/30 space-y-2">
+                        <div
+                            className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-purple-500/30 space-y-2"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                    setShowAddProveedor(false);
+                                    resetProveedorForm();
+                                    setProveedorSearch('');
+                                }
+                            }}
+                        >
+                            {/* Header con botón cerrar */}
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-purple-400 text-sm font-medium">Agregar Proveedor</span>
+                                <button
+                                    onClick={() => { setShowAddProveedor(false); resetProveedorForm(); setProveedorSearch(''); }}
+                                    className="text-gray-400 hover:text-white text-lg leading-none"
+                                    title="Cerrar (ESC)"
+                                >
+                                    ×
+                                </button>
+                            </div>
                             <div className="relative">
                                 <input
                                     type="text"
@@ -1295,6 +1779,10 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                     onChange={e => {
                                         setProveedorSearch(e.target.value);
                                         setProveedorForm({ ...proveedorForm, nombre: e.target.value });
+                                    }}
+                                    onBlur={() => {
+                                        // Cerrar dropdown después de un pequeño delay para permitir clicks
+                                        setTimeout(() => setProveedorSearch(''), 200);
                                     }}
                                     placeholder="Buscar o escribir nombre del proveedor..."
                                     className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
@@ -1350,9 +1838,86 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                     className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
                                 />
                             </div>
-                            <div className="flex gap-2 justify-end">
-                                <button onClick={() => { setShowAddProveedor(false); setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' }); setProveedorSearch(''); }} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
-                                <button onClick={handleAddProveedor} className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded">Guardar</button>
+
+                            {/* Sección de Cotización */}
+                            <div className="border-t border-cyan-500/30 pt-3 mt-2">
+                                <div className="text-cyan-400 text-xs font-medium mb-2">💬 Cotización (opcional)</div>
+                                <input
+                                    type="text"
+                                    value={proveedorForm.cotizacion_descripcion}
+                                    onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_descripcion: e.target.value })}
+                                    placeholder="¿Qué se cotizó? (ej: 50 polos sublimados)"
+                                    className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 mb-2"
+                                />
+                                <div className="flex gap-2 mb-2 items-center">
+                                    <input
+                                        type="number"
+                                        value={proveedorForm.cotizacion_cantidad}
+                                        onChange={e => handleCotizacionCantidadChange(e.target.value)}
+                                        placeholder="Cantidad"
+                                        className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                    />
+                                    <span className="text-gray-400">×</span>
+                                    <input
+                                        type="number"
+                                        value={proveedorForm.cotizacion_precio_unitario}
+                                        onChange={e => handleCotizacionPrecioUnitarioChange(e.target.value)}
+                                        placeholder="P. Unit."
+                                        step="0.01"
+                                        className="w-24 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                    />
+                                    <span className="text-gray-400">=</span>
+                                    <div className="flex items-center gap-1 flex-1">
+                                        <span className="text-amber-400 font-bold text-sm">S/</span>
+                                        <input
+                                            type="number"
+                                            value={proveedorForm.cotizacion_precio_total}
+                                            onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_precio_total: e.target.value })}
+                                            placeholder="Total"
+                                            step="0.01"
+                                            className="w-full bg-amber-500/10 border border-amber-500/50 rounded px-2 py-2 text-amber-400 font-bold text-sm outline-none focus:border-amber-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        value={proveedorForm.cotizacion_tiempo_entrega}
+                                        onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_tiempo_entrega: e.target.value })}
+                                        placeholder="Tiempo entrega (ej: 3 días)"
+                                        className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                    />
+                                    <label className="flex items-center gap-2 text-gray-400 text-xs cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={proveedorForm.cotizacion_incluye_igv}
+                                            onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_incluye_igv: e.target.checked })}
+                                            className="w-4 h-4 rounded"
+                                        />
+                                        Incluye IGV
+                                    </label>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={proveedorForm.cotizacion_notas}
+                                    onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_notas: e.target.value })}
+                                    placeholder="Notas adicionales..."
+                                    className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 mb-2"
+                                />
+                                <label className="flex items-center gap-2 text-emerald-400 text-sm cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={proveedorForm.elegido}
+                                        onChange={e => setProveedorForm({ ...proveedorForm, elegido: e.target.checked })}
+                                        className="w-4 h-4 rounded"
+                                    />
+                                    ✅ Proveedor elegido
+                                </label>
+                            </div>
+
+                            <div className="flex gap-2 justify-end pt-2">
+                                <button onClick={() => { setShowAddProveedor(false); resetProveedorForm(); setProveedorSearch(''); }} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded font-medium">Cancelar</button>
+                                <button onClick={handleAddProveedor} className="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs rounded font-medium">Guardar</button>
                             </div>
                         </div>
                     )}
@@ -1360,7 +1925,11 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                     {pkl.proveedores.length === 0 ? (
                         <div className="text-gray-500 dark:text-gray-600 dark:text-gray-500 italic text-sm py-4 text-center">Sin proveedores asignados</div>
                     ) : pkl.proveedores.map(prov => (
-                        <div key={prov.proveedor_id} className="mb-3 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg group hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                        <div key={prov.proveedor_id} className={`mb-3 p-3 rounded-lg group transition-colors ${
+                            prov.elegido
+                                ? 'bg-emerald-500/10 border-2 border-emerald-500/50 hover:bg-emerald-500/20'
+                                : 'bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-800'
+                        }`}>
                             {editingProveedorId === prov.proveedor_id ? (
                                 <div className="space-y-2">
                                     <input
@@ -1394,31 +1963,141 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                             className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
                                         />
                                     </div>
-                                    <div className="flex gap-2 justify-end">
-                                        <button onClick={() => { setEditingProveedorId(null); setProveedorForm({ nombre: '', servicio: '', ubicacion: '', contacto: '' }); }} className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
-                                        <button onClick={handleSaveProveedor} className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded">Guardar</button>
+
+                                    {/* Cotización en edición */}
+                                    <div className="border-t border-cyan-500/30 pt-2 mt-2">
+                                        <div className="text-cyan-400 text-xs font-medium mb-2">💬 Cotización</div>
+                                        <input
+                                            type="text"
+                                            value={proveedorForm.cotizacion_descripcion}
+                                            onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_descripcion: e.target.value })}
+                                            placeholder="¿Qué se cotizó?"
+                                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none mb-2"
+                                        />
+                                        <div className="flex gap-2 mb-2 items-center">
+                                            <input
+                                                type="number"
+                                                value={proveedorForm.cotizacion_cantidad}
+                                                onChange={e => handleCotizacionCantidadChange(e.target.value)}
+                                                placeholder="Cant."
+                                                className="w-16 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            />
+                                            <span className="text-gray-400 text-xs">×</span>
+                                            <input
+                                                type="number"
+                                                value={proveedorForm.cotizacion_precio_unitario}
+                                                onChange={e => handleCotizacionPrecioUnitarioChange(e.target.value)}
+                                                placeholder="P.Unit"
+                                                step="0.01"
+                                                className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            />
+                                            <span className="text-gray-400 text-xs">=</span>
+                                            <div className="flex items-center gap-1 flex-1">
+                                                <span className="text-amber-400 font-bold text-xs">S/</span>
+                                                <input
+                                                    type="number"
+                                                    value={proveedorForm.cotizacion_precio_total}
+                                                    onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_precio_total: e.target.value })}
+                                                    placeholder="Total"
+                                                    step="0.01"
+                                                    className="w-full bg-amber-500/10 border border-amber-500/50 rounded px-2 py-1 text-amber-400 font-bold text-sm outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 mb-2">
+                                            <input
+                                                type="text"
+                                                value={proveedorForm.cotizacion_tiempo_entrega}
+                                                onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_tiempo_entrega: e.target.value })}
+                                                placeholder="Tiempo entrega"
+                                                className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            />
+                                            <label className="flex items-center gap-1 text-gray-400 text-xs cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={proveedorForm.cotizacion_incluye_igv}
+                                                    onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_incluye_igv: e.target.checked })}
+                                                    className="w-3 h-3 rounded"
+                                                />
+                                                +IGV
+                                            </label>
+                                        </div>
+                                        <label className="flex items-center gap-2 text-emerald-400 text-sm cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={proveedorForm.elegido}
+                                                onChange={e => setProveedorForm({ ...proveedorForm, elegido: e.target.checked })}
+                                                className="w-4 h-4 rounded"
+                                            />
+                                            ✅ Elegido
+                                        </label>
+                                    </div>
+
+                                    <div className="flex gap-2 justify-end pt-2">
+                                        <button onClick={() => { setEditingProveedorId(null); resetProveedorForm(); }} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded font-medium">Cancelar</button>
+                                        <button onClick={handleSaveProveedor} className="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs rounded font-medium">Guardar</button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="text-gray-900 dark:text-white font-medium flex items-center gap-2">
-                                            <span className="text-purple-400">🏭</span>
-                                            {prov.nombre}
+                                <div>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="text-gray-900 dark:text-white font-medium flex items-center gap-2">
+                                                {prov.elegido && <span className="text-emerald-400">✅</span>}
+                                                <span className="text-purple-400">🏭</span>
+                                                {prov.nombre}
+                                                {prov.elegido && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">ELEGIDO</span>}
+                                            </div>
+                                            <div className="text-gray-800 dark:text-gray-400 text-sm mt-1">
+                                                {prov.servicio && <span className="text-purple-300">{prov.servicio}</span>}
+                                                {prov.servicio && prov.ubicacion && ' | '}
+                                                {prov.ubicacion && <span>📍 {prov.ubicacion}</span>}
+                                            </div>
+                                            {prov.contacto && (
+                                                <div className="text-gray-500 text-xs mt-1">📞 {prov.contacto}</div>
+                                            )}
                                         </div>
-                                        <div className="text-gray-800 dark:text-gray-400 text-sm mt-1">
-                                            {prov.servicio && <span className="text-purple-300">{prov.servicio}</span>}
-                                            {prov.servicio && prov.ubicacion && ' | '}
-                                            {prov.ubicacion && <span>📍 {prov.ubicacion}</span>}
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => handleToggleElegido(prov.proveedor_id)}
+                                                className={`p-1.5 rounded transition-colors ${
+                                                    prov.elegido
+                                                        ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                                                        : 'hover:bg-gray-700 text-gray-400 hover:text-emerald-400'
+                                                }`}
+                                                title={prov.elegido ? 'Quitar selección' : 'Marcar como elegido'}
+                                            >
+                                                {prov.elegido ? '✅' : '☑️'}
+                                            </button>
+                                            <button onClick={() => handleEditProveedor(prov)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-purple-400" title="Editar">✏️</button>
+                                            <button onClick={() => handleDeleteProveedor(prov.proveedor_id)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-400" title="Eliminar">🗑️</button>
                                         </div>
-                                        {prov.contacto && (
-                                            <div className="text-gray-500 text-xs mt-1">📞 {prov.contacto}</div>
-                                        )}
                                     </div>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => handleEditProveedor(prov)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-purple-400" title="Editar">✏️</button>
-                                        <button onClick={() => handleDeleteProveedor(prov.proveedor_id)} className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-400" title="Eliminar">🗑️</button>
-                                    </div>
+
+                                    {/* Mostrar cotización si existe */}
+                                    {prov.cotizacion && (
+                                        <div className="mt-2 pt-2 border-t border-gray-700/50">
+                                            <div className="text-cyan-400 text-xs font-medium mb-1">💬 Cotización:</div>
+                                            <div className="text-gray-300 text-sm">{prov.cotizacion.descripcion}</div>
+                                            <div className="flex items-center gap-3 mt-1 text-xs">
+                                                {prov.cotizacion.cantidad && prov.cotizacion.precio_unitario && (
+                                                    <span className="text-gray-400">
+                                                        {prov.cotizacion.cantidad} × S/ {prov.cotizacion.precio_unitario.toFixed(2)}
+                                                    </span>
+                                                )}
+                                                <span className="text-amber-400 font-bold">
+                                                    Total: S/ {prov.cotizacion.precio_total.toFixed(2)}
+                                                    {prov.cotizacion.incluye_igv && <span className="text-gray-500 ml-1">(inc. IGV)</span>}
+                                                </span>
+                                                {prov.cotizacion.tiempo_entrega && (
+                                                    <span className="text-gray-500">⏱ {prov.cotizacion.tiempo_entrega}</span>
+                                                )}
+                                            </div>
+                                            {prov.cotizacion.notas && (
+                                                <div className="text-gray-500 text-xs mt-1 italic">📝 {prov.cotizacion.notas}</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1492,16 +2171,23 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                             concepto: t.nombre || t.descripcion || 'Task',
                             monto: getCostoMonto(t.costo),
                             fecha: t.fecha_completado,
-                            fromTask: true
+                            fromTask: true,
+                            task_id: t.task_id,
+                            items_cotizacion: t.items_cotizacion,
+                            tipo: t.tipo
                         })) || [];
 
-                    // Combinar con costos del detalle
+                    // Filtrar costos del detalle que NO tienen task_id (evitar duplicados)
+                    // Los costos con task_id ya se muestran en costosFromTasks
+                    const costosManualDetalle = pkl.costos.detalle.filter(d => !d.task_id);
+
+                    // Combinar: tasks + costos manuales (sin task_id)
                     const allCostos = [
                         ...costosFromTasks,
-                        ...pkl.costos.detalle.map(d => ({ ...d, fromTask: false }))
+                        ...costosManualDetalle.map(d => ({ ...d, fromTask: false }))
                     ];
 
-                    // Total combinado
+                    // Total combinado (sin duplicados)
                     const totalCombinado = allCostos.reduce((sum, c) => sum + (c.monto || 0), 0);
 
                     return (
@@ -1515,7 +2201,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                 </div>
                     <button
                         onClick={() => setShowAddCosto(true)}
-                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors"
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 !text-white text-sm font-medium rounded transition-colors"
                     >
                         + Agregar
                     </button>
@@ -1575,22 +2261,64 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                 ) : (
                     <div className="space-y-1">
                         {/* Costos de Tasks */}
-                        {costosFromTasks.map((d, i) => (
-                            <div key={`task-${i}`} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-purple-500 text-xs">📋</span>
-                                    <span className="text-gray-900 dark:text-white text-sm truncate max-w-[200px]">{d.concepto}</span>
-                                    <span className="text-purple-400 text-xs">(task)</span>
+                        {costosFromTasks.map((d, i) => {
+                            const tieneItems = d.items_cotizacion && d.items_cotizacion.length > 0;
+                            const esCotizacion = d.tipo === 'cotizacion';
+                            const esExpandible = tieneItems || esCotizacion;
+
+                            return (
+                            <div key={`task-${i}`} className="border-b border-gray-200 dark:border-gray-700">
+                                <div
+                                    className={`flex items-center justify-between py-2 ${esExpandible ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 -mx-1' : ''}`}
+                                    onClick={() => {
+                                        if (esExpandible) {
+                                            setExpandedTaskId(expandedTaskId === d.task_id ? null : d.task_id);
+                                        }
+                                    }}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {esExpandible && (
+                                            <span className="text-gray-400 text-xs">{expandedTaskId === d.task_id ? '▼' : '▶'}</span>
+                                        )}
+                                        <span className="text-purple-500 text-xs">{esCotizacion ? '💬' : '📋'}</span>
+                                        <span className="text-gray-900 dark:text-white text-sm truncate max-w-[200px]">{d.concepto}</span>
+                                        <span className="text-purple-400 text-xs">(task)</span>
+                                    </div>
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                        S/ {d.monto.toFixed(2)}
+                                    </span>
                                 </div>
-                                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                                    S/ {d.monto.toFixed(2)}
-                                </span>
+                                {/* Ítems de cotización expandidos */}
+                                {expandedTaskId === d.task_id && (
+                                    <div className="ml-6 mb-2 pl-3 border-l-2 border-purple-500/30 space-y-1">
+                                        {tieneItems ? (
+                                            d.items_cotizacion!.map((item, idx) => (
+                                                <div key={item.item_id || idx} className="flex justify-between text-xs py-1">
+                                                    <span className="text-gray-600 dark:text-gray-400">
+                                                        {item.cantidad}x {item.descripcion}
+                                                    </span>
+                                                    <span className="text-gray-500 dark:text-gray-400">
+                                                        S/ {(item.precio_total || item.cantidad * item.precio_unitario).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-xs py-1 text-gray-500 italic">
+                                                Cotización sin desglose de ítems (creada antes de la actualización)
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                        ))}
-                        {/* Costos manuales del detalle */}
-                        {pkl.costos.detalle.map((d, i) => (
+                            );
+                        })}
+                        {/* Costos manuales del detalle (solo los que NO tienen task_id) */}
+                        {costosManualDetalle.map((d, i) => {
+                            // Encontrar el índice real en pkl.costos.detalle para edición/eliminación
+                            const realIndex = pkl.costos.detalle.findIndex(det => det.concepto === d.concepto && det.monto === d.monto && !det.task_id);
+                            return (
                             <div key={`manual-${i}`} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 group">
-                                {editingCostoIndex === i ? (
+                                {editingCostoIndex === realIndex ? (
                                     <div className="flex items-center gap-2 flex-1">
                                         <input
                                             autoFocus
@@ -1611,7 +2339,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                 ) : (
                                     <>
                                         <div
-                                            onClick={() => handleEditCosto(i)}
+                                            onClick={() => handleEditCosto(realIndex)}
                                             className="cursor-pointer hover:text-emerald-500 transition-colors"
                                         >
                                             <span className="text-gray-900 dark:text-white">{d.concepto}</span>
@@ -1624,7 +2352,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                                 S/ {d.monto.toFixed(2)}
                                             </span>
                                             <button
-                                                onClick={() => handleDeleteCosto(i)}
+                                                onClick={() => handleDeleteCosto(realIndex)}
                                                 className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
                                                 ✕
@@ -1633,7 +2361,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                     </>
                                 )}
                             </div>
-                        ))}
+                        );})}
                     </div>
                 )}
                         </>
@@ -1950,7 +2678,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                 {/* Tipo - dropdown */}
                                 <div className="relative group">
                                     <button
-                                        className={`px-2 py-0.5 rounded-full ${typeConfig?.color || 'bg-gray-600'} !text-gray-900 dark:text-white font-medium hover:ring-2 hover:ring-white/30 transition-all`}
+                                        className={`px-2 py-0.5 rounded-full ${typeConfig?.color || 'bg-gray-600'} text-white font-medium hover:ring-2 hover:ring-white/30 transition-all`}
                                     >
                                         {typeConfig?.label || task.tipo}
                                     </button>
@@ -2046,7 +2774,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                     <button
                                         key={estado.value}
                                         onClick={() => handleEstadoChange(task.task_id, estado.value)}
-                                        className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color}`}
+                                        className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} !text-white`}
                                     >
                                         {estado.label}
                                     </button>
@@ -2054,19 +2782,17 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                             </div>
                         </div>
 
-                        {/* Delete button - visible on hover */}
+                        {/* Delete button - always visible */}
                         <button
                             onClick={() => {
-                                if (confirm(`¿Eliminar task "${task.nombre}"?`)) {
+                                if (confirm(`¿Eliminar task "${task.nombre}"?\n\nEsta acción no se puede deshacer.`)) {
                                     onDeleteTask(task.task_id);
                                 }
                             }}
-                            className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover/task:opacity-100"
+                            className="p-2 text-red-400/60 hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-all"
                             title="Eliminar task"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
+                            🗑️
                         </button>
                     </div>
                 );
@@ -2121,7 +2847,7 @@ function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                 <h4 className="text-gray-800 dark:text-gray-400 text-sm">Eventos Externos (terceros)</h4>
                 <button
                     onClick={() => setShowNewEvento(true)}
-                    className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded transition-colors"
+                    className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 !text-white text-sm font-medium rounded transition-colors"
                 >
                     + Agregar
                 </button>

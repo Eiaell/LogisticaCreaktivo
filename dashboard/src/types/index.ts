@@ -391,7 +391,7 @@ export type EstadoEvento = 'completado' | 'pendiente' | 'registrado' | 'pagado' 
 // ============================================
 // MOVIMIENTOS LOGÍSTICOS
 // ============================================
-export type TipoMovimientoLogistico = 'entrega' | 'recojo' | 'compra' | 'traslado';
+export type TipoMovimientoLogistico = 'entrega' | 'recojo' | 'compra' | 'traslado' | 'solicitud_stock' | 'cotizacion' | 'coordinacion';
 
 export interface ItemMovimiento {
     producto: string;
@@ -409,6 +409,20 @@ export interface DetalleMovimientoRecojo {
     item?: string;
     motivo?: string;
     fecha_evento?: string;
+}
+
+// Task simple para movimientos/rendiciones (reutiliza estructura de PKL)
+export interface TaskEvento {
+    task_id: string;
+    tipo: string;
+    nombre: string;
+    descripcion?: string;
+    costo?: {
+        monto: number;
+        moneda: 'PEN' | 'USD';
+    };
+    estado: 'pendiente' | 'completado';
+    fecha_completado?: string;
 }
 
 export interface MovimientoLogistico {
@@ -429,6 +443,9 @@ export interface MovimientoLogistico {
 
     // Costos asociados
     costo_movilidad?: number;
+
+    // Tasks asociados
+    tasks?: TaskEvento[];
 
     // Metadata
     created_at: string;
@@ -548,6 +565,9 @@ export const TIPOS_MOVIMIENTO = [
     { value: 'recojo', label: 'Recojo', color: 'bg-blue-500', icon: '🚚' },
     { value: 'compra', label: 'Compra', color: 'bg-amber-500', icon: '🛒' },
     { value: 'traslado', label: 'Traslado', color: 'bg-purple-500', icon: '🔄' },
+    { value: 'solicitud_stock', label: 'Solicitud Stock', color: 'bg-cyan-500', icon: '📋' },
+    { value: 'cotizacion', label: 'Cotización', color: 'bg-yellow-500', icon: '💬' },
+    { value: 'coordinacion', label: 'Coordinación', color: 'bg-indigo-500', icon: '📞' },
 ] as const;
 
 // Estados para UI de rendiciones
@@ -557,6 +577,7 @@ export const TIPOS_RENDICION = [
     { value: 'pago_saldo', label: 'Pago Saldo', color: 'bg-emerald-500', icon: '✅' },
     { value: 'gasto_extra', label: 'Gasto Extra', color: 'bg-red-500', icon: '📋' },
     { value: 'compra_material', label: 'Compra Material', color: 'bg-indigo-500', icon: '🛍️' },
+    { value: 'caja_diaria', label: 'Caja Diaria', color: 'bg-amber-500', icon: '💵' },
 ] as const;
 
 // ============================================
@@ -566,31 +587,35 @@ export const TIPOS_RENDICION = [
 
 // Tipos de operacion PKL (Ciclos de Operación)
 export const TIPOS_OPERACION_PKL = [
-    { value: 'ciclo_completo', label: 'Ciclo Completo (C+P+R+E)', color: 'bg-emerald-600' },
-    { value: 'produccion_recojo_entrega', label: 'Produccion + Recojo + Entrega', color: 'bg-blue-600' },
-    { value: 'cotizacion_recojo_entrega', label: 'Cotizacion + Recojo + Entrega', color: 'bg-sky-600' },
-    { value: 'cotizacion_recojo', label: 'Cotizacion + Recojo', color: 'bg-teal-600' },
-    { value: 'recojo_entrega', label: 'Recojo + Entrega', color: 'bg-cyan-600' },
-    { value: 'solo_entrega', label: 'Solo Entrega', color: 'bg-green-600' },
-    { value: 'cotizacion_produccion_motorizado', label: 'Cotizacion + Produccion + Motorizado', color: 'bg-indigo-600' },
-    { value: 'solo_motorizado', label: 'Solo Motorizado', color: 'bg-rose-600' },
-    { value: 'cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-500' },
-    { value: 'ciclo_completo_instalacion', label: 'Ciclo Completo + Instalacion', color: 'bg-purple-600' },
-    { value: 'feria_evento', label: 'Feria/Evento', color: 'bg-orange-600' },
-    { value: 'compra_insumo', label: 'Compra Insumo', color: 'bg-amber-600' },
+    { value: 'ciclo_completo', label: 'Ciclo Completo (C+P+R+E)', color: 'bg-emerald-700' },
+    { value: 'produccion_recojo_entrega', label: 'Produccion + Recojo + Entrega', color: 'bg-blue-700' },
+    { value: 'cotizacion_recojo_entrega', label: 'Cotizacion + Recojo + Entrega', color: 'bg-sky-700' },
+    { value: 'cotizacion_recojo', label: 'Cotizacion + Recojo', color: 'bg-teal-700' },
+    { value: 'recojo_entrega', label: 'Recojo + Entrega', color: 'bg-cyan-700' },
+    { value: 'solo_entrega', label: 'Solo Entrega', color: 'bg-green-700' },
+    { value: 'cotizacion_produccion_motorizado', label: 'Cotizacion + Produccion + Motorizado', color: 'bg-indigo-700' },
+    { value: 'solo_motorizado', label: 'Solo Motorizado', color: 'bg-rose-700' },
+    { value: 'cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-600' },
+    { value: 'solo_cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-600' },
+    { value: 'ciclo_completo_instalacion', label: 'Ciclo Completo + Instalacion', color: 'bg-purple-700' },
+    { value: 'feria_evento', label: 'Feria/Evento', color: 'bg-orange-700' },
+    { value: 'compra_insumo', label: 'Compra Insumo', color: 'bg-amber-700' },
+    { value: 'compra_interna', label: 'Compra Interna', color: 'bg-amber-700' },
+    { value: 'movilidad', label: 'Movilidad', color: 'bg-cyan-700' },
+    { value: 'produccion', label: 'Produccion', color: 'bg-blue-700' },
 ] as const;
 
 export type TipoOperacionPKL = typeof TIPOS_OPERACION_PKL[number]['value'];
 
 // Estados del PKL
 export const ESTADOS_PKL = [
-    { value: 'recibido', label: 'Recibido', color: 'bg-violet-500' },
-    { value: 'cotizado', label: 'Cotizado', color: 'bg-purple-500' },
-    { value: 'en_produccion', label: 'En Produccion', color: 'bg-blue-500' },
-    { value: 'para_recoger', label: 'Para Recoger', color: 'bg-cyan-500' },
-    { value: 'en_pausa', label: 'En Pausa', color: 'bg-yellow-500' },
-    { value: 'cerrado_ok', label: 'Cerrado OK', color: 'bg-green-500' },
-    { value: 'cancelado', label: 'Cancelado', color: 'bg-red-500' },
+    { value: 'recibido', label: 'Recibido', color: 'bg-sky-700' },
+    { value: 'cotizado', label: 'Cotizado', color: 'bg-teal-700' },
+    { value: 'en_produccion', label: 'En Produccion', color: 'bg-blue-700' },
+    { value: 'para_recoger', label: 'Para Recoger', color: 'bg-cyan-700' },
+    { value: 'en_pausa', label: 'En Pausa', color: 'bg-yellow-600' },
+    { value: 'cerrado_ok', label: 'Cerrado OK', color: 'bg-green-700' },
+    { value: 'cancelado', label: 'Cancelado', color: 'bg-red-700' },
 ] as const;
 
 export type EstadoPKL = typeof ESTADOS_PKL[number]['value'];
@@ -651,6 +676,18 @@ export interface InputPKL {
 }
 
 // Proveedor del PKL
+// Cotización de un proveedor en PKL
+export interface CotizacionProveedorPKL {
+    descripcion: string;           // Qué se cotizó
+    cantidad?: number;             // Cantidad cotizada
+    precio_unitario?: number;      // Precio por unidad
+    precio_total: number;          // Precio total cotizado
+    incluye_igv?: boolean;         // Si el precio incluye IGV
+    tiempo_entrega?: string;       // Tiempo de entrega estimado
+    notas?: string;                // Notas adicionales
+    fecha_cotizacion?: string;     // Fecha de la cotización
+}
+
 export interface ProveedorPKL {
     proveedor_id: string;
     nombre: string;
@@ -658,6 +695,10 @@ export interface ProveedorPKL {
     servicio?: string;
     ubicacion?: string;
     contacto?: string;
+    // Cotización
+    cotizacion?: CotizacionProveedorPKL;
+    // Si este proveedor fue elegido para el trabajo
+    elegido?: boolean;
 }
 
 // Historial de estado
@@ -690,6 +731,17 @@ export interface ResultadoCotizacionPKL {
     observaciones?: string;
 }
 
+// Ítem de cotización (para cotizaciones con múltiples líneas)
+export interface ItemCotizacionPKL {
+    item_id: string;               // UUID único
+    codigo?: string;               // Código del proveedor (ej: ME-0117)
+    descripcion: string;           // Descripción del producto
+    cantidad: number;              // Cantidad
+    unidad?: string;               // UNI, MLL, etc.
+    precio_unitario: number;       // Precio por unidad
+    precio_total: number;          // cantidad * precio_unitario
+}
+
 // Task del PKL
 export interface TaskPKL {
     task_id: string;
@@ -708,6 +760,8 @@ export interface TaskPKL {
     ubicacion?: string;
     resultado?: ResultadoCotizacionPKL;
     fecha_completado?: string;
+    // Ítems de cotización (para tasks tipo cotización con múltiples líneas)
+    items_cotizacion?: ItemCotizacionPKL[];
 }
 
 // Evento externo

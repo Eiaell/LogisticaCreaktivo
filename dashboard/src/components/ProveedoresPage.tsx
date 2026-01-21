@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
 import { NuevoProveedorModal } from './NuevoProveedorModal';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -9,7 +9,7 @@ interface ProveedoresPageProps {
 }
 
 export function ProveedoresPage({ onBack, onSelectProveedor }: ProveedoresPageProps) {
-    const { proveedores, updateProveedor, deleteProveedor, uploadLogo } = useDatabase();
+    const { proveedores, updateProveedor, deleteProveedor, uploadLogo, cotizaciones, producciones, pkls } = useDatabase();
     const [search, setSearch] = useState('');
     const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
     const [showNuevoModal, setShowNuevoModal] = useState(false);
@@ -38,17 +38,57 @@ export function ProveedoresPage({ onBack, onSelectProveedor }: ProveedoresPagePr
         )
     ).sort();
 
-    const proveedoresList = Object.values(proveedores).filter(p => {
-        const matchesSearch =
-            p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-            p.contacto?.toLowerCase().includes(search.toLowerCase()) ||
-            p.especialidad?.toLowerCase().includes(search.toLowerCase()) ||
-            p.telefono?.includes(search);
+    // Calcular frecuencia de uso de cada proveedor
+    const proveedorUsoCount = useMemo(() => {
+        const counts: Record<string, number> = {};
 
-        const matchesCategoria = !filterCategoria || p.especialidad === filterCategoria;
+        // Contar cotizaciones
+        cotizaciones.forEach(c => {
+            const key = c.proveedor_id;
+            counts[key] = (counts[key] || 0) + 1;
+        });
 
-        return matchesSearch && matchesCategoria;
-    });
+        // Contar producciones
+        producciones.forEach(p => {
+            const key = p.proveedor_id;
+            counts[key] = (counts[key] || 0) + 1;
+        });
+
+        // Contar apariciones en PKLs
+        pkls.forEach(pkl => {
+            pkl.proveedores?.forEach(prov => {
+                const key = prov.nombre || prov.proveedor_id;
+                counts[key] = (counts[key] || 0) + 1;
+            });
+            // También contar tasks con proveedor
+            pkl.tasks?.forEach(task => {
+                if (task.proveedor_id) {
+                    counts[task.proveedor_id] = (counts[task.proveedor_id] || 0) + 1;
+                }
+            });
+        });
+
+        return counts;
+    }, [cotizaciones, producciones, pkls]);
+
+    const proveedoresList = Object.values(proveedores)
+        .filter(p => {
+            const matchesSearch =
+                p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+                p.contacto?.toLowerCase().includes(search.toLowerCase()) ||
+                p.especialidad?.toLowerCase().includes(search.toLowerCase()) ||
+                p.telefono?.includes(search);
+
+            const matchesCategoria = !filterCategoria || p.especialidad === filterCategoria;
+
+            return matchesSearch && matchesCategoria;
+        })
+        // Ordenar por frecuencia de uso (más usados primero)
+        .sort((a, b) => {
+            const countA = proveedorUsoCount[a.nombre] || 0;
+            const countB = proveedorUsoCount[b.nombre] || 0;
+            return countB - countA; // Descendente
+        });
 
     const handleLogoUpload = async (nombre: string, file: File) => {
         const url = await uploadLogo(file, `proveedor-${nombre}`);

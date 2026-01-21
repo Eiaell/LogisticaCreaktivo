@@ -34,7 +34,7 @@ interface DashboardProps {
 export type { PageView };
 
 function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: DashboardProps) {
-  const { pedidos, clientes, proveedores, loadDatabase } = useDatabase();
+  const { pedidos, clientes, proveedores, loadDatabase, pkls } = useDatabase();
   const { createBackup } = useAutoBackup();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
   const [modalType, setModalType] = useState<'cliente' | 'proveedor' | 'nuevo_cliente' | 'nuevo_proveedor' | null>(null);
@@ -137,7 +137,7 @@ function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: Dashbo
           >
             <span className="text-lg group-hover:scale-110 transition-transform">📋</span>
             <span className="font-medium">PKL</span>
-            <span className="text-xs bg-cyan-500/30 px-2 py-0.5 rounded-full">3</span>
+            <span className="text-xs bg-cyan-500/30 px-2 py-0.5 rounded-full">{pkls.length}</span>
           </button>
 
           <div className="w-px bg-gray-700 mx-1"></div>

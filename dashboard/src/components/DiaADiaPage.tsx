@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useDatabase } from '../context/DatabaseContext';
 import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL } from '../types';
-import { TIPOS_OPERACION_PKL } from '../types';
+import { TIPOS_OPERACION_PKL, ESTADOS_PKL } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
 import { SincronizarEventoModal } from './SincronizarEventoModal';
 
@@ -669,7 +670,7 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo, isS
                     ) : movimiento.pedido_id ? (
                         <div className="mt-3 flex items-center gap-2">
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
-                                ✓ Vinculado a pedido
+                                ✓ Vinculado a PKL
                             </span>
                         </div>
                     ) : (
@@ -677,7 +678,7 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo, isS
                             onClick={(e) => { e.stopPropagation(); onSync(); }}
                             className="mt-3 w-full py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                         >
-                            🚀 Sincronizar con Dashboard
+                            📋 Crear / Vincular PKL
                         </button>
                     )}
                 </div>
@@ -820,7 +821,7 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo, isSel
                     ) : rendicion.pedido_id ? (
                         <div className="mt-3 flex items-center gap-2">
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
-                                ✓ Vinculado a pedido
+                                ✓ Vinculado a PKL
                             </span>
                         </div>
                     ) : (
@@ -828,7 +829,7 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo, isSel
                             onClick={(e) => { e.stopPropagation(); onSync(); }}
                             className="mt-3 w-full py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                         >
-                            🚀 Sincronizar con Dashboard
+                            📋 Crear / Vincular PKL
                         </button>
                     )}
                 </div>
@@ -972,7 +973,7 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelec
                     ) : evento.pedido_id ? (
                         <div className="mt-3 flex items-center gap-2">
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
-                                ✓ Vinculado a pedido
+                                ✓ Vinculado a PKL
                             </span>
                         </div>
                     ) : (
@@ -980,7 +981,7 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelec
                             onClick={(e) => { e.stopPropagation(); onSync(); }}
                             className="mt-3 w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                         >
-                            🚀 Sincronizar con Dashboard
+                            📋 Crear / Vincular PKL
                         </button>
                     )}
                 </div>
@@ -1758,6 +1759,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         pkls,
         updatePKL,
         deletePKLTask,
+        createPKLTask,
         pklParaMerge,
         setPKLParaMerge,
     } = useDatabase();
@@ -1787,6 +1789,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     const [showMergeModal, setShowMergeModal] = useState(false);
     const [mergeSelectionMode, setMergeSelectionMode] = useState(false);
     const [pklEditModal, setPklEditModal] = useState<{ isOpen: boolean; pkl: PKL | null }>({ isOpen: false, pkl: null });
+    const [showVincularPKLModal, setShowVincularPKLModal] = useState(false);
 
     // Agrupar eventos por fecha
     const eventosPorFecha = useMemo(() => {
@@ -2707,13 +2710,20 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                     📥 Agregar a {pklParaMerge.replace('PKL-', '')}
                                 </button>
                             ) : (
-                                <button
-                                    onClick={() => setShowMergeModal(true)}
-                                    disabled={selectedEventos.size < 2}
-                                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center gap-2"
-                                >
-                                    🔗 {selectedEventos.size < 2 ? 'Selecciona 2+' : 'Crear PKL'}
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowMergeModal(true)}
+                                        className="px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                                    >
+                                        ➕ Crear PKL
+                                    </button>
+                                    <button
+                                        onClick={() => setShowVincularPKLModal(true)}
+                                        className="px-4 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                                    >
+                                        🔗 Vincular a PKL
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -2746,6 +2756,224 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     existingPKL={pklEditModal.pkl}
                 />
             )}
+
+            {/* Modal para vincular eventos a PKL existente */}
+            {showVincularPKLModal && (
+                <VincularAPKLModal
+                    isOpen={showVincularPKLModal}
+                    onClose={() => setShowVincularPKLModal(false)}
+                    eventos={eventosSeleccionadosData}
+                    pkls={pkls}
+                    clientes={clientes}
+                    getClienteLogo={getClienteLogo}
+                    onSuccess={async (pklId) => {
+                        // Vincular eventos seleccionados al PKL
+                        const pkl = pkls.find(p => p.pkl_id === pklId);
+                        if (!pkl) return;
+
+                        // Crear tasks para cada evento
+                        for (const evento of eventosSeleccionadosData) {
+                            const tipoEmoji = evento.tipo_evento === 'movimiento' ? '🚚' :
+                                             evento.tipo_evento === 'rendicion' ? '💰' : '🏭';
+                            const taskTipo = evento.tipo_evento === 'movimiento' ? 'movilidad' :
+                                            evento.tipo_evento === 'rendicion' ? 'pago' : 'coordinacion_proveedor';
+
+                            await createPKLTask(pklId, {
+                                nombre: `${tipoEmoji} ${evento.descripcion}`.substring(0, 100),
+                                descripcion: evento.descripcion,
+                                tipo: taskTipo as any,
+                                estado: 'completado',
+                                orden: (pkl.tasks?.length || 0) + 1,
+                                costo: evento.monto || 0,
+                                evento_origen_id: evento.id,
+                            });
+
+                            // Actualizar el evento con el pkl_id
+                            if (evento.tipo_evento === 'movimiento') {
+                                await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
+                            } else if (evento.tipo_evento === 'rendicion') {
+                                await updateRendicion(evento.id, { pedido_id: pklId });
+                            } else {
+                                await updateEventoProduccion(evento.id, { pedido_id: pklId });
+                            }
+                        }
+
+                        // Actualizar costos del PKL
+                        const totalMonto = eventosSeleccionadosData.reduce((sum, e) => sum + (e.monto || 0), 0);
+                        if (totalMonto > 0) {
+                            await updatePKL(pklId, {
+                                costos: {
+                                    ...pkl.costos,
+                                    total: (pkl.costos?.total || 0) + totalMonto,
+                                }
+                            } as any);
+                        }
+
+                        setShowVincularPKLModal(false);
+                        setSelectedEventos(new Set());
+                        setMergeSelectionMode(false);
+                    }}
+                />
+            )}
         </div>
+    );
+}
+
+// Modal para seleccionar PKL existente
+function VincularAPKLModal({ isOpen, onClose, eventos, pkls, clientes, getClienteLogo, onSuccess }: {
+    isOpen: boolean;
+    onClose: () => void;
+    eventos: EventoSeleccionable[];
+    pkls: PKL[];
+    clientes: Record<string, any>;
+    getClienteLogo: (nombre: string) => string | null;
+    onSuccess: (pklId: string) => Promise<void>;
+}) {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedPKLId, setSelectedPKLId] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Filtrar PKLs
+    const pklsFiltrados = useMemo(() => {
+        let filtered = pkls.filter(p => p.estado.actual !== 'cerrado_ok' && p.estado.actual !== 'cancelado');
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(p =>
+                p.pkl_id.toLowerCase().includes(query) ||
+                p.cliente.nombre.toLowerCase().includes(query) ||
+                p.origen.descripcion_inicial.toLowerCase().includes(query)
+            );
+        }
+
+        return filtered.sort((a, b) =>
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        ).slice(0, 20);
+    }, [pkls, searchQuery]);
+
+    const handleSubmit = async () => {
+        if (!selectedPKLId) return;
+        setIsSubmitting(true);
+        try {
+            await onSuccess(selectedPKLId);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-6 rounded-t-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl">🔗</span>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Vincular a PKL Existente</h2>
+                                <p className="text-white/70 text-sm">{eventos.length} evento{eventos.length > 1 ? 's' : ''} seleccionado{eventos.length > 1 ? 's' : ''}</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Búsqueda */}
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Buscar PKL por ID, cliente o descripción..."
+                        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:border-cyan-500 outline-none"
+                    />
+
+                    {/* Lista de PKLs */}
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                        {pklsFiltrados.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                                <p>No se encontraron PKLs activos</p>
+                            </div>
+                        ) : (
+                            pklsFiltrados.map(pkl => {
+                                const pklLogo = getClienteLogo(pkl.cliente.nombre);
+                                const estadoInfo = ESTADOS_PKL.find(e => e.value === pkl.estado.actual);
+
+                                return (
+                                    <button
+                                        key={pkl.pkl_id}
+                                        onClick={() => setSelectedPKLId(pkl.pkl_id)}
+                                        className={`w-full p-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
+                                            selectedPKLId === pkl.pkl_id
+                                                ? 'border-cyan-500 bg-cyan-500/10'
+                                                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600'
+                                        }`}
+                                    >
+                                        {pklLogo ? (
+                                            <img src={pklLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                                                {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
+                                            </div>
+                                        )}
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-cyan-600 dark:text-cyan-400 text-sm font-bold">{pkl.pkl_id}</span>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${estadoInfo?.color || 'bg-gray-500'} !text-white`}>
+                                                    {estadoInfo?.label || pkl.estado.actual}
+                                                </span>
+                                            </div>
+                                            <p className="text-gray-900 dark:text-white font-medium truncate">{pkl.cliente.nombre}</p>
+                                            <p className="text-gray-500 text-xs truncate">{pkl.origen.descripcion_inicial}</p>
+                                        </div>
+
+                                        {selectedPKLId === pkl.pkl_id && (
+                                            <span className="text-cyan-500 text-xl">✓</span>
+                                        )}
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isSubmitting || !selectedPKLId}
+                        className="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-90 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                        {isSubmitting ? (
+                            <span className="animate-pulse">Vinculando...</span>
+                        ) : (
+                            <>
+                                <span>🔗</span>
+                                <span>Vincular {eventos.length} evento{eventos.length > 1 ? 's' : ''}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
     );
 }
