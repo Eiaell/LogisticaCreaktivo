@@ -376,6 +376,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                             resultado: task.resultado,
                             fecha_completado: task.fecha_completado,
                             evento_origen_id: task.evento_origen_id, // Vinculación con evento original
+                            // Campos adicionales para producción/cotización
+                            proveedor: task.proveedor,
+                            cantidad: task.cantidad,
+                            precioUnitario: task.precio_unitario,
+                            esPrecioUnitario: task.es_precio_unitario,
+                            incluyeIgv: task.incluye_igv,
+                            cotizaciones: task.cotizaciones,
                         });
                         return acc;
                     }, {});
@@ -753,7 +760,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 ruta: updatedTask.ruta,
                 ubicacion: updatedTask.ubicacion,
                 resultado: updatedTask.resultado,
-                fecha_completado: updatedTask.fecha_completado
+                fecha_completado: updatedTask.fecha_completado,
+                // Campos adicionales para producción/cotización
+                proveedor: updatedTask.proveedor,
+                cantidad: updatedTask.cantidad,
+                precio_unitario: updatedTask.precioUnitario,
+                es_precio_unitario: updatedTask.esPrecioUnitario,
+                incluye_igv: updatedTask.incluyeIgv,
+                cotizaciones: updatedTask.cotizaciones,
             }, { onConflict: 'pkl_id,task_id' });
 
             if (error) {

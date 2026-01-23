@@ -67,13 +67,13 @@ export function KPICards({ onCardClick }: Props) {
                 <div
                     key={card.title}
                     onClick={() => onCardClick?.(card.title)}
-                    className="glass-card p-4 relative overflow-hidden group hover:scale-105 transition-transform cursor-pointer"
+                    className="glass-card p-5 relative overflow-hidden group hover:scale-[1.02] transition-all duration-200 cursor-pointer hover:shadow-xl active:scale-100"
                 >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-10 group-hover:opacity-20 transition-opacity`} />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-10 group-hover:opacity-15 transition-all duration-200`} />
                     <div className="relative">
-                        <span className="text-2xl">{card.icon}</span>
-                        <p className="text-gray-400 text-sm mt-2">{card.title}</p>
-                        <p className="text-2xl font-bold mt-1">{card.value}</p>
+                        <span className="text-3xl block mb-3 transition-transform duration-200 group-hover:scale-110">{card.icon}</span>
+                        <p className="text-gray-400 text-xs font-medium mt-2 uppercase tracking-wider leading-tight">{card.title}</p>
+                        <p className="text-2xl font-bold mt-2 leading-none tracking-tight">{card.value}</p>
                     </div>
                 </div>
             ))}

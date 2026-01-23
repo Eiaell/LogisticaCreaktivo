@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useDatabase } from '../context/DatabaseContext';
+import { useToast } from '../context/ToastContext';
 import { TIPOS_OPERACION_PKL, ESTADOS_PKL } from '../types';
 import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL, TipoOperacionPKL, EstadoPKL } from '../types';
 
@@ -37,6 +38,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
         updateMovimientoLogistico, updateRendicion, updateEventoProduccion,
         clientes: _clientes, getClienteByNombre, createPKLTask
     } = useDatabase();
+    const { showToast } = useToast();
     void _clientes;
 
     const [mode, setMode] = useState<'vincular' | 'crear'>('vincular');
@@ -159,6 +161,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                         canal: 'otro',
                         fecha_solicitud: now,
                         descripcion_inicial: nuevoPKL.descripcion || getEventoDescripcion(),
+                        evento_origen_id: evento.id, // Referencia al evento del Día a Día que originó este PKL
                     },
                     cliente: {
                         nombre: clienteEvento || 'Sin cliente',
@@ -199,7 +202,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
             }
 
             if (!pklId) {
-                alert('Debes seleccionar o crear un PKL');
+                showToast('Debes seleccionar o crear un PKL', 'warning');
                 setIsSubmitting(false);
                 return;
             }
@@ -245,12 +248,12 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
             }
 
             console.log(`✅ Evento sincronizado con PKL ${pklId}`);
-            alert('✅ Evento sincronizado correctamente con el PKL');
+            showToast('Evento sincronizado correctamente con el PKL', 'success');
             onClose();
 
         } catch (err) {
             console.error('Error sincronizando:', err);
-            alert('Error al sincronizar. Ver consola para detalles.');
+            showToast('Error al sincronizar. Ver consola para detalles.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -263,13 +266,13 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
             onClick={(e) => e.target === e.currentTarget && onClose()}
             onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
             tabIndex={0}
             ref={(el) => el?.focus()}
         >
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="liquid-glass liquid-glass-cyan rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className={`bg-gradient-to-r ${currentConfig.color} p-6 rounded-t-2xl`}>
                     <div className="flex items-center justify-between">

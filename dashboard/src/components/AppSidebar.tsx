@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Pedido, Cliente } from '../types';
 import { ImportarJSONModal } from './ImportarJSONModal';
 import { useTheme } from '../context/ThemeContext';
+import { useDatabase } from '../context/DatabaseContext';
 
 interface AppSidebarProps {
     isExpanded: boolean;
@@ -163,12 +164,13 @@ function ContextMenu({ x, y, pedido, onClose, onAction }: ContextMenuProps) {
     return (
         <div
             ref={menuRef}
-            className="fixed rounded-lg shadow-xl py-1 z-[9999] min-w-[180px]"
+            className="fixed rounded-xl shadow-2xl py-1.5 z-[9999] min-w-[200px] animate-in fade-in slide-in-from-bottom"
             style={{
                 left: x,
                 top: y,
                 backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)'
+                border: '1px solid var(--border-color)',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)'
             }}
         >
             {menuItems.map((item, index) => (
@@ -178,16 +180,18 @@ function ContextMenu({ x, y, pedido, onClose, onAction }: ContextMenuProps) {
                         onAction(item.action, pedido);
                         onClose();
                     }}
-                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors"
+                    className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-all duration-200 first:rounded-t-xl last:rounded-b-xl font-medium"
                     style={{
                         color: item.danger ? 'var(--danger)' : 'var(--text-secondary)',
                         borderTop: index === menuItems.length - 1 ? '1px solid var(--border-color)' : 'none',
                         marginTop: index === menuItems.length - 1 ? '4px' : '0',
-                        paddingTop: index === menuItems.length - 1 ? '8px' : undefined
+                        paddingTop: index === menuItems.length - 1 ? '10px' : undefined
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                    <span>{item.icon}</span>
-                    {item.label}
+                    <span className="text-base">{item.icon}</span>
+                    <span>{item.label}</span>
                 </button>
             ))}
         </div>
@@ -206,9 +210,13 @@ export function AppSidebar({
     currentPage
 }: AppSidebarProps) {
     const { theme, toggleTheme } = useTheme();
+    const { updatePedido, deletePedido, createPedido } = useDatabase();
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; pedido: Pedido } | null>(null);
     const [hoveredPedidoId, setHoveredPedidoId] = useState<string | null>(null);
     const [showImportarJSON, setShowImportarJSON] = useState(false);
+    const [renamingPedido, setRenamingPedido] = useState<{ id: string; currentName: string } | null>(null);
+    const [deleteConfirmation, setDeleteConfirmation] = useState<Pedido | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const groupedPedidos = groupPedidosByDate(pedidos);
 
@@ -218,27 +226,94 @@ export function AppSidebar({
         setContextMenu({ x: e.clientX, y: e.clientY, pedido });
     };
 
-    const handleMenuAction = (action: string, pedido: Pedido) => {
+    const handleMenuAction = async (action: string, pedido: Pedido) => {
         switch (action) {
             case 'open':
                 onSelectPedido(pedido.id);
                 break;
             case 'rename':
-                // TODO: Implementar renombrar
-                console.log('Renombrar:', pedido.id);
+                setRenamingPedido({
+                    id: pedido.id,
+                    currentName: pedido.descripcion || `Pedido ${pedido.id.substring(0, 8)}`
+                });
                 break;
             case 'duplicate':
-                // TODO: Implementar duplicar
-                console.log('Duplicar:', pedido.id);
+                await handleDuplicate(pedido);
                 break;
             case 'archive':
-                // TODO: Implementar archivar
-                console.log('Archivar:', pedido.id);
+                await handleArchive(pedido);
                 break;
             case 'delete':
-                // TODO: Implementar eliminar con confirmación
-                console.log('Eliminar:', pedido.id);
+                setDeleteConfirmation(pedido);
                 break;
+        }
+    };
+
+    const handleDuplicate = async (pedido: Pedido) => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        try {
+            const { id, created_at, updated_at, rl_numero, ...pedidoData } = pedido;
+            const newPedido = await createPedido({
+                ...pedidoData,
+                descripcion: `${pedidoData.descripcion} (copia)`,
+                estado: 'cotizacion' as const, // Reset to initial state
+            });
+            onSelectPedido(newPedido.id);
+        } catch (error) {
+            console.error('Error duplicando pedido:', error);
+            alert('Error al duplicar el pedido');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleArchive = async (pedido: Pedido) => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        try {
+            await updatePedido(pedido.id, { estado: 'cerrado' });
+        } catch (error) {
+            console.error('Error archivando pedido:', error);
+            alert('Error al archivar el pedido');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRename = async (newName: string) => {
+        if (!renamingPedido || isProcessing) return;
+        if (!newName.trim()) {
+            alert('El nombre no puede estar vacío');
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            await updatePedido(renamingPedido.id, { descripcion: newName.trim() });
+            setRenamingPedido(null);
+        } catch (error) {
+            console.error('Error renombrando pedido:', error);
+            alert('Error al renombrar el pedido');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteConfirmation || isProcessing) return;
+        setIsProcessing(true);
+        try {
+            await deletePedido(deleteConfirmation.id);
+            setDeleteConfirmation(null);
+            if (activePedidoId === deleteConfirmation.id) {
+                // If deleting the active pedido, navigate to dashboard
+                onNavigate('dashboard');
+            }
+        } catch (error) {
+            console.error('Error eliminando pedido:', error);
+            alert('Error al eliminar el pedido');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -261,11 +336,11 @@ export function AppSidebar({
                 }}
             >
                 {/* Header con Logo */}
-                <div className={`flex items-center ${isExpanded ? 'p-4' : 'py-4 justify-center'}`}
+                <div className={`flex items-center ${isExpanded ? 'px-4 py-5' : 'py-5 justify-center'}`}
                      style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <button
                         onClick={onToggle}
-                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                        className="flex items-center gap-3 transition-all duration-200 hover:opacity-90 active:scale-95"
                         title={isExpanded ? 'Colapsar sidebar' : 'Expandir sidebar'}
                     >
                         <img
@@ -275,8 +350,8 @@ export function AppSidebar({
                         />
                         {isExpanded && (
                             <div className="flex-1">
-                                <p className="text-xs font-bold text-gray-400 tracking-wider">INTELIGENCIA</p>
-                                <p className="text-sm font-black">
+                                <p className="text-xs font-semibold text-gray-400 tracking-wider leading-tight">INTELIGENCIA</p>
+                                <p className="text-sm font-black leading-tight mt-0.5">
                                     <span className="text-orange-500">L</span>
                                     <span className="text-blue-800">OGÍSTICA</span>
                                 </p>
@@ -286,8 +361,10 @@ export function AppSidebar({
                     {isExpanded && (
                         <button
                             onClick={onToggle}
-                            className="ml-auto p-1.5 rounded-lg transition-colors"
+                            className="ml-auto p-2 rounded-lg transition-all duration-200 active:scale-95"
                             style={{ color: 'var(--text-muted)' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
                             <IconChevronLeft />
                         </button>
@@ -296,28 +373,47 @@ export function AppSidebar({
 
                 {/* Navegación Principal */}
                 <div
-                    className={`flex flex-col ${isExpanded ? 'gap-2 p-4 mt-4' : 'gap-5 px-3'}`}
-                    style={{ paddingTop: isExpanded ? undefined : '50px' }}
+                    className={`flex flex-col ${isExpanded ? 'gap-1.5 p-3 mt-4' : 'gap-4 px-3 mt-12'}`}
                 >
                     {navItems.map(item => (
                         <button
                             key={item.id}
                             onClick={() => onNavigate(item.page)}
-                            className={`group relative flex items-center gap-3 rounded-xl transition-colors ${
+                            className={`group relative flex items-center gap-3 rounded-xl transition-all duration-200 ${
                                 isExpanded ? 'px-4 py-3' : 'p-3 justify-center'
-                            } ${
-                                currentPage === item.page
-                                    ? 'bg-gray-800 text-white'
-                                    : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                             }`}
+                            style={{
+                                backgroundColor: currentPage === item.page ? 'var(--bg-card)' : 'transparent',
+                                color: currentPage === item.page ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                boxShadow: currentPage === item.page ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (currentPage !== item.page) {
+                                    e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
+                                    e.currentTarget.style.color = 'var(--text-primary)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (currentPage !== item.page) {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = 'var(--text-secondary)';
+                                }
+                            }}
                             title={!isExpanded ? item.label : undefined}
                         >
-                            <span className={isExpanded ? '' : 'text-xl'}>{item.icon}</span>
+                            <span className={`${isExpanded ? '' : 'text-xl'} transition-transform group-hover:scale-110 duration-200`}>{item.icon}</span>
                             {isExpanded && <span className="text-sm font-medium">{item.label}</span>}
 
                             {/* Tooltip para estado colapsado */}
                             {!isExpanded && (
-                                <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                                <div
+                                    className="absolute left-full ml-3 px-3 py-1.5 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 shadow-xl"
+                                    style={{
+                                        backgroundColor: 'var(--bg-card)',
+                                        color: 'var(--text-primary)',
+                                        border: '1px solid var(--border-color)'
+                                    }}
+                                >
                                     {item.label}
                                 </div>
                             )}
@@ -327,17 +423,24 @@ export function AppSidebar({
                     {/* Botón Importar JSON (el +) */}
                     <button
                         onClick={() => setShowImportarJSON(true)}
-                        className={`group relative flex items-center gap-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium transition-all hover:from-orange-400 hover:to-amber-400 shadow-lg shadow-orange-500/20 ${
-                            isExpanded ? 'px-4 py-3 mt-3' : 'p-3 justify-center mt-4'
+                        className={`group relative flex items-center gap-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium transition-all duration-200 hover:from-orange-400 hover:to-amber-400 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 shadow-lg shadow-orange-500/20 ${
+                            isExpanded ? 'px-4 py-3 mt-2' : 'p-3 justify-center mt-3'
                         }`}
                         title={!isExpanded ? 'Importar JSON' : undefined}
                     >
-                        <span className={isExpanded ? '' : 'text-xl'}><IconPlus /></span>
-                        {isExpanded && <span className="text-sm">Importar JSON</span>}
+                        <span className={`${isExpanded ? '' : 'text-xl'} transition-transform group-hover:rotate-90 duration-200`}><IconPlus /></span>
+                        {isExpanded && <span className="text-sm font-semibold">Importar JSON</span>}
 
                         {/* Tooltip para estado colapsado */}
                         {!isExpanded && (
-                            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                            <div
+                                className="absolute left-full ml-3 px-3 py-1.5 text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 shadow-xl"
+                                style={{
+                                    backgroundColor: 'var(--bg-card)',
+                                    color: 'var(--text-primary)',
+                                    border: '1px solid var(--border-color)'
+                                }}
+                            >
                                 Importar JSON
                             </div>
                         )}
@@ -368,9 +471,9 @@ export function AppSidebar({
                                                 return (
                                                     <div
                                                         key={pedido.id}
-                                                        className="group relative flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors"
+                                                        className="group relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm"
                                                         style={{
-                                                            backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
+                                                            backgroundColor: isActive ? 'var(--bg-card)' : isHovered ? 'var(--bg-card-hover)' : 'transparent',
                                                             color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)'
                                                         }}
                                                         onClick={() => onSelectPedido(pedido.id)}
@@ -379,14 +482,14 @@ export function AppSidebar({
                                                         onMouseLeave={() => setHoveredPedidoId(null)}
                                                     >
                                                         {/* Indicador de estado */}
-                                                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${ESTADO_COLORS[pedido.estado] || 'bg-gray-500'}`} />
+                                                        <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-transform duration-200 ${isHovered ? 'scale-125' : ''} ${ESTADO_COLORS[pedido.estado] || 'bg-gray-500'}`} />
 
                                                         {/* Contenido */}
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm truncate font-medium">
+                                                            <p className="text-sm truncate font-medium leading-tight">
                                                                 {getPedidoTitle(pedido)}
                                                             </p>
-                                                            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                                                            <p className="text-xs truncate leading-tight mt-1" style={{ color: 'var(--text-muted)' }}>
                                                                 {cliente?.nombre_comercial || pedido.cliente || 'Sin cliente'}
                                                             </p>
                                                         </div>
@@ -395,8 +498,10 @@ export function AppSidebar({
                                                         {(isHovered || isActive) && (
                                                             <button
                                                                 onClick={(e) => handleContextMenu(e, pedido)}
-                                                                className="p-1 rounded transition-colors flex-shrink-0"
+                                                                className="p-1.5 rounded-md transition-all duration-200 flex-shrink-0"
                                                                 style={{ color: 'var(--text-muted)' }}
+                                                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                                             >
                                                                 <IconMoreVertical />
                                                             </button>
@@ -429,12 +534,12 @@ export function AppSidebar({
                 {!isExpanded && <div className="flex-1" />}
 
                 {/* Theme Toggle - ALWAYS at absolute bottom */}
-                <div className={`${isExpanded ? 'p-3' : 'p-2'}`}
+                <div className={`${isExpanded ? 'p-3' : 'p-2.5'}`}
                      style={{ borderTop: '1px solid var(--border-color)' }}>
                     <button
                         onClick={toggleTheme}
-                        className={`group relative flex items-center gap-3 rounded-lg transition-all w-full ${
-                            isExpanded ? 'px-3 py-2.5' : 'p-2.5 justify-center'
+                        className={`group relative flex items-center gap-3 rounded-lg transition-all duration-200 w-full hover:shadow-sm active:scale-95 ${
+                            isExpanded ? 'px-3 py-3' : 'p-3 justify-center'
                         }`}
                         style={{
                             backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
@@ -442,18 +547,18 @@ export function AppSidebar({
                         }}
                         title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                     >
-                        <span className="transition-transform duration-300">
+                        <span className="transition-transform duration-300 group-hover:rotate-12">
                             {theme === 'dark' ? <IconSun /> : <IconMoon />}
                         </span>
                         {isExpanded && (
-                            <span className="text-sm">
+                            <span className="text-sm font-medium">
                                 {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
                             </span>
                         )}
 
                         {/* Tooltip para estado colapsado */}
                         {!isExpanded && (
-                            <div className="absolute left-full ml-3 px-3 py-1.5 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg"
+                            <div className="absolute left-full ml-3 px-3 py-1.5 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 shadow-xl"
                                  style={{
                                      backgroundColor: 'var(--bg-card)',
                                      color: 'var(--text-primary)',
@@ -482,6 +587,133 @@ export function AppSidebar({
                 isOpen={showImportarJSON}
                 onClose={() => setShowImportarJSON(false)}
             />
+
+            {/* Rename Dialog */}
+            {renamingPedido && (
+                <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]"
+                    onClick={() => !isProcessing && setRenamingPedido(null)}
+                >
+                    <div
+                        className="rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
+                        style={{
+                            backgroundColor: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                            Renombrar Pedido
+                        </h3>
+                        <input
+                            type="text"
+                            defaultValue={renamingPedido.currentName}
+                            className="w-full px-3 py-2 rounded-lg mb-4 outline-none"
+                            style={{
+                                backgroundColor: 'var(--bg-secondary)',
+                                border: '1px solid var(--border-color)',
+                                color: 'var(--text-primary)'
+                            }}
+                            autoFocus
+                            disabled={isProcessing}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleRename(e.currentTarget.value);
+                                } else if (e.key === 'Escape') {
+                                    !isProcessing && setRenamingPedido(null);
+                                }
+                            }}
+                            id="rename-input"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setRenamingPedido(null)}
+                                className="px-4 py-2 rounded-lg transition-colors"
+                                style={{
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    color: 'var(--text-secondary)'
+                                }}
+                                disabled={isProcessing}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const input = document.getElementById('rename-input') as HTMLInputElement;
+                                    if (input) handleRename(input.value);
+                                }}
+                                className="px-4 py-2 rounded-lg transition-colors"
+                                style={{
+                                    backgroundColor: 'var(--accent-orange)',
+                                    color: 'white'
+                                }}
+                                disabled={isProcessing}
+                            >
+                                {isProcessing ? 'Guardando...' : 'Guardar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Dialog */}
+            {deleteConfirmation && (
+                <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]"
+                    onClick={() => !isProcessing && setDeleteConfirmation(null)}
+                >
+                    <div
+                        className="rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
+                        style={{
+                            backgroundColor: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-3 mb-4">
+                            <div className="flex-shrink-0 text-2xl">⚠️</div>
+                            <div>
+                                <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                                    Eliminar Pedido
+                                </h3>
+                                <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+                                    ¿Estás seguro de que deseas eliminar este pedido?
+                                </p>
+                                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                    {getPedidoTitle(deleteConfirmation)}
+                                </p>
+                                <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                                    Esta acción no se puede deshacer. Se eliminarán todos los datos asociados.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setDeleteConfirmation(null)}
+                                className="px-4 py-2 rounded-lg transition-colors"
+                                style={{
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    color: 'var(--text-secondary)'
+                                }}
+                                disabled={isProcessing}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="px-4 py-2 rounded-lg transition-colors"
+                                style={{
+                                    backgroundColor: 'var(--danger)',
+                                    color: 'white'
+                                }}
+                                disabled={isProcessing}
+                            >
+                                {isProcessing ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

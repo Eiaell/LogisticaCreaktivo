@@ -386,7 +386,7 @@ export interface KPIs {
 export type SeccionEvento = 'MOVIMIENTO_LOGISTICO' | 'RENDICION_PAGO' | 'PRODUCCION';
 
 // Estados posibles de un evento
-export type EstadoEvento = 'completado' | 'pendiente' | 'registrado' | 'pagado' | 'en_produccion';
+export type EstadoEvento = 'completado' | 'pendiente' | 'registrado' | 'pagado' | 'en_produccion' | 'en_proceso' | 'rechazado' | 'cancelado';
 
 // ============================================
 // MOVIMIENTOS LOGÍSTICOS
@@ -455,7 +455,7 @@ export interface MovimientoLogistico {
 // ============================================
 // RENDICIONES Y PAGOS
 // ============================================
-export type TipoRendicion = 'movilidad' | 'adelanto_produccion' | 'pago_saldo' | 'gasto_extra' | 'compra_material';
+export type TipoRendicion = 'movilidad' | 'adelanto_produccion' | 'pago_saldo' | 'gasto_extra' | 'compra_material' | 'caja_diaria';
 
 export interface DetalleRendicionMovilidad {
     concepto: string;
@@ -565,6 +565,7 @@ export const TIPOS_MOVIMIENTO = [
     { value: 'recojo', label: 'Recojo', color: 'bg-blue-500', icon: '🚚' },
     { value: 'compra', label: 'Compra', color: 'bg-amber-500', icon: '🛒' },
     { value: 'traslado', label: 'Traslado', color: 'bg-purple-500', icon: '🔄' },
+    { value: 'servicio', label: 'Servicio en Sitio', color: 'bg-pink-500', icon: '🔧' },
     { value: 'solicitud_stock', label: 'Solicitud Stock', color: 'bg-cyan-500', icon: '📋' },
     { value: 'cotizacion', label: 'Cotización', color: 'bg-yellow-500', icon: '💬' },
     { value: 'coordinacion', label: 'Coordinación', color: 'bg-indigo-500', icon: '📞' },
@@ -595,7 +596,6 @@ export const TIPOS_OPERACION_PKL = [
     { value: 'solo_entrega', label: 'Solo Entrega', color: 'bg-green-700' },
     { value: 'cotizacion_produccion_motorizado', label: 'Cotizacion + Produccion + Motorizado', color: 'bg-indigo-700' },
     { value: 'solo_motorizado', label: 'Solo Motorizado', color: 'bg-rose-700' },
-    { value: 'cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-600' },
     { value: 'solo_cotizacion', label: 'Solo Cotizacion', color: 'bg-yellow-600' },
     { value: 'ciclo_completo_instalacion', label: 'Ciclo Completo + Instalacion', color: 'bg-purple-700' },
     { value: 'feria_evento', label: 'Feria/Evento', color: 'bg-orange-700' },
@@ -656,6 +656,7 @@ export interface OrigenPKL {
     solicitado_por?: string;
     fecha_solicitud: string;
     descripcion_inicial: string;
+    evento_origen_id?: string; // ID del evento del Día a Día que originó este PKL
 }
 
 // Producto del PKL
@@ -742,6 +743,16 @@ export interface ItemCotizacionPKL {
     precio_total: number;          // cantidad * precio_unitario
 }
 
+// Cotización individual (para comparar proveedores)
+export interface CotizacionProveedor {
+    proveedor: string;
+    precio: number;
+    cantidad?: number;
+    esPrecioUnitario?: boolean;
+    incluyeIgv: boolean;
+    seleccionada?: boolean;
+}
+
 // Task del PKL
 export interface TaskPKL {
     task_id: string;
@@ -764,6 +775,13 @@ export interface TaskPKL {
     items_cotizacion?: ItemCotizacionPKL[];
     // Referencia a evento externo que originó este task (desde Día a Día)
     evento_origen_id?: string;
+    // Campos adicionales para producción/cotización
+    proveedor?: string;              // Nombre del proveedor (string directo)
+    cantidad?: number;               // Cantidad de unidades
+    precioUnitario?: number;         // Precio por unidad
+    esPrecioUnitario?: boolean;      // Si el precio ingresado es por unidad o total
+    incluyeIgv?: boolean;            // Si el precio incluye IGV
+    cotizaciones?: CotizacionProveedor[];  // Lista de cotizaciones de proveedores
 }
 
 // Evento externo

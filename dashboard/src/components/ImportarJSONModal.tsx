@@ -901,21 +901,140 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
                     break;
                 }
                 case 'produccion': {
-                    // TODO: Implementar creación de producción
-                    console.log('📋 Producción a crear:', preview);
-                    alert('Funcionalidad de producción próximamente');
+                    const jsonData: JSONProduccion = JSON.parse(jsonInput);
+
+                    // Validar campos requeridos
+                    if (!jsonData.proveedor) {
+                        throw new Error('El JSON debe incluir el campo "proveedor"');
+                    }
+                    if (!jsonData.items || jsonData.items.length === 0) {
+                        throw new Error('El JSON debe incluir al menos un item en "items"');
+                    }
+
+                    const now = new Date().toISOString();
+                    let produccionesCreadas = 0;
+
+                    // Crear un evento de producción por cada item
+                    for (const item of jsonData.items) {
+                        const baseId = `${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+                        const precioTotal = item.precio_unitario ? item.precio_unitario * item.cantidad : undefined;
+
+                        await createEventoProduccion({
+                            id: `PROD-${baseId}`,
+                            fecha: new Date().toISOString().split('T')[0],
+                            tipo: 'orden_produccion',
+                            cliente: '', // No hay cliente especificado en el JSON de producción
+                            proveedor: jsonData.proveedor.toUpperCase(),
+                            pedido_id: jsonData.pedido_id || undefined,
+                            producto: item.producto,
+                            cantidad: item.cantidad,
+                            especificaciones: item.especificaciones ? { descripcion: item.especificaciones } : undefined,
+                            precio_unitario: item.precio_unitario,
+                            precio_total: precioTotal,
+                            estado: 'en_produccion',
+                            observaciones: item.fecha_compromiso ? `Fecha compromiso: ${item.fecha_compromiso}` : '',
+                            created_at: now,
+                            updated_at: now,
+                        });
+                        produccionesCreadas++;
+                    }
+
+                    console.log(`✅ ${produccionesCreadas} producción(es) creada(s) para proveedor ${jsonData.proveedor}`);
                     break;
                 }
                 case 'movimiento': {
-                    // TODO: Implementar creación de movimiento
-                    console.log('📋 Movimiento a crear:', preview);
-                    alert('Funcionalidad de movimiento próximamente');
+                    const jsonData: JSONMovimiento = JSON.parse(jsonInput);
+
+                    // Validar campos requeridos
+                    if (!jsonData.tipo) {
+                        throw new Error('El JSON debe incluir el campo "tipo" (recojo, entrega, compra)');
+                    }
+
+                    const now = new Date().toISOString();
+                    const baseId = `${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+                    // Construir detalle según el tipo de movimiento
+                    let detalle: Record<string, unknown> = {};
+                    if (jsonData.items && jsonData.items.length > 0) {
+                        detalle.items = jsonData.items.map(item => ({
+                            producto: item.descripcion,
+                            cantidad: item.cantidad || 1,
+                            proveedor: item.proveedor || ''
+                        }));
+                    }
+                    if (jsonData.origen) detalle.origen = jsonData.origen;
+                    if (jsonData.destino) detalle.destino = jsonData.destino;
+
+                    await createMovimientoLogistico({
+                        id: `MOV-${baseId}`,
+                        fecha: jsonData.fecha || new Date().toISOString().split('T')[0],
+                        tipo: jsonData.tipo,
+                        cliente: '',
+                        proveedor: '',
+                        detalle,
+                        estado: 'completado',
+                        observaciones: jsonData.notas || '',
+                        costo_movilidad: jsonData.costo_movilidad || 0,
+                        created_at: now,
+                        updated_at: now,
+                    });
+
+                    console.log(`✅ Movimiento ${jsonData.tipo} creado con éxito`);
                     break;
                 }
                 case 'pago': {
-                    // TODO: Implementar creación de pago
-                    console.log('📋 Pago a crear:', preview);
-                    alert('Funcionalidad de pago próximamente');
+                    const jsonData: JSONPago = JSON.parse(jsonInput);
+
+                    // Validar campos requeridos
+                    if (!jsonData.monto || jsonData.monto <= 0) {
+                        throw new Error('El JSON debe incluir un "monto" válido mayor a 0');
+                    }
+                    if (!jsonData.tipo) {
+                        throw new Error('El JSON debe incluir el campo "tipo" (adelanto, saldo, rendicion)');
+                    }
+
+                    const now = new Date().toISOString();
+                    const baseId = `${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+                    // Mapear tipo de pago a tipo de rendición
+                    let tipoRendicion: 'adelanto_produccion' | 'pago_saldo' | 'gasto_extra' = 'gasto_extra';
+                    if (jsonData.tipo === 'adelanto') {
+                        tipoRendicion = 'adelanto_produccion';
+                    } else if (jsonData.tipo === 'saldo') {
+                        tipoRendicion = 'pago_saldo';
+                    }
+
+                    // Construir detalle
+                    const detalle: Record<string, unknown> = {
+                        concepto: jsonData.notas || `Pago ${jsonData.tipo}`,
+                        monto: jsonData.monto,
+                        moneda: 'PEN',
+                        medio_pago: jsonData.medio_pago || 'transferencia',
+                    };
+                    if (jsonData.comprobante) {
+                        detalle.comprobante = jsonData.comprobante;
+                    }
+
+                    await createRendicion({
+                        id: `REND-${baseId}`,
+                        fecha: jsonData.fecha || new Date().toISOString().split('T')[0],
+                        tipo: tipoRendicion,
+                        cliente: '',
+                        proveedor: jsonData.proveedor?.toUpperCase() || '',
+                        pedido_id: jsonData.pedido_id || undefined,
+                        monto: jsonData.monto,
+                        moneda: 'PEN',
+                        detalle,
+                        estado: 'registrado',
+                        observaciones: jsonData.notas || '',
+                        tiene_comprobante: !!jsonData.comprobante,
+                        tipo_comprobante: jsonData.comprobante ? 'factura' : 'ninguno',
+                        numero_comprobante: jsonData.comprobante,
+                        created_at: now,
+                        updated_at: now,
+                    });
+
+                    console.log(`✅ Pago/Rendición ${jsonData.tipo} creado: S/. ${jsonData.monto}`);
                     break;
                 }
             }
@@ -954,13 +1073,13 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
     if (!tipoSeleccionado) {
         return createPortal(
             <div
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+                className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
                 onClick={(e) => e.target === e.currentTarget && handleClose()}
                 onKeyDown={(e) => { if (e.key === 'Escape') handleClose(); }}
                 tabIndex={0}
                 ref={(el) => el?.focus()}
             >
-                <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl shadow-2xl">
+                <div className="liquid-glass liquid-glass-amber rounded-2xl w-full max-w-2xl">
                     <div className="flex items-center justify-between p-6 border-b border-gray-800">
                         <div>
                             <h2 className="text-xl font-bold text-white flex items-center gap-3">
@@ -1228,13 +1347,13 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
             onClick={(e) => e.target === e.currentTarget && handleClose()}
             onKeyDown={(e) => { if (e.key === 'Escape') handleClose(); }}
             tabIndex={0}
             ref={(el) => el?.focus()}
         >
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="liquid-glass liquid-glass-amber rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-800">
                     <div className="flex items-center gap-4">

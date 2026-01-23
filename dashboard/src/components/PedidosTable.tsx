@@ -120,6 +120,12 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     const [sortField, setSortField] = useState<SortField>('created_at');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+    // Tipo filter dropdown state
+    const [filterTipo, setFilterTipo] = useState<string>('');
+    const [showTipoDropdown, setShowTipoDropdown] = useState(false);
+    const [tipoDropdownPosition, setTipoDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+    const tipoHeaderRef = useRef<HTMLTableCellElement>(null);
+
     const handleSort = (field: SortField) => {
         if (sortField === field) {
             setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -168,16 +174,21 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     // Cerrar dropdown con ESC
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && (editingCell || dropdownPosition)) {
-                setEditingCell(null);
-                setEditValue('');
-                setDropdownPosition(null);
+            if (e.key === 'Escape') {
+                if (editingCell || dropdownPosition) {
+                    setEditingCell(null);
+                    setEditValue('');
+                    setDropdownPosition(null);
+                }
+                if (showTipoDropdown) {
+                    setShowTipoDropdown(false);
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [editingCell, dropdownPosition]);
+    }, [editingCell, dropdownPosition, showTipoDropdown]);
 
     const handleEditSave = () => {
         if (editingCell) {
@@ -352,8 +363,9 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
 
             const matchesEstado = !filterEstado || row.estado === filterEstado;
             const matchesCliente = !filterCliente || row.cliente === filterCliente;
+            const matchesTipo = !filterTipo || row.tipoOperacion === filterTipo;
 
-            return matchesSearch && matchesEstado && matchesCliente;
+            return matchesSearch && matchesEstado && matchesCliente && matchesTipo;
         }).sort((a, b) => {
             let aVal: string | number | undefined;
             let bVal: string | number | undefined;
@@ -409,7 +421,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
             if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [pedidoRows, pklRows, search, filterEstado, filterCliente, sortField, sortDir]);
+    }, [pedidoRows, pklRows, search, filterEstado, filterCliente, filterTipo, sortField, sortDir]);
 
     // Toggle select all - uses filteredRows
     const toggleSelectAll = () => {
@@ -559,7 +571,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                             {[
                                 { label: 'Fecha', w: 'w-28', field: 'created_at' as SortField },
                                 { label: 'Cliente', w: 'w-48', field: 'cliente' as SortField },
-                                { label: 'Tipo', w: 'w-32', field: 'tipo' as SortField },
+                                { label: 'Tipo', w: 'w-32', field: 'tipo' as SortField, hasFilter: true },
                                 { label: 'Descripción', w: 'w-56', field: 'descripcion' as SortField },
                                 { label: 'Vendedor/a', w: 'w-32', field: 'vendedora' as SortField },
                                 { label: 'Estado', w: 'w-40', field: 'estado' as SortField },
@@ -570,12 +582,27 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                             ].map((col, idx) => (
                                 <th
                                     key={idx}
-                                    className={`p-4 text-left font-medium ${col.w} ${col.field ? 'cursor-pointer hover:text-cyan-400 select-none transition-colors' : ''}`}
-                                    onClick={() => col.field && handleSort(col.field)}
+                                    ref={col.label === 'Tipo' ? tipoHeaderRef : undefined}
+                                    className={`p-4 text-left font-medium ${col.w} ${col.field ? 'cursor-pointer hover:text-cyan-400 select-none transition-colors' : ''} ${col.label === 'Tipo' && filterTipo ? 'text-cyan-400' : ''}`}
+                                    onClick={(e) => {
+                                        if (col.label === 'Tipo') {
+                                            // Show dropdown filter
+                                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                            setTipoDropdownPosition({ top: rect.bottom + 4, left: rect.left });
+                                            setShowTipoDropdown(!showTipoDropdown);
+                                        } else if (col.field) {
+                                            handleSort(col.field);
+                                        }
+                                    }}
                                 >
                                     <span className="flex items-center gap-1">
                                         {col.label}
-                                        {col.field && sortField === col.field && (
+                                        {col.label === 'Tipo' && (
+                                            <span className={`text-xs ${filterTipo ? 'text-cyan-400' : 'text-gray-500'}`}>
+                                                {filterTipo ? '▼' : '▽'}
+                                            </span>
+                                        )}
+                                        {col.field && col.label !== 'Tipo' && sortField === col.field && (
                                             <span className="text-cyan-400">
                                                 {sortDir === 'asc' ? '▲' : '▼'}
                                             </span>
@@ -1275,6 +1302,70 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                     </tbody>
                 </table>
             </div>
+
+            {/* Tipo Filter Dropdown Portal */}
+            {showTipoDropdown && tipoDropdownPosition && createPortal(
+                <>
+                    {/* Backdrop para cerrar al hacer clic fuera */}
+                    <div
+                        className="fixed inset-0 z-[9998]"
+                        onClick={() => setShowTipoDropdown(false)}
+                    />
+                    {/* Dropdown */}
+                    <div
+                        className="fixed z-[9999] animate-in fade-in slide-in-from-top-2 duration-150"
+                        style={{
+                            top: tipoDropdownPosition.top,
+                            left: tipoDropdownPosition.left,
+                        }}
+                    >
+                        <div className="bg-white dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-700/50 rounded-xl shadow-2xl shadow-black/20 dark:shadow-black/50 overflow-hidden min-w-[220px]">
+                            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50">
+                                <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Filtrar por Tipo</span>
+                            </div>
+                            <div className="py-1 max-h-72 overflow-y-auto">
+                                {/* Opción: Todos */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFilterTipo('');
+                                        setShowTipoDropdown(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 ${!filterTipo ? 'bg-gray-100 dark:bg-white/10' : ''}`}
+                                >
+                                    <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+                                    <span className="text-gray-800 dark:text-gray-200">Todos los tipos</span>
+                                    {!filterTipo && (
+                                        <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
+                                    )}
+                                </button>
+                                {/* Opciones de tipo */}
+                                {TIPOS_OPERACION_PKL.map(tipo => {
+                                    const isSelected = filterTipo === tipo.value;
+                                    return (
+                                        <button
+                                            key={tipo.value}
+                                            type="button"
+                                            onClick={() => {
+                                                setFilterTipo(tipo.value);
+                                                setShowTipoDropdown(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-white/5 ${isSelected ? 'bg-gray-100 dark:bg-white/10' : ''}`}
+                                        >
+                                            <span className={`w-3 h-3 rounded-full ${tipo.color}`}></span>
+                                            <span className="text-gray-800 dark:text-gray-200">{tipo.label}</span>
+                                            {isSelected && (
+                                                <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
 
             {/* Empty State */}
             {filteredRows.length === 0 && (

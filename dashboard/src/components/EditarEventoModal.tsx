@@ -139,8 +139,8 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
     // Mostrar mensaje si el evento no fue encontrado
     if (eventoNotFound) {
         return createPortal(
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                <div className="bg-gray-900 border border-purple-500/50 rounded-2xl p-8 max-w-md text-center">
+            <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4">
+                <div className="liquid-glass liquid-glass-purple rounded-2xl p-8 max-w-md text-center">
                     <div className="text-5xl mb-4">❌</div>
                     <h2 className="text-xl font-bold text-white mb-2">Evento no encontrado</h2>
                     <p className="text-gray-400 mb-4">
@@ -161,8 +161,8 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
     // Mostrar loading si formData está vacío
     if (Object.keys(formData).length === 0) {
         return createPortal(
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                <div className="bg-gray-900 border border-purple-500/50 rounded-2xl p-8 text-center">
+            <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4">
+                <div className="liquid-glass liquid-glass-purple rounded-2xl p-8 text-center">
                     <div className="text-4xl animate-pulse mb-4">⏳</div>
                     <p className="text-gray-400">Cargando datos...</p>
                 </div>
@@ -174,7 +174,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
     // Configuración por tipo - usando las constantes de types
     const config = {
         movimiento: {
-            title: 'Movimiento Logístico',
+            title: 'Evento Logístico',
             icon: '🚚',
             estados: ['pendiente', 'en_proceso', 'completado', 'cancelado'],
             tipos: TIPOS_MOVIMIENTO.map(t => ({ value: t.value, label: `${t.icon} ${t.label}` }))
@@ -226,8 +226,8 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
     };
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="liquid-glass liquid-glass-purple rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 {/* Header - Compacto como PKL */}
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 rounded-t-2xl">
                     <div className="flex items-center justify-between">

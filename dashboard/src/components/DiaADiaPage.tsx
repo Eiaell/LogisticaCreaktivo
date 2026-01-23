@@ -7,17 +7,74 @@ import { EditarEventoModal } from './EditarEventoModal';
 import { SincronizarEventoModal } from './SincronizarEventoModal';
 
 // Función para encontrar el PKL vinculado a un evento
-function findPKLForEvent(eventId: string, pkls: PKL[]): PKL | null {
+function findPKLForEvent(eventId: string, pkls: PKL[], pedidoId?: string, eventoData?: { cliente?: string; fecha?: string; producto?: string }): PKL | null {
+    // Primero buscar por evento_origen_id en los tasks
     for (const pkl of pkls) {
-        if (pkl.tasks?.some(task => (task as any).evento_origen_id === eventId)) {
+        const hasEventoOrigen = pkl.tasks?.some(task => {
+            const taskAny = task as any;
+            return taskAny.evento_origen_id === eventId ||
+                   taskAny.eventoOrigenId === eventId;
+        });
+        if (hasEventoOrigen) {
             return pkl;
         }
     }
+
+    // Buscar si el PKL fue creado directamente desde este evento (origen.evento_origen_id)
+    for (const pkl of pkls) {
+        const origenAny = pkl.origen as any;
+        if (origenAny?.evento_origen_id === eventId) {
+            return pkl;
+        }
+    }
+
+    // También buscar en eventos_externos si existe
+    for (const pkl of pkls) {
+        const hasInEventos = pkl.eventos_externos?.some(ev =>
+            (ev as any).evento_id === eventId || (ev as any).id === eventId
+        );
+        if (hasInEventos) {
+            return pkl;
+        }
+    }
+
+    // Si no se encontró y hay pedido_id, buscar si corresponde a un PKL
+    if (pedidoId) {
+        const pklByPedidoId = pkls.find(pkl => pkl.pkl_id === pedidoId);
+        if (pklByPedidoId) {
+            return pklByPedidoId;
+        }
+    }
+
+    // Auto-detección por coincidencia de cliente + fecha (+-2 días)
+    if (eventoData?.cliente && eventoData?.fecha) {
+        const eventoFecha = new Date(eventoData.fecha);
+        const clienteNorm = eventoData.cliente.toLowerCase().trim();
+
+        for (const pkl of pkls) {
+            // Verificar si el cliente coincide
+            const pklCliente = pkl.cliente?.nombre?.toLowerCase().trim();
+            if (!pklCliente || !pklCliente.includes(clienteNorm) && !clienteNorm.includes(pklCliente)) {
+                continue;
+            }
+
+            // Verificar si la fecha está dentro del rango (+-2 días)
+            const pklFecha = new Date(pkl.origen?.fecha_solicitud || pkl.created_at);
+            const diffDays = Math.abs((eventoFecha.getTime() - pklFecha.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 2) {
+                // Coincidencia por cliente + fecha cercana
+                return pkl;
+            }
+        }
+    }
+
     return null;
 }
 
 interface DiaADiaPageProps {
     onBack: () => void;
+    onNavigateToPKL?: (pklId: string) => void;
 }
 
 // Nombres de días y meses en español
@@ -487,6 +544,10 @@ const MOVIMIENTO_CONFIG: Record<string, { icon: string; color: string; bgColor: 
     recojo: { icon: '🚚', color: 'text-blue-400', bgColor: 'bg-blue-500/20 border-blue-500/30' },
     compra: { icon: '🛒', color: 'text-amber-400', bgColor: 'bg-amber-500/20 border-amber-500/30' },
     traslado: { icon: '🔄', color: 'text-purple-400', bgColor: 'bg-purple-500/20 border-purple-500/30' },
+    servicio: { icon: '🔧', color: 'text-pink-400', bgColor: 'bg-pink-500/20 border-pink-500/30' },
+    solicitud_stock: { icon: '📋', color: 'text-cyan-400', bgColor: 'bg-cyan-500/20 border-cyan-500/30' },
+    cotizacion: { icon: '💬', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20 border-yellow-500/30' },
+    coordinacion: { icon: '📞', color: 'text-indigo-400', bgColor: 'bg-indigo-500/20 border-indigo-500/30' },
 };
 
 // Iconos y colores por tipo de rendición
@@ -653,25 +714,21 @@ function MovimientoCard({ movimiento, onEdit, onDelete, onSync, clienteLogo, isS
                         </p>
                     )}
 
-                    {/* PKL vinculado - botón decouple */}
+                    {/* PKL vinculado - mostrar check verde con número */}
                     {linkedPKL && onDecouple ? (
                         <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/30 flex-1">
-                                🔗 Vinculado a {linkedPKL.pkl_id}
-                            </span>
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/40">
+                                <span className="text-green-400 text-lg">✓</span>
+                                <span className="text-green-400 font-bold text-sm">{linkedPKL.pkl_id}</span>
+                                <span className="text-green-400/70 text-xs">en Dashboard</span>
+                            </div>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, movimiento.id); }}
                                 className="px-2 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors text-xs font-medium flex items-center gap-1"
                                 title="Desvincular de PKL"
                             >
-                                🔓 Desvincular
+                                🔓
                             </button>
-                        </div>
-                    ) : movimiento.pedido_id ? (
-                        <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
-                                ✓ Vinculado a PKL
-                            </span>
                         </div>
                     ) : (
                         <button
@@ -804,25 +861,21 @@ function RendicionCard({ rendicion, onEdit, onDelete, onSync, clienteLogo, isSel
                         </p>
                     </div>
 
-                    {/* PKL vinculado - botón decouple */}
+                    {/* PKL vinculado - mostrar check verde con número */}
                     {linkedPKL && onDecouple ? (
                         <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/30 flex-1">
-                                🔗 Vinculado a {linkedPKL.pkl_id}
-                            </span>
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/40">
+                                <span className="text-green-400 text-lg">✓</span>
+                                <span className="text-green-400 font-bold text-sm">{linkedPKL.pkl_id}</span>
+                                <span className="text-green-400/70 text-xs">en Dashboard</span>
+                            </div>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, rendicion.id); }}
                                 className="px-2 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors text-xs font-medium flex items-center gap-1"
                                 title="Desvincular de PKL"
                             >
-                                🔓 Desvincular
+                                🔓
                             </button>
-                        </div>
-                    ) : rendicion.pedido_id ? (
-                        <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
-                                ✓ Vinculado a PKL
-                            </span>
                         </div>
                     ) : (
                         <button
@@ -956,25 +1009,21 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelec
                         </p>
                     )}
 
-                    {/* PKL vinculado - botón decouple */}
+                    {/* PKL vinculado - mostrar check verde con número */}
                     {linkedPKL && onDecouple ? (
                         <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg border border-purple-500/30 flex-1">
-                                🔗 Vinculado a {linkedPKL.pkl_id}
-                            </span>
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/40">
+                                <span className="text-green-400 text-lg">✓</span>
+                                <span className="text-green-400 font-bold text-sm">{linkedPKL.pkl_id}</span>
+                                <span className="text-green-400/70 text-xs">en Dashboard</span>
+                            </div>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDecouple(linkedPKL.pkl_id, evento.id); }}
                                 className="px-2 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 transition-colors text-xs font-medium flex items-center gap-1"
                                 title="Desvincular de PKL"
                             >
-                                🔓 Desvincular
+                                🔓
                             </button>
-                        </div>
-                    ) : evento.pedido_id ? (
-                        <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30">
-                                ✓ Vinculado a PKL
-                            </span>
                         </div>
                     ) : (
                         <button
@@ -985,6 +1034,103 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelec
                         </button>
                     )}
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// Componente para mostrar un PKL en el Día a Día
+function PKLCard({ pkl, clienteLogo, onNavigateToPKL }: {
+    pkl: PKL;
+    clienteLogo: string | null;
+    onNavigateToPKL: (pklId: string) => void;
+}) {
+    const tipoConfig: Record<string, { color: string; icon: string; bgColor: string }> = {
+        'produccion': { color: 'text-indigo-400', icon: '🏭', bgColor: 'border-indigo-500/30 bg-indigo-500/10' },
+        'cotizacion': { color: 'text-yellow-400', icon: '💬', bgColor: 'border-yellow-500/30 bg-yellow-500/10' },
+        'entrega': { color: 'text-green-400', icon: '📦', bgColor: 'border-green-500/30 bg-green-500/10' },
+        'recojo': { color: 'text-blue-400', icon: '🚚', bgColor: 'border-blue-500/30 bg-blue-500/10' },
+        'instalacion': { color: 'text-pink-400', icon: '🔧', bgColor: 'border-pink-500/30 bg-pink-500/10' },
+        'servicio': { color: 'text-purple-400', icon: '⚙️', bgColor: 'border-purple-500/30 bg-purple-500/10' },
+    };
+
+    const tipo = pkl.clasificacion?.tipo_operacion || 'produccion';
+    const config = tipoConfig[tipo] || tipoConfig.produccion;
+
+    // Calcular estadísticas del PKL
+    const tasksCount = pkl.tasks?.length || 0;
+    const tasksCompletados = pkl.tasks?.filter(t => t.estado === 'completado').length || 0;
+    const productos = pkl.productos?.map(p => p.descripcion || p.tipo).join(', ') || '-';
+
+    return (
+        <div
+            className={`border rounded-xl p-4 ${config.bgColor} group relative cursor-pointer hover:border-cyan-500/50 transition-all`}
+            onClick={() => onNavigateToPKL(pkl.pkl_id)}
+        >
+            <div className="flex items-start gap-3">
+                {/* Indicador de PKL */}
+                <div className="flex flex-col items-center gap-1">
+                    <span className="text-2xl">{config.icon}</span>
+                    <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/20 px-1.5 py-0.5 rounded">PKL</span>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    {/* Header con ID y estado */}
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-bold text-cyan-400 text-sm">{pkl.pkl_id}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${config.color} bg-white/10`}>
+                            {tipo.toUpperCase()}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            pkl.estado?.actual === 'cerrado_ok' ? 'bg-green-500/30 text-green-400' :
+                            pkl.estado?.actual === 'en_produccion' ? 'bg-blue-500/30 text-blue-400' :
+                            pkl.estado?.actual === 'cancelado' ? 'bg-red-500/30 text-red-400' :
+                            pkl.estado?.actual === 'en_pausa' ? 'bg-yellow-500/30 text-yellow-400' :
+                            'bg-gray-500/30 text-gray-400'
+                        }`}>
+                            {pkl.estado?.actual || 'recibido'}
+                        </span>
+                    </div>
+
+                    {/* Cliente */}
+                    <div className="flex items-center gap-2">
+                        <ClienteLogo logoUrl={clienteLogo} nombre={pkl.cliente?.nombre || 'Sin cliente'} size="sm" />
+                        <span className="text-white font-medium">{pkl.cliente?.nombre || 'Sin cliente'}</span>
+                    </div>
+
+                    {/* Descripción/Productos */}
+                    <p className="text-gray-400 text-sm mt-1 truncate">
+                        {pkl.origen?.descripcion_inicial || productos}
+                    </p>
+
+                    {/* Tasks progress */}
+                    {tasksCount > 0 && (
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-cyan-500 to-green-500 transition-all"
+                                    style={{ width: `${(tasksCompletados / tasksCount) * 100}%` }}
+                                />
+                            </div>
+                            <span className="text-xs text-gray-500">{tasksCompletados}/{tasksCount}</span>
+                        </div>
+                    )}
+
+                    {/* Costo total */}
+                    {pkl.costos?.total && pkl.costos.total > 0 && (
+                        <p className="text-amber-400 font-mono text-sm mt-2">
+                            Total: S/. {Number(pkl.costos.total).toFixed(2)}
+                        </p>
+                    )}
+                </div>
+
+                {/* Botón ver */}
+                <button
+                    onClick={(e) => { e.stopPropagation(); onNavigateToPKL(pkl.pkl_id); }}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 transition-colors text-xs font-medium"
+                >
+                    Ver PKL →
+                </button>
             </div>
         </div>
     );
@@ -1040,7 +1186,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
     onSuccess: () => void;
     existingPKL?: PKL | null; // Si se pasa, es modo edición
 }) {
-    const { createPKL, updatePKL, deletePKLTask, createPKLTask, pkls } = useDatabase();
+    const { createPKL, updatePKL, updatePKLTask, deletePKLTask, createPKLTask, pkls, proveedores } = useDatabase();
     const isEditMode = !!existingPKL;
     const [pklNombre, setPklNombre] = useState('');
     const [selectedCliente, setSelectedCliente] = useState('');
@@ -1070,6 +1216,29 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
         incluyeIgv?: boolean;
     }>>([]);
     const [showAddTask, setShowAddTask] = useState(false);
+
+    // Estado para edición de task existente
+    const [editingTask, setEditingTask] = useState<{
+        task_id: string;
+        tipo: string;
+        nombre: string;
+        descripcion?: string;
+        costo?: number;
+        proveedor?: string;
+        cantidad?: number;
+        precioUnitario?: number;
+        incluyeIgv?: boolean;
+        esPrecioUnitario?: boolean;
+        cotizaciones?: Array<{
+            proveedor: string;
+            precio: number;
+            cantidad?: number;
+            esPrecioUnitario?: boolean;
+            incluyeIgv: boolean;
+            seleccionada?: boolean;
+        }>;
+    } | null>(null);
+
     const [newTaskTipo, setNewTaskTipo] = useState('cotizacion');
     const [newTaskDesc, setNewTaskDesc] = useState('');
     const [newTaskMonto, setNewTaskMonto] = useState('');
@@ -1099,7 +1268,17 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
         if (existingPKL) {
             // Modo edición: cargar datos del PKL
             setPklNombre(existingPKL.origen?.descripcion_inicial || existingPKL.pkl_id);
-            setSelectedCliente(existingPKL.cliente?.nombre || '');
+
+            // Buscar el ID del cliente basado en el nombre guardado
+            const clienteNombre = existingPKL.cliente?.nombre || '';
+            const clienteId = Object.entries(clientes).find(([_, c]) =>
+                c.nombre_comercial === clienteNombre ||
+                c.razon_social === clienteNombre ||
+                c.nombre_comercial?.toLowerCase() === clienteNombre.toLowerCase() ||
+                c.razon_social?.toLowerCase() === clienteNombre.toLowerCase()
+            )?.[0] || clienteNombre; // Fallback al nombre si no encuentra ID
+
+            setSelectedCliente(clienteId);
             setTipoOperacion(existingPKL.clasificacion?.tipo_operacion || 'produccion');
         } else if (eventos.length > 0) {
             // Modo creación: auto-detectar desde eventos
@@ -1385,9 +1564,9 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
 
     return (
         <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
         >
-            <div className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="liquid-glass liquid-glass-purple rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-t-2xl">
                     <div className="flex items-center justify-between">
@@ -1466,7 +1645,8 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                             </label>
                             <button
                                 onClick={() => setShowAddTask(true)}
-                                className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded transition-colors text-xs font-semibold"
+                                style={{ color: 'white' }}
                             >
                                 + Agregar Task
                             </button>
@@ -1477,10 +1657,128 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                 const tipoEmojis: Record<string, string> = {
                                     cotizacion: '💬', coordinacion_proveedor: '📞', compra_insumo: '🛒',
                                     pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋',
-                                    movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭'
+                                    movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭', produccion: '🏭',
+                                    entrega: '📦', recojo: '🚚'
                                 };
+                                const taskTipo = task.tipo as string;
+                                const isProduccion = taskTipo === 'produccion' || taskTipo === 'orden_produccion';
+                                const isCotizacion = taskTipo === 'cotizacion';
+                                const taskData = task as any;
+
+                                // Obtener costo del task o de pkl.proveedores
+                                let displayCosto = taskData.costo?.monto || taskData.costo || undefined;
+                                let displayProveedor = taskData.proveedor;
+                                if (!displayCosto && (isProduccion || isCotizacion) && existingPKL?.proveedores?.length) {
+                                    const provElegido = existingPKL.proveedores.find((p: any) => p.elegido) ||
+                                        existingPKL.proveedores.find((p: any) => p.cotizacion?.precio_total);
+                                    if (provElegido?.cotizacion?.precio_total) {
+                                        displayCosto = Number(provElegido.cotizacion.precio_total);
+                                    }
+                                    if (!displayProveedor && provElegido?.nombre) {
+                                        displayProveedor = provElegido.nombre;
+                                    }
+                                }
+
                                 return (
-                                    <div key={task.task_id} className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0">
+                                    <div
+                                        key={task.task_id}
+                                        className="flex items-center gap-3 p-3 border-b border-gray-700/50 last:border-0 hover:bg-gray-700/30 cursor-pointer transition-colors"
+                                        onClick={() => {
+                                            // Cargar datos del task
+                                            const editData: any = {
+                                                task_id: task.task_id,
+                                                tipo: task.tipo || '',
+                                                nombre: task.nombre || '',
+                                                descripcion: task.descripcion,
+                                                costo: taskData.costo?.monto || taskData.costo || undefined,
+                                                proveedor: taskData.proveedor,
+                                                cantidad: taskData.cantidad,
+                                                precioUnitario: taskData.precioUnitario,
+                                                esPrecioUnitario: taskData.esPrecioUnitario,
+                                                incluyeIgv: taskData.incluyeIgv,
+                                                cotizaciones: taskData.cotizaciones || [],
+                                            };
+
+                                            // Para tareas de producción, SIEMPRE intentar sincronizar desde pkl.proveedores
+                                            // Esto asegura que los datos guardados en PKLPage aparezcan aquí
+                                            if ((isProduccion || isCotizacion) && existingPKL?.proveedores?.length) {
+                                                // Buscar proveedor elegido o el primero con cotización
+                                                const proveedorElegido = existingPKL.proveedores.find((p: any) => p.elegido) ||
+                                                    existingPKL.proveedores.find((p: any) => p.cotizacion?.precio_total || p.cotizacion?.precio_unitario) ||
+                                                    existingPKL.proveedores[0];
+
+                                                if (proveedorElegido && proveedorElegido.cotizacion) {
+                                                    const cot = proveedorElegido.cotizacion;
+                                                    const cantidad = Number(cot.cantidad) || 1;
+                                                    const precioTotal = Number(cot.precio_total) || 0;
+                                                    const precioUnitario = Number(cot.precio_unitario) || (precioTotal / cantidad) || 0;
+
+                                                    // Solo sobrescribir si el task no tiene datos propios
+                                                    if (!editData.proveedor) {
+                                                        editData.proveedor = proveedorElegido.nombre;
+                                                    }
+                                                    if (!editData.cantidad && cantidad) {
+                                                        editData.cantidad = cantidad;
+                                                    }
+                                                    if (!editData.precioUnitario && precioUnitario) {
+                                                        editData.precioUnitario = precioUnitario;
+                                                        editData.esPrecioUnitario = true;
+                                                    }
+                                                    if (!editData.costo && precioTotal) {
+                                                        editData.costo = precioTotal;
+                                                    }
+                                                    if (editData.incluyeIgv === undefined) {
+                                                        editData.incluyeIgv = cot.incluye_igv || false;
+                                                    }
+                                                } else if (proveedorElegido && !editData.proveedor) {
+                                                    // Solo tiene nombre, sin cotización
+                                                    editData.proveedor = proveedorElegido.nombre;
+                                                }
+                                            }
+
+                                            // Si es cotización, importar todos los proveedores del PKL como cotizaciones
+                                            if (taskTipo === 'cotizacion' && (!editData.cotizaciones || editData.cotizaciones.length === 0)) {
+                                                // Primero intentar desde pkl.proveedores
+                                                if (existingPKL?.proveedores?.length) {
+                                                    editData.cotizaciones = existingPKL.proveedores.map((p: any) => {
+                                                        const cantidad = Number(p.cotizacion?.cantidad) || 1;
+                                                        const precioTotal = Number(p.cotizacion?.precio_total) || 0;
+                                                        const precioUnitario = Number(p.cotizacion?.precio_unitario) || (precioTotal / cantidad) || 0;
+                                                        return {
+                                                            proveedor: p.nombre || '',
+                                                            precio: precioUnitario, // Siempre usar precio unitario
+                                                            cantidad: cantidad,
+                                                            esPrecioUnitario: true, // Siempre es unitario
+                                                            incluyeIgv: p.cotizacion?.incluye_igv || false,
+                                                            seleccionada: p.elegido || false,
+                                                        };
+                                                    });
+                                                } else {
+                                                    // Fallback: buscar en tasks de producción
+                                                    const produccionTasks = existingPKL?.tasks?.filter(t => {
+                                                        const tipo = t.tipo as string;
+                                                        return (tipo === 'produccion' || tipo === 'orden_produccion') && ((t as any).proveedor || (t as any).costo);
+                                                    }) || [];
+
+                                                    if (produccionTasks.length > 0) {
+                                                        editData.cotizaciones = produccionTasks.map(t => {
+                                                            const td = t as any;
+                                                            return {
+                                                                proveedor: td.proveedor || '',
+                                                                precio: td.costo?.monto || td.costo || 0,
+                                                                cantidad: td.cantidad || 1,
+                                                                esPrecioUnitario: td.esPrecioUnitario || false,
+                                                                incluyeIgv: td.incluyeIgv || false,
+                                                                seleccionada: true,
+                                                            };
+                                                        });
+                                                    }
+                                                }
+                                            }
+
+                                            setEditingTask(editData);
+                                        }}
+                                    >
                                         <span className="text-gray-500 text-sm font-mono w-6">{idx + 1}</span>
                                         <span className="text-lg">
                                             {tipoEmojis[task.tipo || ''] || '📋'}
@@ -1491,11 +1789,19 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                             </p>
                                             <p className="text-gray-500 text-xs">
                                                 {task.tipo?.toUpperCase()} • {task.estado}
-                                                {task.costo ? ` • S/. ${Number(task.costo).toFixed(2)}` : ''}
+                                                {displayProveedor && ` • ${displayProveedor}`}
+                                                {displayCosto ? ` • S/. ${Number(displayCosto).toFixed(2)}` : ''}
+                                                {taskData.cotizaciones?.length > 0 && ` • ${taskData.cotizaciones.length} cotizaciones`}
                                             </p>
                                         </div>
+                                        {(isProduccion || isCotizacion) && (
+                                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">
+                                                ✏️ Editar
+                                            </span>
+                                        )}
                                         <button
-                                            onClick={async () => {
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
                                                 await deletePKLTask(existingPKL.pkl_id, task.task_id);
                                             }}
                                             className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded hover:bg-red-500/30"
@@ -1714,6 +2020,407 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                     )}
                 </div>
 
+                {/* Panel de edición de Task */}
+                {editingTask && (
+                    <div className="mx-6 mb-4 p-4 bg-blue-900/30 border border-blue-500/50 rounded-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-blue-400 font-bold flex items-center gap-2">
+                                ✏️ Editando: {editingTask.nombre || editingTask.tipo}
+                            </h4>
+                            <button
+                                onClick={() => setEditingTask(null)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Para PRODUCCIÓN: Campo de costo */}
+                        {(editingTask.tipo === 'produccion' || editingTask.tipo === 'orden_produccion') && (
+                            <div className="space-y-3">
+                                <div className="relative">
+                                    <label className="text-gray-400 text-sm block mb-1">Proveedor</label>
+                                    <input
+                                        type="text"
+                                        value={editingTask.proveedor || ''}
+                                        onChange={(e) => setEditingTask({...editingTask, proveedor: e.target.value})}
+                                        placeholder="Buscar o escribir proveedor..."
+                                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                                        list="proveedores-list"
+                                    />
+                                    <datalist id="proveedores-list">
+                                        {Object.entries(proveedores).map(([key, prov]) => (
+                                            <option key={key} value={prov.nombre || key}>
+                                                {prov.especialidad ? `${prov.nombre || key} - ${prov.especialidad}` : prov.nombre || key}
+                                            </option>
+                                        ))}
+                                    </datalist>
+                                    {Object.keys(proveedores).length > 0 && (
+                                        <p className="text-gray-500 text-xs mt-1">
+                                            {Object.keys(proveedores).length} proveedores disponibles
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Cantidad */}
+                                <div>
+                                    <label className="text-gray-400 text-sm block mb-1">Cantidad</label>
+                                    <input
+                                        type="number"
+                                        value={editingTask.cantidad || ''}
+                                        onChange={(e) => setEditingTask({...editingTask, cantidad: parseInt(e.target.value) || undefined})}
+                                        placeholder="1"
+                                        className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                                    />
+                                </div>
+
+                                {/* Precio */}
+                                <div>
+                                    <label className="text-gray-400 text-sm block mb-1">¿Cuánto costó la producción?</label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-amber-400">S/.</span>
+                                        <input
+                                            type="number"
+                                            value={editingTask.esPrecioUnitario ? (editingTask.precioUnitario || '') : (editingTask.costo || '')}
+                                            onChange={(e) => {
+                                                const valor = parseFloat(e.target.value) || undefined;
+                                                if (editingTask.esPrecioUnitario) {
+                                                    setEditingTask({...editingTask, precioUnitario: valor});
+                                                } else {
+                                                    setEditingTask({...editingTask, costo: valor});
+                                                }
+                                            }}
+                                            placeholder="0.00"
+                                            className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                                        />
+                                        <select
+                                            value={editingTask.esPrecioUnitario ? 'unitario' : 'total'}
+                                            onChange={(e) => setEditingTask({...editingTask, esPrecioUnitario: e.target.value === 'unitario'})}
+                                            className="bg-gray-800 border border-gray-600 rounded-lg px-2 py-2 text-white text-sm"
+                                        >
+                                            <option value="unitario">Por unidad</option>
+                                            <option value="total">Total</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Incluye IGV */}
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="incluyeIgv"
+                                        checked={editingTask.incluyeIgv || false}
+                                        onChange={(e) => setEditingTask({...editingTask, incluyeIgv: e.target.checked})}
+                                        className="accent-green-500 w-4 h-4"
+                                    />
+                                    <label htmlFor="incluyeIgv" className="text-gray-300 text-sm cursor-pointer">
+                                        Precio incluye IGV
+                                    </label>
+                                </div>
+
+                                {/* Resumen del costo total */}
+                                {(editingTask.costo || editingTask.precioUnitario) && (
+                                    <div className="p-2 bg-amber-900/20 border border-amber-500/30 rounded-lg">
+                                        <p className="text-amber-400 text-sm font-medium">
+                                            Costo total: S/. {(() => {
+                                                let total = 0;
+                                                if (editingTask.esPrecioUnitario && editingTask.precioUnitario) {
+                                                    total = editingTask.precioUnitario * (editingTask.cantidad || 1);
+                                                } else {
+                                                    total = editingTask.costo || 0;
+                                                }
+                                                if (!editingTask.incluyeIgv) {
+                                                    total = total * 1.18;
+                                                }
+                                                return total.toFixed(2);
+                                            })()}
+                                            {!editingTask.incluyeIgv && <span className="text-gray-500 text-xs ml-1">(+IGV)</span>}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Para COTIZACIÓN: Múltiples cotizaciones con campos completos */}
+                        {editingTask.tipo === 'cotizacion' && (
+                            <div className="space-y-3">
+                                {/* Botón para importar desde producción si existe */}
+                                {existingPKL?.tasks?.some(t => {
+                                    const tipo = t.tipo as string;
+                                    return (tipo === 'produccion' || tipo === 'orden_produccion') && ((t as any).proveedor || (t as any).costo);
+                                }) && (
+                                    <button
+                                        onClick={() => {
+                                            const produccionTasks = existingPKL?.tasks?.filter(t => {
+                                                const tipo = t.tipo as string;
+                                                return (tipo === 'produccion' || tipo === 'orden_produccion') && ((t as any).proveedor || (t as any).costo);
+                                            }) || [];
+
+                                            const nuevasCotizaciones = produccionTasks.map(t => {
+                                                const taskData = t as any;
+                                                return {
+                                                    proveedor: taskData.proveedor || '',
+                                                    precio: taskData.costo?.monto || taskData.costo || 0,
+                                                    cantidad: taskData.cantidad || 1,
+                                                    precioUnitario: taskData.precioUnitario,
+                                                    esPrecioUnitario: taskData.esPrecioUnitario || false,
+                                                    incluyeIgv: taskData.incluyeIgv || false,
+                                                    seleccionada: false,
+                                                };
+                                            });
+
+                                            // Evitar duplicados
+                                            const cotizacionesExistentes = editingTask.cotizaciones || [];
+                                            const proveedoresExistentes = new Set(cotizacionesExistentes.map(c => c.proveedor));
+                                            const cotizacionesNuevas = nuevasCotizaciones.filter(c => c.proveedor && !proveedoresExistentes.has(c.proveedor));
+
+                                            if (cotizacionesNuevas.length > 0) {
+                                                setEditingTask({
+                                                    ...editingTask,
+                                                    cotizaciones: [...cotizacionesExistentes, ...cotizacionesNuevas]
+                                                });
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 text-purple-300 text-sm rounded-lg transition-colors"
+                                    >
+                                        📥 Importar proveedores desde Producción
+                                    </button>
+                                )}
+
+                                <div className="flex items-center justify-between">
+                                    <label className="text-gray-400 text-sm">Cotizaciones recibidas:</label>
+                                    <button
+                                        onClick={() => {
+                                            const cotizaciones = editingTask.cotizaciones || [];
+                                            setEditingTask({
+                                                ...editingTask,
+                                                cotizaciones: [...cotizaciones, {
+                                                    proveedor: '',
+                                                    precio: 0,
+                                                    cantidad: 1,
+                                                    esPrecioUnitario: true,
+                                                    incluyeIgv: false
+                                                }]
+                                            });
+                                        }}
+                                        className="px-2 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded"
+                                    >
+                                        + Agregar cotización
+                                    </button>
+                                </div>
+
+                                {(editingTask.cotizaciones || []).length === 0 ? (
+                                    <p className="text-gray-500 text-sm italic">No hay cotizaciones. Agrega una.</p>
+                                ) : (
+                                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                                        {(editingTask.cotizaciones || []).map((cot, idx) => (
+                                            <div key={idx} className={`p-3 rounded-lg border ${cot.seleccionada ? 'bg-green-900/30 border-green-500/50' : 'bg-gray-800/50 border-gray-700'}`}>
+                                                {/* Header con radio y proveedor */}
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <input
+                                                        type="radio"
+                                                        name="cotizacion_seleccionada"
+                                                        checked={cot.seleccionada || false}
+                                                        onChange={() => {
+                                                            const newCots = (editingTask.cotizaciones || []).map((c, i) => ({
+                                                                ...c,
+                                                                seleccionada: i === idx
+                                                            }));
+                                                            setEditingTask({...editingTask, cotizaciones: newCots});
+                                                        }}
+                                                        className="accent-green-500 w-4 h-4"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={cot.proveedor}
+                                                        onChange={(e) => {
+                                                            const newCots = [...(editingTask.cotizaciones || [])];
+                                                            newCots[idx] = {...newCots[idx], proveedor: e.target.value};
+                                                            setEditingTask({...editingTask, cotizaciones: newCots});
+                                                        }}
+                                                        placeholder="Nombre del proveedor..."
+                                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                                                        list={`proveedores-cot-${idx}`}
+                                                    />
+                                                    <datalist id={`proveedores-cot-${idx}`}>
+                                                        {Object.entries(proveedores).map(([key, prov]) => (
+                                                            <option key={key} value={prov.nombre || key} />
+                                                        ))}
+                                                    </datalist>
+                                                    <button
+                                                        onClick={() => {
+                                                            const newCots = (editingTask.cotizaciones || []).filter((_, i) => i !== idx);
+                                                            setEditingTask({...editingTask, cotizaciones: newCots});
+                                                        }}
+                                                        className="text-red-400 hover:text-red-300 text-sm px-2"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+
+                                                {/* Cantidad y Precio */}
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-gray-500 text-xs">Cant:</span>
+                                                        <input
+                                                            type="number"
+                                                            value={(cot as any).cantidad || ''}
+                                                            onChange={(e) => {
+                                                                const newCots = [...(editingTask.cotizaciones || [])];
+                                                                (newCots[idx] as any).cantidad = parseInt(e.target.value) || 1;
+                                                                setEditingTask({...editingTask, cotizaciones: newCots});
+                                                            }}
+                                                            placeholder="1"
+                                                            className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                                                        />
+                                                    </div>
+                                                    <span className="text-gray-500">×</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-amber-400 text-sm">S/.</span>
+                                                        <input
+                                                            type="number"
+                                                            value={cot.precio || ''}
+                                                            onChange={(e) => {
+                                                                const newCots = [...(editingTask.cotizaciones || [])];
+                                                                newCots[idx] = {...newCots[idx], precio: parseFloat(e.target.value) || 0};
+                                                                setEditingTask({...editingTask, cotizaciones: newCots});
+                                                            }}
+                                                            placeholder="0.00"
+                                                            className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                                                        />
+                                                    </div>
+                                                    <select
+                                                        value={(cot as any).esPrecioUnitario ? 'unitario' : 'total'}
+                                                        onChange={(e) => {
+                                                            const newCots = [...(editingTask.cotizaciones || [])];
+                                                            (newCots[idx] as any).esPrecioUnitario = e.target.value === 'unitario';
+                                                            setEditingTask({...editingTask, cotizaciones: newCots});
+                                                        }}
+                                                        className="bg-gray-700 border border-gray-600 rounded px-1 py-1 text-white text-xs"
+                                                    >
+                                                        <option value="unitario">c/u</option>
+                                                        <option value="total">total</option>
+                                                    </select>
+                                                    <label className="flex items-center gap-1 text-xs text-gray-400 ml-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={cot.incluyeIgv}
+                                                            onChange={(e) => {
+                                                                const newCots = [...(editingTask.cotizaciones || [])];
+                                                                newCots[idx] = {...newCots[idx], incluyeIgv: e.target.checked};
+                                                                setEditingTask({...editingTask, cotizaciones: newCots});
+                                                            }}
+                                                            className="accent-green-500"
+                                                        />
+                                                        Inc. IGV
+                                                    </label>
+                                                </div>
+
+                                                {/* Total calculado */}
+                                                <div className="mt-2 text-right">
+                                                    <span className="text-amber-400 text-sm font-medium">
+                                                        Total: S/. {(() => {
+                                                            const cantidad = (cot as any).cantidad || 1;
+                                                            const esPrecioUnitario = (cot as any).esPrecioUnitario !== false;
+                                                            let total = esPrecioUnitario ? (cot.precio * cantidad) : cot.precio;
+                                                            if (!cot.incluyeIgv) total *= 1.18;
+                                                            return total.toFixed(2);
+                                                        })()}
+                                                    </span>
+                                                    {!cot.incluyeIgv && <span className="text-gray-500 text-xs ml-1">(+IGV)</span>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {(editingTask.cotizaciones || []).some(c => c.seleccionada) && (
+                                    <div className="p-2 bg-green-900/20 border border-green-500/30 rounded-lg">
+                                        <p className="text-green-400 text-sm">
+                                            ✓ Cotización seleccionada: {(editingTask.cotizaciones || []).find(c => c.seleccionada)?.proveedor} -
+                                            S/. {(editingTask.cotizaciones || []).find(c => c.seleccionada)?.precio?.toFixed(2)}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Botón guardar cambios del task */}
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button
+                                onClick={() => setEditingTask(null)}
+                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm"
+                                style={{ color: 'white' }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!existingPKL || !editingTask) return;
+
+                                    // Preparar datos actualizados
+                                    const updatedTaskData: any = {
+                                        nombre: editingTask.nombre,
+                                        descripcion: editingTask.descripcion,
+                                    };
+
+                                    if (editingTask.tipo === 'produccion' || editingTask.tipo === 'orden_produccion') {
+                                        // Calcular costo total
+                                        let costoTotal = 0;
+                                        if (editingTask.esPrecioUnitario && editingTask.precioUnitario) {
+                                            costoTotal = editingTask.precioUnitario * (editingTask.cantidad || 1);
+                                        } else if (editingTask.costo) {
+                                            costoTotal = editingTask.costo;
+                                        }
+                                        // Agregar IGV si no está incluido
+                                        if (costoTotal > 0 && !editingTask.incluyeIgv) {
+                                            costoTotal = costoTotal * 1.18;
+                                        }
+
+                                        if (costoTotal > 0) {
+                                            updatedTaskData.costo = { monto: costoTotal, moneda: 'PEN' };
+                                        }
+                                        if (editingTask.proveedor) {
+                                            updatedTaskData.proveedor = editingTask.proveedor;
+                                        }
+                                        if (editingTask.cantidad) {
+                                            updatedTaskData.cantidad = editingTask.cantidad;
+                                        }
+                                        updatedTaskData.incluyeIgv = editingTask.incluyeIgv;
+                                        updatedTaskData.esPrecioUnitario = editingTask.esPrecioUnitario;
+                                        updatedTaskData.precioUnitario = editingTask.precioUnitario;
+                                    }
+
+                                    if (editingTask.tipo === 'cotizacion') {
+                                        updatedTaskData.cotizaciones = editingTask.cotizaciones;
+                                        const seleccionada = (editingTask.cotizaciones || []).find(c => c.seleccionada);
+                                        if (seleccionada) {
+                                            // Calcular el total de la cotización seleccionada
+                                            const cantidad = (seleccionada as any).cantidad || 1;
+                                            const esPrecioUnitario = (seleccionada as any).esPrecioUnitario !== false;
+                                            let total = esPrecioUnitario ? (seleccionada.precio * cantidad) : seleccionada.precio;
+                                            if (!seleccionada.incluyeIgv) total *= 1.18;
+
+                                            updatedTaskData.costo = { monto: total, moneda: 'PEN' };
+                                            updatedTaskData.proveedor = seleccionada.proveedor;
+                                            updatedTaskData.cantidad = cantidad;
+                                        }
+                                    }
+
+                                    // Actualizar el task usando updatePKLTask para persistir en Supabase
+                                    await updatePKLTask(existingPKL.pkl_id, editingTask.task_id, updatedTaskData);
+                                    setEditingTask(null);
+                                    console.log('✅ Task actualizado y guardado en Supabase');
+                                }}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium"
+                                style={{ color: 'white' }}
+                            >
+                                💾 Guardar Task
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Footer */}
                 <div className="flex gap-3 p-6 border-t border-gray-800">
                     <button
@@ -1725,7 +2432,8 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                     <button
                         onClick={isEditMode ? handleSave : handleCreate}
                         disabled={isCreating || !pklNombre.trim()}
-                        className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                        className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                        style={{ color: 'white' }}
                     >
                         {isCreating ? (
                             <span className="animate-pulse">{isEditMode ? 'Guardando...' : 'Creando PKL...'}</span>
@@ -1747,7 +2455,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
     );
 }
 
-export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
+export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
     const {
         movimientosLogisticos, rendiciones, eventosProduccion,
         deleteMovimientoLogistico, deleteRendicion, deleteEventoProduccion,
@@ -1765,7 +2473,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     } = useDatabase();
 
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
-    const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion'>('all');
+    const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion' | 'pkls'>('all');
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: string; id: string; itemType: string } | null>(null);
     const [editModal, setEditModal] = useState<{ isOpen: boolean; tipo: 'movimiento' | 'rendicion' | 'produccion'; id: string } | null>(null);
     const [syncModal, setSyncModal] = useState<{
@@ -1791,22 +2499,23 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
     const [pklEditModal, setPklEditModal] = useState<{ isOpen: boolean; pkl: PKL | null }>({ isOpen: false, pkl: null });
     const [showVincularPKLModal, setShowVincularPKLModal] = useState(false);
 
-    // Agrupar eventos por fecha
+    // Agrupar eventos por fecha (incluyendo PKLs)
     const eventosPorFecha = useMemo(() => {
         const grupos: Record<string, {
             movimientos: MovimientoLogistico[];
             rendiciones: Rendicion[];
             producciones: EventoProduccion[];
+            pklsDelDia: PKL[];
             totalMonto: number
         }> = {};
+
+        const initGrupo = () => ({ movimientos: [], rendiciones: [], producciones: [], pklsDelDia: [], totalMonto: 0 });
 
         // Agregar movimientos
         movimientosLogisticos.forEach(m => {
             const fecha = getDateKey(m.fecha);
             if (!fecha) return;
-            if (!grupos[fecha]) {
-                grupos[fecha] = { movimientos: [], rendiciones: [], producciones: [], totalMonto: 0 };
-            }
+            if (!grupos[fecha]) grupos[fecha] = initGrupo();
             grupos[fecha].movimientos.push(m);
             if (m.costo_movilidad) {
                 grupos[fecha].totalMonto += Number(m.costo_movilidad);
@@ -1817,9 +2526,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         rendiciones.forEach(r => {
             const fecha = getDateKey(r.fecha);
             if (!fecha) return;
-            if (!grupos[fecha]) {
-                grupos[fecha] = { movimientos: [], rendiciones: [], producciones: [], totalMonto: 0 };
-            }
+            if (!grupos[fecha]) grupos[fecha] = initGrupo();
             grupos[fecha].rendiciones.push(r);
             grupos[fecha].totalMonto += Number(r.monto);
         });
@@ -1828,17 +2535,29 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         eventosProduccion.forEach(e => {
             const fecha = getDateKey(e.fecha);
             if (!fecha) return;
-            if (!grupos[fecha]) {
-                grupos[fecha] = { movimientos: [], rendiciones: [], producciones: [], totalMonto: 0 };
-            }
+            if (!grupos[fecha]) grupos[fecha] = initGrupo();
             grupos[fecha].producciones.push(e);
             if (e.precio_total) {
                 grupos[fecha].totalMonto += Number(e.precio_total);
             }
         });
 
+        // Agregar PKLs por su fecha de creación o fecha de solicitud
+        pkls.forEach(pkl => {
+            // Usar fecha de solicitud del origen, o fecha de creación
+            const fechaOrigen = pkl.origen?.fecha_solicitud || pkl.created_at;
+            const fecha = getDateKey(fechaOrigen);
+            if (!fecha) return;
+            if (!grupos[fecha]) grupos[fecha] = initGrupo();
+            grupos[fecha].pklsDelDia.push(pkl);
+            // Agregar costo total del PKL al monto del día
+            if (pkl.costos?.total) {
+                grupos[fecha].totalMonto += Number(pkl.costos.total);
+            }
+        });
+
         return grupos;
-    }, [movimientosLogisticos, rendiciones, eventosProduccion]);
+    }, [movimientosLogisticos, rendiciones, eventosProduccion, pkls]);
 
     // Fechas ordenadas (más reciente primero)
     const fechasOrdenadas = useMemo(() => {
@@ -1850,16 +2569,18 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
         let movimientos = 0;
         let rendicionesCount = 0;
         let produccionesCount = 0;
+        let pklsCount = 0;
         let montoTotal = 0;
 
         Object.values(eventosPorFecha).forEach(grupo => {
             movimientos += grupo.movimientos.length;
             rendicionesCount += grupo.rendiciones.length;
             produccionesCount += grupo.producciones.length;
+            pklsCount += grupo.pklsDelDia?.length || 0;
             montoTotal += grupo.totalMonto;
         });
 
-        return { movimientos, rendiciones: rendicionesCount, producciones: produccionesCount, montoTotal, dias: fechasOrdenadas.length };
+        return { movimientos, rendiciones: rendicionesCount, producciones: produccionesCount, pkls: pklsCount, montoTotal, dias: fechasOrdenadas.length };
     }, [eventosPorFecha, fechasOrdenadas]);
 
     // Datos del día seleccionado
@@ -2193,6 +2914,14 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     >
                         🏭 Producción
                     </button>
+                    <button
+                        onClick={() => setFilterType('pkls')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            filterType === 'pkls' ? 'bg-cyan-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        📋 PKLs
+                    </button>
                     <div className="border-l border-gray-700 h-8 mx-2"></div>
                     <button
                         onClick={() => {
@@ -2207,6 +2936,58 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     >
                         🔗 {mergeSelectionMode ? 'Cancelar fusión' : 'Fusionar eventos'}
                     </button>
+                    {/* Botón Seleccionar todo - solo visible cuando hay un día seleccionado */}
+                    {selectedDate && diaSeleccionado && (
+                        <button
+                            onClick={() => {
+                                // Obtener todos los eventos del día que NO tienen PKL vinculado
+                                const eventosSeleccionables: string[] = [];
+
+                                diaSeleccionado.movimientos.forEach(m => {
+                                    const linkedPKL = findPKLForEvent(m.id, pkls, m.pedido_id, { cliente: m.cliente, fecha: m.fecha });
+                                    if (!linkedPKL) eventosSeleccionables.push(m.id);
+                                });
+                                diaSeleccionado.rendiciones.forEach(r => {
+                                    const linkedPKL = findPKLForEvent(r.id, pkls, r.pedido_id, { cliente: r.cliente, fecha: r.fecha });
+                                    if (!linkedPKL) eventosSeleccionables.push(r.id);
+                                });
+                                diaSeleccionado.producciones.forEach(p => {
+                                    const linkedPKL = findPKLForEvent(p.id, pkls, p.pedido_id);
+                                    if (!linkedPKL) eventosSeleccionables.push(p.id);
+                                });
+
+                                if (eventosSeleccionables.length > 0) {
+                                    // Si ya están todos seleccionados, deseleccionar
+                                    const allSelected = eventosSeleccionables.every(id => selectedEventos.has(id));
+                                    if (allSelected) {
+                                        setSelectedEventos(new Set());
+                                    } else {
+                                        setSelectedEventos(new Set(eventosSeleccionables));
+                                    }
+                                }
+                            }}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                                (() => {
+                                    // Calcular si todos están seleccionados
+                                    const eventosSeleccionables: string[] = [];
+                                    diaSeleccionado.movimientos.forEach(m => {
+                                        if (!findPKLForEvent(m.id, pkls, m.pedido_id, { cliente: m.cliente, fecha: m.fecha })) eventosSeleccionables.push(m.id);
+                                    });
+                                    diaSeleccionado.rendiciones.forEach(r => {
+                                        if (!findPKLForEvent(r.id, pkls, r.pedido_id, { cliente: r.cliente, fecha: r.fecha })) eventosSeleccionables.push(r.id);
+                                    });
+                                    diaSeleccionado.producciones.forEach(p => {
+                                        if (!findPKLForEvent(p.id, pkls, p.pedido_id)) eventosSeleccionables.push(p.id);
+                                    });
+                                    const allSelected = eventosSeleccionables.length > 0 && eventosSeleccionables.every(id => selectedEventos.has(id));
+                                    return allSelected ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-green-600/50';
+                                })()
+                            }`}
+                            title="Seleccionar todos los eventos sin PKL vinculado"
+                        >
+                            ☑️ Seleccionar todo
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -2227,6 +3008,10 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                 <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 text-center">
                     <div className="text-3xl font-bold text-indigo-400">{totales.producciones}</div>
                     <div className="text-xs text-indigo-400/70 uppercase tracking-wider">Producciones</div>
+                </div>
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 text-center">
+                    <div className="text-3xl font-bold text-cyan-400">{totales.pkls}</div>
+                    <div className="text-xs text-cyan-400/70 uppercase tracking-wider">PKLs</div>
                 </div>
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
                     <div className="text-3xl font-bold text-amber-400">S/. {totales.montoTotal.toFixed(2)}</div>
@@ -2251,7 +3036,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                 {fechasOrdenadas.map(fecha => {
                                     const grupo = eventosPorFecha[fecha];
                                     const isSelected = selectedDate === fecha;
-                                    const totalEventos = grupo.movimientos.length + grupo.rendiciones.length + grupo.producciones.length;
+                                    const totalEventos = grupo.movimientos.length + grupo.rendiciones.length + grupo.producciones.length + (grupo.pklsDelDia?.length || 0);
 
                                     return (
                                         <button
@@ -2286,6 +3071,11 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                                 {grupo.producciones.length > 0 && (
                                                     <span className="flex items-center gap-1">
                                                         🏭 {grupo.producciones.length}
+                                                    </span>
+                                                )}
+                                                {grupo.pklsDelDia && grupo.pklsDelDia.length > 0 && (
+                                                    <span className="flex items-center gap-1 text-cyan-400">
+                                                        📋 {grupo.pklsDelDia.length}
                                                     </span>
                                                 )}
                                             </div>
@@ -2377,11 +3167,11 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                             {(filterType === 'all' || filterType === 'movimientos') && diaSeleccionado.movimientos.length > 0 && (
                                 <div className="mb-6">
                                     <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3">
-                                        🚚 Movimientos Logísticos ({diaSeleccionado.movimientos.length})
+                                        🚚 Eventos Logísticos ({diaSeleccionado.movimientos.length})
                                     </h3>
                                     <div className="space-y-3">
                                         {diaSeleccionado.movimientos.map(m => {
-                                            const linkedPKL = findPKLForEvent(m.id, pkls);
+                                            const linkedPKL = findPKLForEvent(m.id, pkls, m.pedido_id, { cliente: m.cliente, fecha: m.fecha });
                                             return (
                                                 <MovimientoCard
                                                     key={m.id}
@@ -2409,7 +3199,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                     </h3>
                                     <div className="space-y-3">
                                         {diaSeleccionado.rendiciones.map(r => {
-                                            const linkedPKL = findPKLForEvent(r.id, pkls);
+                                            const linkedPKL = findPKLForEvent(r.id, pkls, r.pedido_id, { cliente: r.cliente, fecha: r.fecha });
                                             return (
                                                 <RendicionCard
                                                     key={r.id}
@@ -2431,13 +3221,13 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
 
                             {/* Producciones */}
                             {(filterType === 'all' || filterType === 'produccion') && diaSeleccionado.producciones.length > 0 && (
-                                <div>
+                                <div className="mb-6">
                                     <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3">
                                         🏭 Producción ({diaSeleccionado.producciones.length})
                                     </h3>
                                     <div className="space-y-3">
                                         {diaSeleccionado.producciones.map(e => {
-                                            const linkedPKL = findPKLForEvent(e.id, pkls);
+                                            const linkedPKL = findPKLForEvent(e.id, pkls, e.pedido_id, { cliente: e.cliente, fecha: e.fecha });
                                             return (
                                                 <ProduccionCard
                                                     key={e.id}
@@ -2453,6 +3243,30 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                                                 />
                                             );
                                         })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* PKLs del día */}
+                            {(filterType === 'all' || filterType === 'pkls') && diaSeleccionado.pklsDelDia && diaSeleccionado.pklsDelDia.length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-3">
+                                        📋 PKLs del Día ({diaSeleccionado.pklsDelDia.length})
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {diaSeleccionado.pklsDelDia.map(pkl => (
+                                            <PKLCard
+                                                key={pkl.pkl_id}
+                                                pkl={pkl}
+                                                clienteLogo={pkl.cliente?.nombre ? getClienteLogo(pkl.cliente.nombre) : null}
+                                                onNavigateToPKL={(pklId) => {
+                                                    // Navegar a la página PKL con el PKL seleccionado
+                                                    if (onNavigateToPKL) {
+                                                        onNavigateToPKL(pklId);
+                                                    }
+                                                }}
+                                            />
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -2741,6 +3555,8 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                         setShowMergeModal(false);
                         setSelectedEventos(new Set());
                         setMergeSelectionMode(false);
+                        // Navegar al dashboard principal después de crear PKL exitosamente
+                        onBack();
                     }}
                 />
             )}
@@ -2753,7 +3569,7 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                     eventos={[]}
                     clientes={clientes}
                     onSuccess={() => setPklEditModal({ isOpen: false, pkl: null })}
-                    existingPKL={pklEditModal.pkl}
+                    existingPKL={pkls.find(p => p.pkl_id === pklEditModal.pkl?.pkl_id) || pklEditModal.pkl}
                 />
             )}
 
@@ -2813,6 +3629,8 @@ export function DiaADiaPage({ onBack }: DiaADiaPageProps) {
                         setShowVincularPKLModal(false);
                         setSelectedEventos(new Set());
                         setMergeSelectionMode(false);
+                        // Navegar al dashboard principal después de vincular a PKL exitosamente
+                        onBack();
                     }}
                 />
             )}
@@ -2865,10 +3683,10 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="liquid-glass liquid-glass-cyan rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-6 rounded-t-2xl">
                     <div className="flex items-center justify-between">

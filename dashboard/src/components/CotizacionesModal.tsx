@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useDatabase } from '../context/DatabaseContext';
+import { useToast } from '../context/ToastContext';
 import { PRODUCTOS_BASE, normalizarAProductoBase } from '../config/productosBase';
 import type { HistoricoPrecio } from '../types';
 import { supabase } from '../supabaseClient';
@@ -31,6 +32,7 @@ interface NuevaCotizacionForm {
 
 export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps) {
   const { cotizaciones, proveedores, pedidos, createCotizacion, createHistoricoPrecio, getHistoricoPorProveedor, deleteCotizacion } = useDatabase();
+  const { showToast } = useToast();
   const [filterProveedor, setFilterProveedor] = useState('');
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
   const [historicoProveedor, setHistoricoProveedor] = useState<HistoricoPrecio[]>([]);
@@ -176,21 +178,21 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
 
     try {
       await deleteCotizacion(cotizacionId);
-      alert('✅ Cotización eliminada exitosamente');
+      showToast('Cotización eliminada exitosamente', 'success');
     } catch (error) {
       console.error('Error al eliminar cotización:', error);
-      alert('❌ Error al eliminar la cotización');
+      showToast('Error al eliminar la cotización', 'error');
     }
   };
 
   const handleAddCotizacion = async () => {
     if (!formData.proveedor_nombre) {
-      alert('Por favor ingresa el nombre del proveedor');
+      showToast('Por favor ingresa el nombre del proveedor', 'warning');
       return;
     }
 
     if (formData.variantes.length === 0) {
-      alert('Por favor agrega al menos una variante');
+      showToast('Por favor agrega al menos una variante', 'warning');
       return;
     }
 
@@ -200,7 +202,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
     );
 
     if (!variantesValidas) {
-      alert('Todas las variantes deben tener: producto base, cantidad > 0 y precio unitario > 0');
+      showToast('Todas las variantes deben tener: producto base, cantidad > 0 y precio unitario > 0', 'warning');
       return;
     }
 
@@ -261,7 +263,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
         });
       }
 
-      alert(`✅ Cotización guardada exitosamente con ${formData.variantes.length} variante(s)`);
+      showToast(`Cotización guardada exitosamente con ${formData.variantes.length} variante(s)`, 'success');
       // Reset form after successful save
       setFormData({
         proveedor_nombre: '',
@@ -282,7 +284,7 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
       setActiveTab('view');
     } catch (err) {
       console.error('Error al agregar cotización:', err);
-      alert('Error al guardar la cotización');
+      showToast('Error al guardar la cotización', 'error');
     } finally {
       setIsSubmitting(false);
     }

@@ -90,59 +90,59 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">PKL - Primary Key Logistica</h1>
-                    <p className="text-gray-800 dark:text-gray-400 text-sm mt-1">
+                    <h1 className="text-3xl font-bold text-white tracking-tight">PKL - Primary Key Logistica</h1>
+                    <p className="text-gray-800 dark:text-gray-400 text-sm mt-2 leading-relaxed">
                         Trazabilidad end-to-end de requerimientos logisticos
                     </p>
                 </div>
-                <button className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 !text-white font-medium rounded-lg transition-colors">
+                <button className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 !text-white font-semibold rounded-xl transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 shadow-md">
                     + Nuevo PKL
                 </button>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm">Total PKLs</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-gray-900 dark:text-white leading-none">{stats.total}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Total PKLs</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.cerrados}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm">Cerrados</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-green-600 dark:text-green-400 leading-none">{stats.cerrados}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Cerrados</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{stats.enCurso}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm">En Curso</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-cyan-600 dark:text-cyan-400 leading-none">{stats.enCurso}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">En Curso</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.enPausa}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm">En Pausa</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 leading-none">{stats.enPausa}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">En Pausa</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">S/ {stats.totalCosto.toFixed(2)}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm">Costo Total</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-gray-900 dark:text-white leading-none">S/ {stats.totalCosto.toFixed(2)}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Costo Total</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-4">
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.totalTasks}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm">Tasks Ejecutados</div>
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 leading-none">{stats.totalTasks}</div>
+                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Tasks Ejecutados</div>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex flex-wrap gap-3 items-center">
                 <input
                     type="text"
                     placeholder="Buscar por ID, cliente o descripcion..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="flex-1 min-w-[200px] px-4 py-2 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                    className="flex-1 min-w-[200px] px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
                 />
                 <select
                     value={filterEstado}
                     onChange={e => setFilterEstado(e.target.value as EstadoPKL | 'todos')}
-                    className="px-4 py-2 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    className="px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
                 >
                     <option value="todos">Todos los estados</option>
                     {ESTADOS_PKL.map(e => (
@@ -152,7 +152,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                 <select
                     value={filterTipo}
                     onChange={e => setFilterTipo(e.target.value as TipoOperacionPKL | 'todos')}
-                    className="px-4 py-2 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    className="px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
                 >
                     <option value="todos">Todos los tipos</option>
                     {TIPOS_OPERACION_PKL.map(t => (
@@ -164,8 +164,8 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* PKL List */}
-                <div className="lg:col-span-1 space-y-3">
-                    <h2 className="text-lg font-semibold text-white mb-4">
+                <div className="lg:col-span-1 space-y-2">
+                    <h2 className="text-lg font-semibold text-white mb-4 tracking-tight">
                         Lista de PKLs ({filteredPKLs.length})
                     </h2>
                     {filteredPKLs.length === 0 ? (
@@ -182,12 +182,12 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                             return (
                                 <div
                                     key={pkl.pkl_id}
-                                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                                         isSelected
-                                            ? 'bg-cyan-900/30 border-cyan-500'
+                                            ? 'bg-cyan-900/30 border-cyan-500 shadow-lg shadow-cyan-500/20'
                                             : isForMerge
-                                                ? 'bg-purple-900/30 border-purple-500 ring-2 ring-purple-500'
-                                                : 'bg-gray-800/50 border-gray-700/50 hover:border-gray-600'
+                                                ? 'bg-purple-900/30 border-purple-500 ring-2 ring-purple-500 shadow-lg shadow-purple-500/20'
+                                                : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/50 hover:border-gray-400 dark:hover:border-gray-600 hover:shadow-md hover:-translate-y-0.5'
                                     }`}
                                 >
                                     <div className="flex items-start gap-3">
@@ -1356,8 +1356,10 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
         // Cotización
         cotizacion_descripcion: '',
         cotizacion_cantidad: '',
-        cotizacion_precio_unitario: '',
-        cotizacion_precio_total: '',
+        cotizacion_precio: '', // Precio ingresado (puede ser unitario o total)
+        cotizacion_es_precio_unitario: true, // true = precio unitario, false = precio total
+        cotizacion_precio_unitario: '', // Calculado
+        cotizacion_precio_total: '', // Calculado
         cotizacion_incluye_igv: false,
         cotizacion_tiempo_entrega: '',
         cotizacion_notas: '',
@@ -1374,33 +1376,59 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     const tasksTotal = pkl.tasks.length;
     const progreso = tasksTotal > 0 ? (tasksCompletados / tasksTotal) * 100 : 0;
 
-    // Calcular total de cotización automáticamente
-    const calcularTotalCotizacion = (cantidad: string, precioUnitario: string) => {
+    // Calcular precios de cotización automáticamente
+    const calcularPreciosCotizacion = (cantidad: string, precio: string, esPrecioUnitario: boolean) => {
         const cant = parseFloat(cantidad) || 0;
-        const precio = parseFloat(precioUnitario) || 0;
-        if (cant > 0 && precio > 0) {
-            return (cant * precio).toFixed(2);
+        const precioNum = parseFloat(precio) || 0;
+
+        if (cant > 0 && precioNum > 0) {
+            if (esPrecioUnitario) {
+                // Precio es unitario -> multiplicar para obtener total
+                return {
+                    precio_unitario: precioNum.toFixed(2),
+                    precio_total: (cant * precioNum).toFixed(2)
+                };
+            } else {
+                // Precio es total -> dividir para obtener unitario
+                return {
+                    precio_unitario: (precioNum / cant).toFixed(2),
+                    precio_total: precioNum.toFixed(2)
+                };
+            }
         }
-        return '';
+        return { precio_unitario: '', precio_total: '' };
     };
 
-    // Actualizar cantidad y recalcular total
+    // Actualizar cantidad y recalcular precios
     const handleCotizacionCantidadChange = (value: string) => {
-        const newTotal = calcularTotalCotizacion(value, proveedorForm.cotizacion_precio_unitario);
+        const precios = calcularPreciosCotizacion(value, proveedorForm.cotizacion_precio, proveedorForm.cotizacion_es_precio_unitario);
         setProveedorForm({
             ...proveedorForm,
             cotizacion_cantidad: value,
-            cotizacion_precio_total: newTotal || proveedorForm.cotizacion_precio_total
+            cotizacion_precio_unitario: precios.precio_unitario || proveedorForm.cotizacion_precio_unitario,
+            cotizacion_precio_total: precios.precio_total || proveedorForm.cotizacion_precio_total
         });
     };
 
-    // Actualizar precio unitario y recalcular total
-    const handleCotizacionPrecioUnitarioChange = (value: string) => {
-        const newTotal = calcularTotalCotizacion(proveedorForm.cotizacion_cantidad, value);
+    // Actualizar precio y recalcular
+    const handleCotizacionPrecioChange = (value: string) => {
+        const precios = calcularPreciosCotizacion(proveedorForm.cotizacion_cantidad, value, proveedorForm.cotizacion_es_precio_unitario);
         setProveedorForm({
             ...proveedorForm,
-            cotizacion_precio_unitario: value,
-            cotizacion_precio_total: newTotal || proveedorForm.cotizacion_precio_total
+            cotizacion_precio: value,
+            cotizacion_precio_unitario: precios.precio_unitario || proveedorForm.cotizacion_precio_unitario,
+            cotizacion_precio_total: precios.precio_total || proveedorForm.cotizacion_precio_total
+        });
+    };
+
+    // Cambiar tipo de precio (unitario/total) y recalcular
+    const handleTipoPrecioChange = (esPrecioUnitario: boolean) => {
+        const precios = calcularPreciosCotizacion(proveedorForm.cotizacion_cantidad, proveedorForm.cotizacion_precio, esPrecioUnitario);
+        setProveedorForm({
+            ...proveedorForm,
+            cotizacion_es_precio_unitario: esPrecioUnitario,
+            cotizacion_precio_unitario: precios.precio_unitario || proveedorForm.cotizacion_precio_unitario,
+            cotizacion_precio_total: precios.precio_total || proveedorForm.cotizacion_precio_total
         });
     };
 
@@ -1452,13 +1480,14 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     const resetProveedorForm = () => {
         setProveedorForm({
             nombre: '', servicio: '', ubicacion: '', contacto: '',
-            cotizacion_descripcion: '', cotizacion_cantidad: '', cotizacion_precio_unitario: '',
+            cotizacion_descripcion: '', cotizacion_cantidad: '', cotizacion_precio: '',
+            cotizacion_es_precio_unitario: true, cotizacion_precio_unitario: '',
             cotizacion_precio_total: '', cotizacion_incluye_igv: false, cotizacion_tiempo_entrega: '',
             cotizacion_notas: '', elegido: false
         });
     };
 
-    const handleAddProveedor = () => {
+    const handleAddProveedor = async () => {
         if (!proveedorForm.nombre.trim()) return;
 
         // Construir cotización si hay datos
@@ -1484,6 +1513,35 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
             elegido: proveedorForm.elegido
         };
         onUpdate({ proveedores: [...pkl.proveedores, newProveedor] } as any);
+
+        // Si el proveedor está elegido y tiene cotización, sincronizar con task de cotización
+        if (proveedorForm.elegido && cotizacion && cotizacion.precio_total > 0) {
+            const taskCotizacion = localTasks.find(t => t.tipo === 'cotizacion');
+            if (taskCotizacion) {
+                await onUpdateTask(pkl.pkl_id, taskCotizacion.task_id, {
+                    costo: {
+                        monto: cotizacion.precio_total,
+                        moneda: 'PEN',
+                        incluye_igv: cotizacion.incluye_igv
+                    },
+                    proveedor: proveedorForm.nombre.trim(),
+                    cantidad: cotizacion.cantidad,
+                    precioUnitario: cotizacion.precio_unitario,
+                    incluyeIgv: cotizacion.incluye_igv
+                });
+                setLocalTasks(prev => prev.map(t =>
+                    t.task_id === taskCotizacion.task_id
+                        ? {
+                            ...t,
+                            costo: { monto: cotizacion.precio_total, moneda: 'PEN', incluye_igv: cotizacion.incluye_igv },
+                            proveedor: proveedorForm.nombre.trim()
+                        }
+                        : t
+                ));
+                console.log('✅ Task de cotización sincronizado con nuevo proveedor elegido:', proveedorForm.nombre, cotizacion.precio_total);
+            }
+        }
+
         resetProveedorForm();
         setShowAddProveedor(false);
         setProveedorSearch('');
@@ -1491,6 +1549,9 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
 
     const handleEditProveedor = (prov: typeof pkl.proveedores[0]) => {
         setEditingProveedorId(prov.proveedor_id);
+        // Si tiene precio_unitario, usar ese como precio y marcar como unitario
+        const precioUnitario = prov.cotizacion?.precio_unitario?.toString() || '';
+        const precioTotal = prov.cotizacion?.precio_total?.toString() || '';
         setProveedorForm({
             nombre: prov.nombre,
             servicio: prov.servicio || '',
@@ -1498,8 +1559,10 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
             contacto: prov.contacto || '',
             cotizacion_descripcion: prov.cotizacion?.descripcion || '',
             cotizacion_cantidad: prov.cotizacion?.cantidad?.toString() || '',
-            cotizacion_precio_unitario: prov.cotizacion?.precio_unitario?.toString() || '',
-            cotizacion_precio_total: prov.cotizacion?.precio_total?.toString() || '',
+            cotizacion_precio: precioUnitario || precioTotal, // Usar unitario si existe, sino total
+            cotizacion_es_precio_unitario: !!precioUnitario, // true si tiene unitario
+            cotizacion_precio_unitario: precioUnitario,
+            cotizacion_precio_total: precioTotal,
             cotizacion_incluye_igv: prov.cotizacion?.incluye_igv || false,
             cotizacion_tiempo_entrega: prov.cotizacion?.tiempo_entrega || '',
             cotizacion_notas: prov.cotizacion?.notas || '',
@@ -1507,7 +1570,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
         });
     };
 
-    const handleSaveProveedor = () => {
+    const handleSaveProveedor = async () => {
         if (!editingProveedorId) return;
 
         // Construir cotización si hay datos
@@ -1536,6 +1599,38 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                 : p
         );
         onUpdate({ proveedores: updated } as any);
+
+        // Si el proveedor está elegido y tiene cotización, sincronizar con task de cotización
+        if (proveedorForm.elegido && cotizacion && cotizacion.precio_total > 0) {
+            // Buscar task de tipo cotización para actualizar su costo
+            const taskCotizacion = localTasks.find(t => t.tipo === 'cotizacion');
+            if (taskCotizacion) {
+                // Actualizar el task con el costo del proveedor elegido
+                await onUpdateTask(pkl.pkl_id, taskCotizacion.task_id, {
+                    costo: {
+                        monto: cotizacion.precio_total,
+                        moneda: 'PEN',
+                        incluye_igv: cotizacion.incluye_igv
+                    },
+                    proveedor: proveedorForm.nombre,
+                    cantidad: cotizacion.cantidad,
+                    precioUnitario: cotizacion.precio_unitario,
+                    incluyeIgv: cotizacion.incluye_igv
+                });
+                // Actualizar estado local
+                setLocalTasks(prev => prev.map(t =>
+                    t.task_id === taskCotizacion.task_id
+                        ? {
+                            ...t,
+                            costo: { monto: cotizacion.precio_total, moneda: 'PEN', incluye_igv: cotizacion.incluye_igv },
+                            proveedor: proveedorForm.nombre
+                        }
+                        : t
+                ));
+                console.log('✅ Task de cotización sincronizado con proveedor elegido:', proveedorForm.nombre, cotizacion.precio_total);
+            }
+        }
+
         setEditingProveedorId(null);
         resetProveedorForm();
     };
@@ -1556,12 +1651,43 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     };
 
     // Marcar/desmarcar proveedor como elegido
-    const handleToggleElegido = (proveedorId: string) => {
+    const handleToggleElegido = async (proveedorId: string) => {
+        const proveedor = pkl.proveedores.find(p => p.proveedor_id === proveedorId);
+        const nuevoEstadoElegido = proveedor ? !proveedor.elegido : false;
+
         const updated = pkl.proveedores.map(p => ({
             ...p,
-            elegido: p.proveedor_id === proveedorId ? !p.elegido : p.elegido
+            elegido: p.proveedor_id === proveedorId ? nuevoEstadoElegido : p.elegido
         }));
         onUpdate({ proveedores: updated } as any);
+
+        // Si el proveedor se marca como elegido y tiene cotización, sincronizar con task
+        if (nuevoEstadoElegido && proveedor?.cotizacion && proveedor.cotizacion.precio_total > 0) {
+            const taskCotizacion = localTasks.find(t => t.tipo === 'cotizacion');
+            if (taskCotizacion) {
+                await onUpdateTask(pkl.pkl_id, taskCotizacion.task_id, {
+                    costo: {
+                        monto: proveedor.cotizacion.precio_total,
+                        moneda: 'PEN',
+                        incluye_igv: proveedor.cotizacion.incluye_igv
+                    },
+                    proveedor: proveedor.nombre,
+                    cantidad: proveedor.cotizacion.cantidad,
+                    precioUnitario: proveedor.cotizacion.precio_unitario,
+                    incluyeIgv: proveedor.cotizacion.incluye_igv
+                });
+                setLocalTasks(prev => prev.map(t =>
+                    t.task_id === taskCotizacion.task_id
+                        ? {
+                            ...t,
+                            costo: { monto: proveedor.cotizacion!.precio_total, moneda: 'PEN', incluye_igv: proveedor.cotizacion!.incluye_igv },
+                            proveedor: proveedor.nombre
+                        }
+                        : t
+                ));
+                console.log('✅ Task de cotización sincronizado al elegir proveedor:', proveedor.nombre, proveedor.cotizacion.precio_total);
+            }
+        }
     };
 
     // Filter proveedores from DB for autocomplete
@@ -1843,34 +1969,43 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                     placeholder="¿Qué se cotizó? (ej: 50 polos sublimados)"
                                     className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 mb-2"
                                 />
-                                <div className="flex gap-2 mb-2 items-center">
-                                    <input
-                                        type="number"
-                                        value={proveedorForm.cotizacion_cantidad}
-                                        onChange={e => handleCotizacionCantidadChange(e.target.value)}
-                                        placeholder="Cantidad"
-                                        className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
-                                    />
-                                    <span className="text-gray-400">×</span>
-                                    <input
-                                        type="number"
-                                        value={proveedorForm.cotizacion_precio_unitario}
-                                        onChange={e => handleCotizacionPrecioUnitarioChange(e.target.value)}
-                                        placeholder="P. Unit."
-                                        step="0.01"
-                                        className="w-24 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
-                                    />
-                                    <span className="text-gray-400">=</span>
-                                    <div className="flex items-center gap-1 flex-1">
-                                        <span className="text-amber-400 font-bold text-sm">S/</span>
+                                <div className="flex gap-2 mb-2 items-center flex-wrap">
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-gray-400 text-xs">Cant:</span>
                                         <input
                                             type="number"
-                                            value={proveedorForm.cotizacion_precio_total}
-                                            onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_precio_total: e.target.value })}
-                                            placeholder="Total"
-                                            step="0.01"
-                                            className="w-full bg-amber-500/10 border border-amber-500/50 rounded px-2 py-2 text-amber-400 font-bold text-sm outline-none focus:border-amber-500"
+                                            value={proveedorForm.cotizacion_cantidad}
+                                            onChange={e => handleCotizacionCantidadChange(e.target.value)}
+                                            placeholder="Cantidad"
+                                            className="w-16 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
                                         />
+                                    </div>
+                                    <span className="text-gray-400">×</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-gray-400 text-xs">S/.</span>
+                                        <input
+                                            type="number"
+                                            value={proveedorForm.cotizacion_precio}
+                                            onChange={e => handleCotizacionPrecioChange(e.target.value)}
+                                            placeholder="Precio"
+                                            step="0.01"
+                                            className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                        />
+                                    </div>
+                                    <select
+                                        value={proveedorForm.cotizacion_es_precio_unitario ? 'unitario' : 'total'}
+                                        onChange={e => handleTipoPrecioChange(e.target.value === 'unitario')}
+                                        className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-xs outline-none focus:border-purple-500"
+                                    >
+                                        <option value="unitario">c/u</option>
+                                        <option value="total">total</option>
+                                    </select>
+                                    <span className="text-gray-400">=</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-amber-400 font-bold text-sm">S/</span>
+                                        <span className="text-amber-400 font-bold text-sm min-w-[60px]">
+                                            {proveedorForm.cotizacion_precio_total || '0.00'}
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 mb-2">
@@ -1968,35 +2103,33 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
                                             placeholder="¿Qué se cotizó?"
                                             className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none mb-2"
                                         />
-                                        <div className="flex gap-2 mb-2 items-center">
+                                        <div className="flex gap-2 mb-2 items-center flex-wrap">
                                             <input
                                                 type="number"
                                                 value={proveedorForm.cotizacion_cantidad}
                                                 onChange={e => handleCotizacionCantidadChange(e.target.value)}
                                                 placeholder="Cant."
-                                                className="w-16 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                                className="w-14 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
                                             />
                                             <span className="text-gray-400 text-xs">×</span>
                                             <input
                                                 type="number"
-                                                value={proveedorForm.cotizacion_precio_unitario}
-                                                onChange={e => handleCotizacionPrecioUnitarioChange(e.target.value)}
-                                                placeholder="P.Unit"
+                                                value={proveedorForm.cotizacion_precio}
+                                                onChange={e => handleCotizacionPrecioChange(e.target.value)}
+                                                placeholder="Precio"
                                                 step="0.01"
                                                 className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
                                             />
+                                            <select
+                                                value={proveedorForm.cotizacion_es_precio_unitario ? 'unitario' : 'total'}
+                                                onChange={e => handleTipoPrecioChange(e.target.value === 'unitario')}
+                                                className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1 text-gray-900 dark:text-white text-xs outline-none"
+                                            >
+                                                <option value="unitario">c/u</option>
+                                                <option value="total">total</option>
+                                            </select>
                                             <span className="text-gray-400 text-xs">=</span>
-                                            <div className="flex items-center gap-1 flex-1">
-                                                <span className="text-amber-400 font-bold text-xs">S/</span>
-                                                <input
-                                                    type="number"
-                                                    value={proveedorForm.cotizacion_precio_total}
-                                                    onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_precio_total: e.target.value })}
-                                                    placeholder="Total"
-                                                    step="0.01"
-                                                    className="w-full bg-amber-500/10 border border-amber-500/50 rounded px-2 py-1 text-amber-400 font-bold text-sm outline-none"
-                                                />
-                                            </div>
+                                            <span className="text-amber-400 font-bold text-sm">S/ {proveedorForm.cotizacion_precio_total || '0.00'}</span>
                                         </div>
                                         <div className="flex gap-2 mb-2">
                                             <input
