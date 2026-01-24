@@ -2,6 +2,63 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## ⚠️ MODELO DE DATOS FUNDAMENTAL (LEER PRIMERO)
+
+### Jerarquía de Datos
+
+```
+DÍA (fecha: 2026-01-16)
+│
+├── EVENTO (PKL-2026-0024: "Instalación stands feria Grupo Lar")
+│     ├── cliente: "Grupo Lar"
+│     ├── fecha: 2026-01-16
+│     └── TASKS:
+│           ├── [movimiento] Compra tornillos - S/.50
+│           ├── [rendición] Pago taxi - S/.12
+│           └── [producción] Impresión banners
+│
+└── EVENTO (PKL-2026-0025: "Entrega cotización TYC")
+      ├── cliente: "TYC"
+      ├── fecha: 2026-01-16
+      └── TASKS:
+            └── [movimiento] Entrega física documento
+```
+
+### Reglas Fundamentales
+
+1. **DÍAS** contienen **EVENTOS**
+2. **Cada EVENTO tiene un PKL único** (ej: PKL-2026-0024)
+3. **EVENTOS** contienen **TASKS**
+4. **Movimientos, Rendiciones y Producciones pueden ser:**
+   - Un **EVENTO** independiente (con su propio PKL)
+   - Un **TASK** dentro de otro evento
+5. **El usuario puede convertir en cualquier momento:**
+   - Un EVENTO → TASK de otro evento
+   - Un TASK → EVENTO independiente (se le asigna nuevo PKL)
+
+### Ejemplo de Conversión
+
+```
+ANTES (evento independiente):
+  EVENTO PKL-0030: "Compra de tornillos" (movimiento)
+
+DESPUÉS (convertido a task):
+  EVENTO PKL-0024: "Instalación stands feria"
+    └── TASKS:
+          └── [movimiento] Compra de tornillos (antes era PKL-0030)
+```
+
+### Vista "Día a Día"
+
+- Muestra todos los EVENTOS del día seleccionado
+- Muestra todos los PKLs que tienen actividad ese día
+- Permite editar fechas de eventos (para corregir errores)
+- Los domingos normalmente no hay trabajo (verificar si fecha es correcta)
+
+---
+
 ## Project Overview
 
 **Creaactivo Logistics Intelligence System** - An AI-powered WhatsApp bot for capturing and querying logistics decisions in real-time. The system uses voice-first interaction, allowing a logistics coordinator to speak naturally about their daily operations while the system extracts, structures, and visualizes the data.

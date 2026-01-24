@@ -4,6 +4,8 @@ import { useDatabase } from '../context/DatabaseContext';
 import { useToast } from '../context/ToastContext';
 import { TIPOS_OPERACION_PKL, ESTADOS_PKL } from '../types';
 import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL, TipoOperacionPKL, EstadoPKL } from '../types';
+// Funciones centralizadas de cálculo de costos (#12)
+import { validarMonto } from '../utils/pklCostos';
 
 type EventoTipo = 'movimiento' | 'rendicion' | 'produccion';
 
@@ -14,8 +16,8 @@ interface Props {
     evento: MovimientoLogistico | Rendicion | EventoProduccion;
 }
 
-// Generate next PKL ID
-function generatePKLId(existingPkls: PKL[]): string {
+// Generate next PKL ID with uniqueness validation
+function generatePKLId(existingPkls: PKL[], reservedIds?: Set<string>): string {
     const year = new Date().getFullYear();
     const prefix = `PKL-${year}-`;
 
@@ -29,7 +31,24 @@ function generatePKLId(existingPkls: PKL[]): string {
         }
     });
 
-    return `${prefix}${String(maxNum + 1).padStart(4, '0')}`;
+    // Generar ID y verificar que no esté reservado/en uso
+    let candidateNum = maxNum + 1;
+    let candidateId = `${prefix}${String(candidateNum).padStart(4, '0')}`;
+
+    // Verificar contra IDs existentes y reservados (para evitar race conditions)
+    const existingIds = new Set(existingPkls.map(p => p.pkl_id));
+    while (existingIds.has(candidateId) || reservedIds?.has(candidateId)) {
+        candidateNum++;
+        candidateId = `${prefix}${String(candidateNum).padStart(4, '0')}`;
+        // Límite de seguridad para evitar loop infinito
+        if (candidateNum > maxNum + 100) {
+            // Fallback: agregar timestamp para unicidad garantizada
+            candidateId = `${prefix}${String(candidateNum).padStart(4, '0')}-${Date.now().toString(36)}`;
+            break;
+        }
+    }
+
+    return candidateId;
 }
 
 export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props) {
@@ -57,20 +76,46 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
     const clienteEvento = 'cliente' in evento ? evento.cliente : '';
 
     const pklsFiltrados = useMemo(() => {
+        const query = searchQuery.toLowerCase().trim();
+        const isNumericQuery = /^\d+$/.test(query);
+
+        // Si el usuario busca por número, buscar en TODOS los PKLs (ignorar filtros)
+        if (searchQuery && isNumericQuery) {
+            return pkls.filter(p => {
+                // Buscar por número del PKL
+                const pklMatch = p.pkl_id.match(/PKL-\d{4}-(\d+)/i);
+                if (pklMatch) {
+                    const pklNum = parseInt(pklMatch[1], 10).toString();
+                    return pklNum === query || pklMatch[1].endsWith(query);
+                }
+                return false;
+            }).sort((a, b) =>
+                new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            ).slice(0, 20);
+        }
+
         let filtered = pkls;
 
-        // Primero filtrar por cliente si existe
-        if (clienteEvento) {
-            filtered = pkls.filter(p =>
-                p.cliente.nombre.toUpperCase().includes(clienteEvento.toUpperCase()) ||
-                clienteEvento.toUpperCase().includes(p.cliente.nombre.toUpperCase())
+        // Solo filtrar cerrados cuando NO hay búsqueda activa
+        if (!searchQuery) {
+            filtered = filtered.filter(p =>
+                !['cerrado_cancelado'].includes(p.estado.actual)
             );
         }
 
-        // Luego filtrar por búsqueda
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(p =>
+        // Filtrar por cliente si existe - usar comparación más estricta
+        if (clienteEvento && !searchQuery) {
+            const clienteNorm = clienteEvento.toUpperCase().trim();
+            filtered = filtered.filter(p => {
+                const pklClienteNorm = p.cliente.nombre.toUpperCase().trim();
+                return pklClienteNorm === clienteNorm ||
+                       pklClienteNorm.includes(clienteNorm);
+            });
+        }
+
+        // Filtrar por búsqueda de texto (no numérica)
+        if (searchQuery && !isNumericQuery) {
+            filtered = pkls.filter(p =>
                 p.pkl_id.toLowerCase().includes(query) ||
                 p.cliente.nombre.toLowerCase().includes(query) ||
                 p.origen.descripcion_inicial.toLowerCase().includes(query)
@@ -144,9 +189,32 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
 
     const handleSincronizar = async () => {
         setIsSubmitting(true);
+        let pklIdCreado: string | null = null; // Para rollback si falla
+
         try {
             let pklId = selectedPKLId;
             const now = new Date().toISOString();
+
+            // Validar monto usando función centralizada (#12, #15)
+            const monto = getEventoMonto();
+            const montoValidation = validarMonto(monto);
+            if (!montoValidation.valid) {
+                showToast(montoValidation.error || 'Monto inválido', 'error');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Validar estado del PKL seleccionado (#6)
+            // Solo bloquear cerrado_cancelado - cerrado_ok sí permite vincular
+            // (el cliente puede reactivar cotizaciones que parecían muertas)
+            if (mode === 'vincular' && pklId) {
+                const pklTarget = pkls.find(p => p.pkl_id === pklId);
+                if (pklTarget && pklTarget.estado.actual === 'cerrado_cancelado') {
+                    showToast('No puedes vincular a un PKL cancelado', 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
 
             // Si es modo crear, primero crear el PKL
             if (mode === 'crear') {
@@ -198,6 +266,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
 
                 await createPKL(newPKL);
                 pklId = newPklId;
+                pklIdCreado = newPklId; // Guardar para posible rollback
                 console.log('✅ Nuevo PKL creado:', pklId);
             }
 
@@ -208,43 +277,62 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
             }
 
             // Crear task en el PKL para este evento
-            const monto = getEventoMonto();
             const tipoEmojis: Record<string, string> = {
                 cotizacion: '📋', coordinacion_proveedor: '🤝', compra_insumo: '🛒',
                 pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📋'
             };
 
-            await createPKLTask(pklId, {
-                nombre: `${tipoEmojis[currentConfig.taskTipo] || '📋'} ${getEventoDescripcion()}`.substring(0, 100),
-                descripcion: getEventoDescripcion(),
-                tipo: currentConfig.taskTipo,
-                estado: 'completado',
-                orden: 1,
-                costo: monto > 0 ? { monto, moneda: 'PEN' } : undefined,
-                evento_origen_id: evento.id,
-                responsable: 'Huber',
-                es_happy_path: true,
-            });
-
-            // Actualizar el evento con el pkl_id
-            if (tipo === 'movimiento') {
-                await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
-            } else if (tipo === 'rendicion') {
-                await updateRendicion(evento.id, { pedido_id: pklId });
-            } else if (tipo === 'produccion') {
-                await updateEventoProduccion(evento.id, { pedido_id: pklId });
+            try {
+                await createPKLTask(pklId, {
+                    nombre: `${tipoEmojis[currentConfig.taskTipo] || '📋'} ${getEventoDescripcion()}`.substring(0, 100),
+                    descripcion: getEventoDescripcion(),
+                    tipo: currentConfig.taskTipo,
+                    estado: 'completado',
+                    orden: 1,
+                    costo: monto > 0 ? { monto, moneda: 'PEN' } : undefined,
+                    evento_origen_id: evento.id,
+                    responsable: 'Huber',
+                    es_happy_path: true,
+                });
+            } catch (taskError) {
+                console.error('Error creando task:', taskError);
+                // Si falló crear el task y habíamos creado un PKL nuevo, informar al usuario
+                if (pklIdCreado) {
+                    showToast(`Error: PKL ${pklIdCreado} creado pero falló agregar el task. Revisa manualmente.`, 'error');
+                }
+                throw taskError;
             }
 
-            // Actualizar costos del PKL
+            // Actualizar el evento con el pkl_id
+            try {
+                if (tipo === 'movimiento') {
+                    await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
+                } else if (tipo === 'rendicion') {
+                    await updateRendicion(evento.id, { pedido_id: pklId });
+                } else if (tipo === 'produccion') {
+                    await updateEventoProduccion(evento.id, { pedido_id: pklId });
+                }
+            } catch (updateError) {
+                console.error('Error vinculando evento:', updateError);
+                showToast(`Error: Task creado pero el evento no se vinculó al PKL. El PKL es ${pklId}.`, 'error');
+                throw updateError;
+            }
+
+            // Actualizar costos del PKL (solo si monto > 0)
             const currentPKL = pkls.find(p => p.pkl_id === pklId);
             if (currentPKL && monto > 0) {
-                const newTotal = (currentPKL.costos?.total || 0) + monto;
-                await updatePKL(pklId, {
-                    costos: {
-                        ...currentPKL.costos,
-                        total: newTotal,
-                    }
-                } as any);
+                const currentTotal = currentPKL.costos?.total || 0;
+                const newTotal = currentTotal + monto;
+
+                // Validar que el nuevo total sea válido
+                if (newTotal >= 0) {
+                    await updatePKL(pklId, {
+                        costos: {
+                            ...currentPKL.costos,
+                            total: newTotal,
+                        }
+                    } as any);
+                }
             }
 
             console.log(`✅ Evento sincronizado con PKL ${pklId}`);
@@ -253,7 +341,10 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
 
         } catch (err) {
             console.error('Error sincronizando:', err);
-            showToast('Error al sincronizar. Ver consola para detalles.', 'error');
+            if (!pklIdCreado) {
+                // Solo mostrar error genérico si no mostramos uno específico antes
+                showToast('Error al sincronizar. Ver consola para detalles.', 'error');
+            }
         } finally {
             setIsSubmitting(false);
         }

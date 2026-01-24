@@ -118,6 +118,17 @@ interface DatabaseContextType {
     pklParaMerge: string | null;
     setPKLParaMerge: (pklId: string | null) => void;
 
+    // Conversión EVENTO <-> TASK
+    convertEventoToTask: (
+        eventoTipo: 'movimiento' | 'rendicion' | 'produccion',
+        eventoId: string,
+        targetPklId: string
+    ) => Promise<void>;
+    convertTaskToEvento: (
+        pklId: string,
+        taskId: string
+    ) => Promise<string>; // Retorna el nuevo PKL ID
+
     isLoading: boolean;
     error: string | null;
     dataSource: 'db' | 'jsonl' | 'supabase' | null;
@@ -794,8 +805,17 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        // Generate task ID
-        const taskNum = currentPkl.tasks.length + 1;
+        // Generate unique task ID - find the maximum existing task number
+        let maxTaskNum = 0;
+        currentPkl.tasks.forEach(t => {
+            // Extract number from task_id like "PKL-2026-0024-T001" or "T001"
+            const match = t.task_id.match(/T(\d+)$/i);
+            if (match) {
+                const num = parseInt(match[1], 10);
+                if (num > maxTaskNum) maxTaskNum = num;
+            }
+        });
+        const taskNum = maxTaskNum + 1;
         const taskId = `${pklId}-T${String(taskNum).padStart(3, '0')}`;
 
         const newTask: TaskPKL = {
@@ -899,25 +919,67 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    // Delete PKL - removes from state and Supabase
+    // Delete PKL - removes from state and Supabase, and cleans orphan references
     const deletePKL = async (id: string) => {
         // Remove from state
         setPkls(prev => prev.filter(pkl => pkl.pkl_id !== id));
 
         // Delete from Supabase
         try {
-            // First delete associated tasks
+            // IMPORTANTE: Primero limpiar referencias huérfanas en eventos (#3)
+            // Esto evita que movimientos/rendiciones/producciones apunten a un PKL inexistente
+
+            // Limpiar movimientos_logisticos que apuntan a este PKL
+            const { error: movError } = await supabase
+                .from('movimientos_logisticos')
+                .update({ pedido_id: null })
+                .eq('pedido_id', id);
+            if (movError) {
+                console.warn('Advertencia limpiando movimientos:', movError);
+            }
+
+            // Limpiar rendiciones que apuntan a este PKL
+            const { error: rendError } = await supabase
+                .from('rendiciones')
+                .update({ pedido_id: null })
+                .eq('pedido_id', id);
+            if (rendError) {
+                console.warn('Advertencia limpiando rendiciones:', rendError);
+            }
+
+            // Limpiar eventos_produccion que apuntan a este PKL
+            const { error: prodError } = await supabase
+                .from('eventos_produccion')
+                .update({ pedido_id: null })
+                .eq('pedido_id', id);
+            if (prodError) {
+                console.warn('Advertencia limpiando producciones:', prodError);
+            }
+
+            // Actualizar estado local para reflejar la limpieza
+            setMovimientosLogisticos(prev =>
+                prev.map(m => m.pedido_id === id ? { ...m, pedido_id: undefined } : m)
+            );
+            setRendiciones(prev =>
+                prev.map(r => r.pedido_id === id ? { ...r, pedido_id: undefined } : r)
+            );
+            setEventosProduccion(prev =>
+                prev.map(e => e.pedido_id === id ? { ...e, pedido_id: undefined } : e)
+            );
+
+            // Ahora eliminar los tasks asociados
             const { error: tasksError } = await supabase.from('pkl_tasks').delete().eq('pkl_id', id);
             if (tasksError) {
                 console.error('Error deleting PKL tasks:', tasksError);
             }
 
-            // Then delete the PKL
+            // Finalmente eliminar el PKL
             const { error } = await supabase.from('pkls').delete().eq('pkl_id', id);
             if (error) {
                 console.error('Error deleting PKL from Supabase:', error);
             } else {
                 console.log('✓ PKL deleted from Supabase:', id);
+                console.log('✓ Referencias huérfanas limpiadas');
             }
         } catch (err) {
             console.error('Error deleting PKL:', err);
@@ -1072,6 +1134,48 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 await supabase.from('pkl_tasks').insert(tasksToInsert);
             }
 
+            // IMPORTANTE: Reasignar eventos de PKLs secundarios al primario (#7)
+            // Esto evita que los eventos queden huérfanos después del merge
+            for (const secondaryId of secondaryIds) {
+                // Reasignar movimientos_logisticos
+                const { error: movError } = await supabase
+                    .from('movimientos_logisticos')
+                    .update({ pedido_id: primaryId })
+                    .eq('pedido_id', secondaryId);
+                if (movError) {
+                    console.warn(`Advertencia reasignando movimientos de ${secondaryId}:`, movError);
+                }
+
+                // Reasignar rendiciones
+                const { error: rendError } = await supabase
+                    .from('rendiciones')
+                    .update({ pedido_id: primaryId })
+                    .eq('pedido_id', secondaryId);
+                if (rendError) {
+                    console.warn(`Advertencia reasignando rendiciones de ${secondaryId}:`, rendError);
+                }
+
+                // Reasignar eventos_produccion
+                const { error: prodError } = await supabase
+                    .from('eventos_produccion')
+                    .update({ pedido_id: primaryId })
+                    .eq('pedido_id', secondaryId);
+                if (prodError) {
+                    console.warn(`Advertencia reasignando producciones de ${secondaryId}:`, prodError);
+                }
+            }
+
+            // Actualizar estado local para reflejar la reasignación
+            setMovimientosLogisticos(prev =>
+                prev.map(m => secondaryIds.includes(m.pedido_id || '') ? { ...m, pedido_id: primaryId } : m)
+            );
+            setRendiciones(prev =>
+                prev.map(r => secondaryIds.includes(r.pedido_id || '') ? { ...r, pedido_id: primaryId } : r)
+            );
+            setEventosProduccion(prev =>
+                prev.map(e => secondaryIds.includes(e.pedido_id || '') ? { ...e, pedido_id: primaryId } : e)
+            );
+
             // Delete secondary PKLs and their tasks
             for (const secondaryId of secondaryIds) {
                 await supabase.from('pkl_tasks').delete().eq('pkl_id', secondaryId);
@@ -1079,9 +1183,284 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             }
 
             console.log(`✓ Merged ${secondaryIds.length} PKLs into ${primaryId}`);
+            console.log(`✓ Eventos reasignados al PKL primario`);
         } catch (err) {
             console.error('Error merging PKLs:', err);
         }
+    };
+
+    // Convertir un EVENTO (movimiento/rendicion/produccion) en TASK de otro evento (PKL)
+    const convertEventoToTask = async (
+        eventoTipo: 'movimiento' | 'rendicion' | 'produccion',
+        eventoId: string,
+        targetPklId: string
+    ) => {
+        const now = new Date().toISOString();
+
+        // Obtener datos del evento a convertir
+        let eventoData: any = null;
+        switch (eventoTipo) {
+            case 'movimiento':
+                eventoData = movimientosLogisticos.find(m => m.id === eventoId);
+                break;
+            case 'rendicion':
+                eventoData = rendiciones.find(r => r.id === eventoId);
+                break;
+            case 'produccion':
+                eventoData = eventosProduccion.find(e => e.id === eventoId);
+                break;
+        }
+
+        if (!eventoData) {
+            console.error('Evento no encontrado:', eventoTipo, eventoId);
+            return;
+        }
+
+        // Obtener PKL destino
+        const targetPkl = pkls.find(p => p.pkl_id === targetPklId);
+        if (!targetPkl) {
+            console.error('PKL destino no encontrado:', targetPklId);
+            return;
+        }
+
+        // Crear task a partir del evento
+        // Mapear tipo de evento a TipoTaskPKL válido
+        const mapTipoToTask = (): 'movilidad' | 'pago' | 'compra_insumo' | 'coordinacion_proveedor' => {
+            if (eventoTipo === 'movimiento') {
+                // Mapear tipos de movimiento a tipos de task
+                const tipoMov = eventoData.tipo as string;
+                if (tipoMov === 'compra') return 'compra_insumo';
+                if (tipoMov === 'entrega' || tipoMov === 'recojo' || tipoMov === 'traslado') return 'movilidad';
+                return 'movilidad';
+            }
+            if (eventoTipo === 'rendicion') return 'pago';
+            return 'coordinacion_proveedor'; // produccion
+        };
+
+        const taskId = `TASK-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        const newTask: TaskPKL = {
+            task_id: taskId,
+            tipo: mapTipoToTask(),
+            nombre: eventoData.observaciones || eventoData.descripcion || eventoData.producto ||
+                    `${eventoTipo}: ${eventoData.cliente || 'Sin descripción'}`,
+            descripcion: `[Convertido de ${eventoTipo}] Fecha original: ${eventoData.fecha}`,
+            estado: eventoData.estado === 'completado' || eventoData.estado === 'pagado' ? 'completado' : 'pendiente',
+            orden: (targetPkl.tasks?.length || 0) + 1,
+            responsable: 'Huber',
+            es_happy_path: false,
+            costo: eventoData.monto ? { monto: Number(eventoData.monto), moneda: 'PEN' } :
+                   eventoData.costo_movilidad ? { monto: Number(eventoData.costo_movilidad), moneda: 'PEN' } :
+                   undefined,
+            fecha_completado: eventoData.estado === 'completado' ? now : undefined,
+            evento_origen_id: eventoId,
+        };
+
+        // Actualizar PKL con el nuevo task
+        const updatedTasks = [...(targetPkl.tasks || []), newTask];
+        setPkls(prev => prev.map(p =>
+            p.pkl_id === targetPklId
+                ? { ...p, tasks: updatedTasks, updated_at: now }
+                : p
+        ));
+
+        // Eliminar el evento original
+        switch (eventoTipo) {
+            case 'movimiento':
+                setMovimientosLogisticos(prev => prev.filter(m => m.id !== eventoId));
+                await supabase.from('movimientos_logisticos').delete().eq('id', eventoId);
+                break;
+            case 'rendicion':
+                setRendiciones(prev => prev.filter(r => r.id !== eventoId));
+                await supabase.from('rendiciones').delete().eq('id', eventoId);
+                break;
+            case 'produccion':
+                setEventosProduccion(prev => prev.filter(e => e.id !== eventoId));
+                await supabase.from('eventos_produccion').delete().eq('id', eventoId);
+                break;
+        }
+
+        // Guardar task en Supabase
+        try {
+            await supabase.from('pkl_tasks').insert({
+                pkl_id: targetPklId,
+                task_id: taskId,
+                tipo: newTask.tipo,
+                nombre: newTask.nombre,
+                descripcion: newTask.descripcion,
+                estado: newTask.estado,
+                orden: newTask.orden,
+                responsable: newTask.responsable,
+                es_happy_path: newTask.es_happy_path,
+            });
+
+            // Actualizar PKL
+            await supabase.from('pkls').update({ updated_at: now }).eq('pkl_id', targetPklId);
+
+            console.log(`✓ Evento ${eventoTipo} ${eventoId} convertido a task en ${targetPklId}`);
+        } catch (err) {
+            console.error('Error guardando task:', err);
+        }
+    };
+
+    // Convertir un TASK en EVENTO independiente (con nuevo PKL)
+    const convertTaskToEvento = async (
+        pklId: string,
+        taskId: string
+    ): Promise<string> => {
+        const now = new Date().toISOString();
+
+        // Obtener PKL y task
+        const sourcePkl = pkls.find(p => p.pkl_id === pklId);
+        if (!sourcePkl) {
+            throw new Error('PKL no encontrado: ' + pklId);
+        }
+
+        const task = sourcePkl.tasks?.find(t => t.task_id === taskId);
+        if (!task) {
+            throw new Error('Task no encontrado: ' + taskId);
+        }
+
+        // Generar nuevo PKL ID
+        const year = new Date().getFullYear();
+        const prefix = `PKL-${year}-`;
+        let maxNum = 0;
+        pkls.forEach(pkl => {
+            if (pkl.pkl_id.startsWith(prefix)) {
+                const num = parseInt(pkl.pkl_id.replace(prefix, ''), 10);
+                if (!isNaN(num) && num > maxNum) {
+                    maxNum = num;
+                }
+            }
+        });
+        const newPklId = `${prefix}${String(maxNum + 1).padStart(4, '0')}`;
+
+        // Determinar tipo de evento a crear basado en task.tipo
+        // movilidad, compra_insumo -> movimiento
+        // pago -> rendicion
+        // coordinacion_proveedor, cotizacion, instalacion, cierre, administrativo -> movimiento (coordinacion)
+        const eventoTipo = task.tipo === 'pago' ? 'rendicion' : 'movimiento';
+
+        // Crear el nuevo evento basado en el tipo
+        const fecha = task.fecha_completado?.split('T')[0] || now.split('T')[0];
+
+        if (eventoTipo === 'movimiento') {
+            // Mapear tipo de task a tipo de movimiento
+            const tipoMovimiento = task.tipo === 'movilidad' ? 'traslado' :
+                                   task.tipo === 'compra_insumo' ? 'compra' :
+                                   task.tipo === 'instalacion' ? 'servicio' :
+                                   'coordinacion';
+            const nuevoMovimiento: MovimientoLogistico = {
+                id: `MOV-${Date.now()}`,
+                fecha: fecha,
+                seccion: 'MOVIMIENTO_LOGISTICO',
+                tipo: tipoMovimiento as any,
+                cliente: sourcePkl.cliente.nombre,
+                proveedor: task.proveedor_id,
+                detalle: { items: [{ producto: task.nombre, cantidad: 1 }] },
+                observaciones: `${task.nombre}${task.descripcion ? ' - ' + task.descripcion : ''}`,
+                estado: task.estado === 'completado' ? 'completado' : 'pendiente',
+                costo_movilidad: task.costo?.monto,
+                pedido_id: newPklId,
+                created_at: now,
+                updated_at: now,
+            };
+            setMovimientosLogisticos(prev => [...prev, nuevoMovimiento]);
+            await supabase.from('movimientos_logisticos').insert(nuevoMovimiento);
+        } else {
+            const nuevaRendicion: Rendicion = {
+                id: `REND-${Date.now()}`,
+                fecha: fecha,
+                seccion: 'RENDICION_PAGO',
+                tipo: 'gasto_extra',
+                cliente: sourcePkl.cliente.nombre,
+                proveedor: task.proveedor_id,
+                detalle: { concepto: task.nombre, monto: task.costo?.monto || 0, moneda: 'PEN' },
+                observaciones: `${task.nombre}${task.descripcion ? ' - ' + task.descripcion : ''}`,
+                estado: task.estado === 'completado' ? 'pagado' : 'pendiente',
+                monto: task.costo?.monto || 0,
+                moneda: 'PEN',
+                tiene_comprobante: false,
+                pedido_id: newPklId,
+                created_at: now,
+                updated_at: now,
+            };
+            setRendiciones(prev => [...prev, nuevaRendicion]);
+            await supabase.from('rendiciones').insert(nuevaRendicion);
+        }
+
+        // Crear nuevo PKL para el evento
+        const newPKL: PKL = {
+            pkl_id: newPklId,
+            version: '2.0',
+            created_at: now,
+            updated_at: now,
+            origen: {
+                canal: 'otro',
+                fecha_solicitud: fecha,
+                descripcion_inicial: task.nombre,
+            },
+            cliente: { ...sourcePkl.cliente },
+            clasificacion: {
+                tipo_operacion: 'solo_cotizacion',
+                area: 'logistica',
+            },
+            productos: [],
+            proveedores: [],
+            estado: {
+                actual: task.estado === 'completado' ? 'cerrado_ok' : 'recibido',
+                historial: [{
+                    estado: 'recibido',
+                    fecha: now,
+                    motivo: `Convertido desde task de ${pklId}`,
+                }],
+            },
+            tasks: [],
+            eventos_externos: [],
+            costos: {
+                total: task.costo?.monto || 0,
+                detalle: [],
+                moneda: 'PEN',
+            },
+            cierre: {} as any,
+            alertas: {} as any,
+        };
+
+        setPkls(prev => [...prev, newPKL]);
+
+        // Eliminar task del PKL original
+        const updatedTasks = sourcePkl.tasks?.filter(t => t.task_id !== taskId) || [];
+        setPkls(prev => prev.map(p =>
+            p.pkl_id === pklId
+                ? { ...p, tasks: updatedTasks, updated_at: now }
+                : p
+        ));
+
+        // Guardar en Supabase
+        try {
+            // Eliminar task
+            await supabase.from('pkl_tasks').delete().eq('task_id', taskId);
+
+            // Crear nuevo PKL
+            await supabase.from('pkls').insert({
+                pkl_id: newPKL.pkl_id,
+                version: newPKL.version,
+                created_at: newPKL.created_at,
+                updated_at: newPKL.updated_at,
+                tipo_operacion: newPKL.clasificacion.tipo_operacion,
+                area: newPKL.clasificacion.area,
+                cliente: newPKL.cliente,
+                origen: newPKL.origen,
+                estado_actual: newPKL.estado.actual,
+                historial_estados: newPKL.estado.historial,
+                costos: newPKL.costos,
+            });
+
+            console.log(`✓ Task ${taskId} convertido a evento independiente ${newPklId}`);
+        } catch (err) {
+            console.error('Error convirtiendo task a evento:', err);
+        }
+
+        return newPklId;
     };
 
     const deletePedido = async (id: string) => {
@@ -2382,6 +2761,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             deletePKLTask,
             deletePKL,
             mergePKLs,
+            convertEventoToTask,
+            convertTaskToEvento,
             // CRUD Pedidos
             createPedido, updatePedido, deletePedido, deletePedidos,
             // Pagos
