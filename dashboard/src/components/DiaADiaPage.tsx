@@ -3916,6 +3916,9 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                             const taskTipo = evento.tipo_evento === 'movimiento' ? 'movilidad' :
                                             evento.tipo_evento === 'rendicion' ? 'pago' : 'coordinacion_proveedor';
 
+                            // Obtener la fecha del evento para fecha_completado
+                            const fechaEvento = evento.fecha || selectedDate || new Date().toISOString().split('T')[0];
+
                             await createPKLTask(pklId, {
                                 nombre: `${tipoEmoji} ${evento.descripcion}`.substring(0, 100),
                                 descripcion: evento.descripcion,
@@ -3924,9 +3927,10 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                 orden: (pkl?.tasks?.length || 0) + 1,
                                 costo: evento.monto ? { monto: evento.monto, moneda: 'PEN' } : undefined,
                                 evento_origen_id: evento.id,
+                                fecha_completado: fechaEvento,
                                 responsable: 'Huber',
                                 es_happy_path: true,
-                            });
+                            } as any);
 
                             // Actualizar el evento con el pkl_id
                             if (evento.tipo_evento === 'movimiento') {
@@ -4609,10 +4613,28 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
 
     // Filtrar PKLs
     const pklsFiltrados = useMemo(() => {
-        let filtered = pkls.filter(p => p.estado.actual !== 'cerrado_ok' && p.estado.actual !== 'cancelado');
+        const query = searchQuery.toLowerCase().trim();
+        const isNumericQuery = /^\d+$/.test(query);
 
+        // Si busca por número, buscar en TODOS los PKLs (ignorar filtros de estado)
+        if (searchQuery && isNumericQuery) {
+            return pkls.filter(p => {
+                const pklMatch = p.pkl_id.match(/PKL-\d{4}-(\d+)/i);
+                if (pklMatch) {
+                    const pklNum = parseInt(pklMatch[1], 10).toString();
+                    return pklNum === query || pklMatch[1].endsWith(query);
+                }
+                return false;
+            }).sort((a, b) =>
+                new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            ).slice(0, 20);
+        }
+
+        // Solo excluir cancelados, permitir cerrado_ok
+        let filtered = pkls.filter(p => p.estado.actual !== 'cerrado_cancelado');
+
+        // Búsqueda de texto
         if (searchQuery) {
-            const query = searchQuery.toLowerCase();
             filtered = filtered.filter(p =>
                 p.pkl_id.toLowerCase().includes(query) ||
                 p.cliente.nombre.toLowerCase().includes(query) ||

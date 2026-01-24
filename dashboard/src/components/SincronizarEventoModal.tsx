@@ -283,6 +283,9 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
             };
 
             try {
+                // Obtener fecha del evento para fecha_completado
+                const fechaEvento = evento.fecha || new Date().toISOString().split('T')[0];
+
                 await createPKLTask(pklId, {
                     nombre: `${tipoEmojis[currentConfig.taskTipo] || '📋'} ${getEventoDescripcion()}`.substring(0, 100),
                     descripcion: getEventoDescripcion(),
@@ -291,9 +294,10 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                     orden: 1,
                     costo: monto > 0 ? { monto, moneda: 'PEN' } : undefined,
                     evento_origen_id: evento.id,
+                    fecha_completado: fechaEvento,
                     responsable: 'Huber',
                     es_happy_path: true,
-                });
+                } as any);
             } catch (taskError) {
                 console.error('Error creando task:', taskError);
                 // Si falló crear el task y habíamos creado un PKL nuevo, informar al usuario

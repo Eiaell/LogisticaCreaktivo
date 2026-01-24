@@ -858,6 +858,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 costo: costoJsonb,
                 ruta: newTask.ruta,
                 items_cotizacion: newTask.items_cotizacion || null,
+                fecha_completado: newTask.fecha_completado || (newTask.estado === 'completado' ? now.split('T')[0] : null),
+                evento_origen_id: (newTask as any).evento_origen_id || null,
                 created_at: now,
                 updated_at: now,
             };
