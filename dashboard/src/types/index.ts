@@ -899,4 +899,7 @@ export interface PKL {
 
     // Observaciones generales
     observaciones?: string;
+
+    // PKL padre (para vinculación jerárquica)
+    parent_pkl_id?: string;
 }

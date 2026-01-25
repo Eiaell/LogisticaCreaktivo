@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDatabase } from '../context/DatabaseContext';
+import { useToast } from '../context/ToastContext';
 import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL, TaskPKL } from '../types';
 import { TIPOS_OPERACION_PKL, ESTADOS_PKL } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
@@ -1044,111 +1045,443 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelec
     );
 }
 
-// Componente para mostrar un PKL en el Día a Día
-function PKLCard({ pkl, clienteLogo, onNavigateToPKL, onMergeToPKL }: {
+// Componente acordeón para mostrar evento vinculado a PKL (en su sección original)
+function PKLEventoAcordeon({
+    pkl,
+    selectedDate,
+    getClienteLogo,
+    expandedPKLs,
+    setExpandedPKLs,
+    onNavigateToPKL,
+    eventosDelDia,
+    onEditTask,
+    onDeleteTask,
+    onTransferCost,
+    onUnlinkEvento,
+    onMergeEventoToTask,
+    onAddTask
+}: {
     pkl: PKL;
-    clienteLogo: string | null;
-    onNavigateToPKL: (pklId: string) => void;
-    onMergeToPKL?: (sourcePklId: string) => void;
+    selectedDate: string;
+    getClienteLogo: (nombre: string) => string | null;
+    expandedPKLs: Set<string>;
+    setExpandedPKLs: React.Dispatch<React.SetStateAction<Set<string>>>;
+    onNavigateToPKL?: (pklId: string) => void;
+    eventosDelDia?: { movimientos: MovimientoLogistico[]; rendiciones: Rendicion[]; producciones: EventoProduccion[] };
+    onEditTask?: (pklId: string, task: TaskPKL) => void;
+    onDeleteTask?: (pklId: string, taskId: string) => void;
+    onTransferCost?: (fromTask: TaskPKL, toTask: TaskPKL) => void;
+    onUnlinkEvento?: (tipo: 'movimiento' | 'rendicion' | 'produccion', eventoId: string) => void;
+    onMergeEventoToTask?: (evento: { id: string; tipo: 'movimiento' | 'rendicion' | 'produccion'; monto?: number }, task: TaskPKL) => void;
+    onAddTask?: (pklId: string) => void;
 }) {
-    const tipoConfig: Record<string, { color: string; icon: string; bgColor: string }> = {
-        'produccion': { color: 'text-indigo-400', icon: '🏭', bgColor: 'border-indigo-500/30 bg-indigo-500/10' },
-        'cotizacion': { color: 'text-yellow-400', icon: '💬', bgColor: 'border-yellow-500/30 bg-yellow-500/10' },
-        'entrega': { color: 'text-green-400', icon: '📦', bgColor: 'border-green-500/30 bg-green-500/10' },
-        'recojo': { color: 'text-blue-400', icon: '🚚', bgColor: 'border-blue-500/30 bg-blue-500/10' },
-        'instalacion': { color: 'text-pink-400', icon: '🔧', bgColor: 'border-pink-500/30 bg-pink-500/10' },
-        'servicio': { color: 'text-purple-400', icon: '⚙️', bgColor: 'border-purple-500/30 bg-purple-500/10' },
-    };
+    const estadoInfo = ESTADOS_PKL.find(e => e.value === pkl.estado.actual);
+    const tipoInfo = TIPOS_OPERACION_PKL.find(t => t.value === pkl.clasificacion?.tipo_operacion);
+    const clienteLogo = pkl.cliente?.nombre ? getClienteLogo(pkl.cliente.nombre) : null;
 
-    const tipo = pkl.clasificacion?.tipo_operacion || 'produccion';
-    const config = tipoConfig[tipo] || tipoConfig.produccion;
+    // IDs de eventos del día vinculados a este PKL
+    const eventosIdsDelDia = new Set<string>();
+    if (eventosDelDia) {
+        eventosDelDia.movimientos.forEach(m => {
+            if (m.pedido_id === pkl.pkl_id) eventosIdsDelDia.add(m.id);
+        });
+        eventosDelDia.rendiciones.forEach(r => {
+            if (r.pedido_id === pkl.pkl_id) eventosIdsDelDia.add(r.id);
+        });
+        eventosDelDia.producciones.forEach(p => {
+            if (p.pedido_id === pkl.pkl_id) eventosIdsDelDia.add(p.id);
+        });
+    }
 
-    // Calcular estadísticas del PKL
-    const tasksCount = pkl.tasks?.length || 0;
-    const tasksCompletados = pkl.tasks?.filter(t => t.estado === 'completado').length || 0;
-    const productos = pkl.productos?.map(p => p.descripcion || p.tipo).join(', ') || '-';
+    // Filtrar tasks de este PKL que corresponden a ESTE día
+    // Un task pertenece a este día si:
+    // 1. Su fecha_completado es este día, O
+    // 2. Su evento_origen_id corresponde a un evento de este día
+    const tasksDelDia = pkl.tasks?.filter(task => {
+        const taskAny = task as any;
+
+        // Opción 1: El task tiene fecha_completado de este día
+        const taskFecha = task.fecha_completado || taskAny.fecha_completado;
+        if (taskFecha) {
+            const taskFechaKey = getDateKey(taskFecha);
+            if (taskFechaKey === selectedDate) return true;
+        }
+
+        // Opción 2: El task viene de un evento de este día
+        const eventoOrigenId = taskAny.evento_origen_id || taskAny.eventoOrigenId;
+        if (eventoOrigenId && eventosIdsDelDia.has(eventoOrigenId)) {
+            return true;
+        }
+
+        // Opción 3: Fallback - si no tiene fecha y el PKL solo tiene actividad este día
+        if (!taskFecha && !eventoOrigenId) {
+            const pklFecha = pkl.origen?.fecha_solicitud || pkl.created_at;
+            const pklFechaKey = getDateKey(pklFecha);
+            if (pklFechaKey === selectedDate) return true;
+        }
+
+        return false;
+    }) || [];
+
+    // Eventos vinculados a este PKL que NO tienen task correspondiente
+    // (para mostrar eventos que se vincularon pero el task no se creó)
+    const taskEventoOrigenIds = new Set(
+        pkl.tasks?.map(t => (t as any).evento_origen_id || (t as any).eventoOrigenId).filter(Boolean) || []
+    );
+
+    const eventosHuerfanos: Array<{ id: string; tipo: 'movimiento' | 'rendicion' | 'produccion'; descripcion: string; monto?: number }> = [];
+    if (eventosDelDia) {
+        eventosDelDia.movimientos.forEach(m => {
+            if (m.pedido_id === pkl.pkl_id && !taskEventoOrigenIds.has(m.id)) {
+                // Construir descripción más completa - usar propiedades correctas del tipo
+                const detalle = m.detalle as { origen?: string; destino?: string; item?: string } || {};
+                const desc = m.observaciones ||
+                    (m.tipo ? `${m.tipo}${detalle.origen ? ` - ${detalle.origen}` : ''}${detalle.destino ? ` → ${detalle.destino}` : ''}` : null) ||
+                    `Movimiento${m.cliente ? ` - ${m.cliente}` : ''}`;
+                eventosHuerfanos.push({ id: m.id, tipo: 'movimiento', descripcion: desc, monto: m.costo_movilidad });
+            }
+        });
+        eventosDelDia.rendiciones.forEach(r => {
+            if (r.pedido_id === pkl.pkl_id && !taskEventoOrigenIds.has(r.id)) {
+                // Construir descripción más completa - usar propiedades correctas del tipo
+                const detalle = r.detalle as { concepto?: string } || {};
+                const desc = r.observaciones ||
+                    (detalle.concepto ? detalle.concepto : null) ||
+                    (r.tipo ? `${r.tipo}${r.proveedor ? ` - ${r.proveedor}` : ''}` : null) ||
+                    `Rendición${r.cliente ? ` - ${r.cliente}` : ''}`;
+                eventosHuerfanos.push({ id: r.id, tipo: 'rendicion', descripcion: desc, monto: r.monto });
+            }
+        });
+        eventosDelDia.producciones.forEach(p => {
+            if (p.pedido_id === pkl.pkl_id && !taskEventoOrigenIds.has(p.id)) {
+                // Construir descripción más completa - usar propiedades correctas del tipo
+                const desc = p.observaciones ||
+                    (p.producto ? `${p.producto}${p.proveedor ? ` - ${p.proveedor}` : ''}` : null) ||
+                    p.tipo ||
+                    `Producción${p.cliente ? ` - ${p.cliente}` : ''}`;
+                eventosHuerfanos.push({ id: p.id, tipo: 'produccion', descripcion: desc });
+            }
+        });
+    }
+
+    const totalItemsDelDia = tasksDelDia.length + eventosHuerfanos.length;
+
+    const isExpanded = expandedPKLs.has(pkl.pkl_id);
+
+    // Calcular monto solo de los tasks de este día + eventos huérfanos
+    const montoDelDia = tasksDelDia.reduce((sum, task) => {
+        if (task.costo) {
+            const monto = typeof task.costo === 'number' ? task.costo : (task.costo.monto || 0);
+            return sum + monto;
+        }
+        return sum;
+    }, 0) + eventosHuerfanos.reduce((sum, e) => sum + (e.monto || 0), 0);
 
     return (
-        <div
-            className={`border rounded-xl p-4 ${config.bgColor} group relative cursor-pointer hover:border-cyan-500/50 transition-all`}
-            onClick={() => onNavigateToPKL(pkl.pkl_id)}
-        >
-            <div className="flex items-start gap-3">
-                {/* Indicador de PKL */}
-                <div className="flex flex-col items-center gap-1">
-                    <span className="text-2xl">{config.icon}</span>
-                    <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/20 px-1.5 py-0.5 rounded">PKL</span>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                    {/* Header con ID y estado */}
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-bold text-cyan-400 text-sm">{pkl.pkl_id}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${config.color} bg-white/10`}>
-                            {tipo.toUpperCase()}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            pkl.estado?.actual === 'cerrado_ok' ? 'bg-green-500/30 text-green-400' :
-                            pkl.estado?.actual === 'en_produccion' ? 'bg-blue-500/30 text-blue-400' :
-                            pkl.estado?.actual === 'cancelado' ? 'bg-red-500/30 text-red-400' :
-                            pkl.estado?.actual === 'en_pausa' ? 'bg-yellow-500/30 text-yellow-400' :
-                            'bg-gray-500/30 text-gray-400'
-                        }`}>
-                            {pkl.estado?.actual || 'recibido'}
-                        </span>
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden hover:border-cyan-500/50 transition-colors">
+            {/* Header del PKL - clickeable para expandir/colapsar */}
+            <button
+                onClick={() => {
+                    setExpandedPKLs(prev => {
+                        const next = new Set(prev);
+                        if (next.has(pkl.pkl_id)) {
+                            next.delete(pkl.pkl_id);
+                        } else {
+                            next.add(pkl.pkl_id);
+                        }
+                        return next;
+                    });
+                }}
+                className="w-full p-4 text-left hover:bg-gray-800/80 transition-colors"
+            >
+                <div className="flex items-start gap-3">
+                    {/* Indicador de expandir */}
+                    <div className={`w-6 h-6 rounded flex items-center justify-center transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                     </div>
 
-                    {/* Cliente */}
-                    <div className="flex items-center gap-2">
-                        <ClienteLogo logoUrl={clienteLogo} nombre={pkl.cliente?.nombre || 'Sin cliente'} size="sm" />
-                        <span className="text-white font-medium">{pkl.cliente?.nombre || 'Sin cliente'}</span>
-                    </div>
-
-                    {/* Descripción/Productos */}
-                    <p className="text-gray-400 text-sm mt-1 truncate">
-                        {pkl.origen?.descripcion_inicial || productos}
-                    </p>
-
-                    {/* Tasks progress */}
-                    {tasksCount > 0 && (
-                        <div className="flex items-center gap-2 mt-2">
-                            <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-cyan-500 to-green-500 transition-all"
-                                    style={{ width: `${(tasksCompletados / tasksCount) * 100}%` }}
-                                />
-                            </div>
-                            <span className="text-xs text-gray-500">{tasksCompletados}/{tasksCount}</span>
+                    {/* Logo del cliente */}
+                    {clienteLogo ? (
+                        <img src={clienteLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded-lg object-cover" />
+                    ) : (
+                        <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold text-sm">
+                            {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
                         </div>
                     )}
 
-                    {/* Costo total */}
-                    {pkl.costos?.total && pkl.costos.total > 0 && (
-                        <p className="text-amber-400 font-mono text-sm mt-2">
-                            Total: S/. {Number(pkl.costos.total).toFixed(2)}
-                        </p>
-                    )}
-                </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-white font-medium truncate">
+                                {pkl.origen.descripcion_inicial}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-xs">
+                            <span className="text-gray-400">{pkl.cliente.nombre}</span>
+                            {tipoInfo && (
+                                <>
+                                    <span className="text-gray-600">•</span>
+                                    <span className="text-gray-500">{tipoInfo.label}</span>
+                                </>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded text-xs font-mono">
+                                {pkl.pkl_id}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-xs text-white ${estadoInfo?.color || 'bg-gray-500'}`}>
+                                {estadoInfo?.label || pkl.estado.actual}
+                            </span>
+                            <span className="text-cyan-400 text-xs font-medium">
+                                {totalItemsDelDia} {totalItemsDelDia === 1 ? 'actividad' : 'actividades'} este día
+                            </span>
+                        </div>
+                    </div>
 
-                {/* Botones de acción */}
-                <div className="flex flex-col gap-1">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onNavigateToPKL(pkl.pkl_id); }}
-                        className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 transition-colors text-xs font-medium whitespace-nowrap"
-                    >
-                        Ver PKL →
-                    </button>
-                    {onMergeToPKL && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onMergeToPKL(pkl.pkl_id); }}
-                            className="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-400 transition-colors text-xs font-medium whitespace-nowrap"
-                            title="Vincular eventos a este PKL"
-                        >
-                            🔗 Vincular
-                        </button>
+                    {/* Monto del día */}
+                    {montoDelDia > 0 && (
+                        <div className="text-right">
+                            <span className="text-amber-400 font-mono font-bold">
+                                S/. {montoDelDia.toFixed(2)}
+                            </span>
+                        </div>
                     )}
                 </div>
-            </div>
+            </button>
+
+            {/* Tasks del día (acordeón) */}
+            {isExpanded && tasksDelDia.length > 0 && (
+                <div className="border-t border-gray-700 bg-gray-900/50 p-3 space-y-2">
+                    {(() => {
+                        // Separar tasks principales de vinculados
+                        const tasksPrincipales = tasksDelDia.filter(t => !(t as any).vinculado_a_task_id);
+                        const tasksVinculados = tasksDelDia.filter(t => (t as any).vinculado_a_task_id);
+
+                        // Función para renderizar un task
+                        const renderTask = (task: TaskPKL, isVinculado: boolean = false) => {
+                            const tipoEmojis: Record<string, string> = {
+                                cotizacion: '📋', coordinacion_proveedor: '🤝', compra_insumo: '🛒',
+                                pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📄'
+                            };
+                            const emoji = tipoEmojis[task.tipo] || '📋';
+                            const monto = task.costo ? (typeof task.costo === 'number' ? task.costo : task.costo.monto) : 0;
+                            const vinculadoA = (task as any).vinculado_a_task_id;
+                            const taskPadre = vinculadoA ? tasksDelDia.find(t => t.task_id === vinculadoA) : null;
+
+                            return (
+                                <div
+                                    key={task.task_id}
+                                    className={`flex items-start gap-2 p-2 rounded border group hover:border-cyan-500/30 ${
+                                        isVinculado
+                                            ? 'ml-6 bg-purple-900/20 border-purple-500/30 border-l-2 border-l-purple-500'
+                                            : 'bg-gray-800/50 border-gray-700/50'
+                                    }`}
+                                >
+                                    <span className="text-lg">{isVinculado ? '↳' : emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className={`text-sm ${isVinculado ? 'text-purple-300' : 'text-white'}`}>
+                                                {isVinculado ? `💸 ${task.nombre}` : task.nombre}
+                                            </span>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                                task.estado === 'completado' ? 'bg-green-500/20 text-green-400' :
+                                                task.estado === 'en_progreso' ? 'bg-blue-500/20 text-blue-400' :
+                                                task.estado === 'cancelado' ? 'bg-red-500/20 text-red-400' :
+                                                'bg-gray-500/20 text-gray-400'
+                                            }`}>
+                                                {task.estado}
+                                            </span>
+                                            {isVinculado && taskPadre && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                                                    → {taskPadre.nombre.substring(0, 20)}...
+                                                </span>
+                                            )}
+                                        </div>
+                                        {task.descripcion && task.descripcion !== task.nombre && !task.descripcion.startsWith('[Costo transferido') && (
+                                            <p className="text-gray-500 text-xs mt-0.5">{task.descripcion}</p>
+                                        )}
+                                    </div>
+                                    {monto > 0 && (
+                                        <span className="text-amber-400 font-mono text-xs whitespace-nowrap">
+                                            S/. {monto.toFixed(2)}
+                                        </span>
+                                    )}
+                                    {/* Botones de acción - solo para tasks principales con monto */}
+                                    {!isVinculado && (
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                            {/* Transferir costo a otro task */}
+                                            {monto > 0 && tasksPrincipales.length > 1 && (
+                                                <div className="relative group/transfer">
+                                                    <button
+                                                        className="p-1 rounded hover:bg-purple-500/20 text-gray-400 hover:text-purple-400"
+                                                        title="Transferir costo a otro task"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                        </svg>
+                                                    </button>
+                                                    {/* Dropdown de tasks - SE ABRE HACIA ARRIBA para evitar corte */}
+                                                    <div className="absolute right-0 bottom-full mb-1 bg-white dark:bg-gray-800 border-2 border-purple-400 dark:border-purple-600 rounded-lg shadow-2xl z-[100] hidden group-hover/transfer:block min-w-[280px]">
+                                                        <div className="p-2.5 text-xs font-semibold text-purple-700 dark:text-purple-300 border-b border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 rounded-t-lg">
+                                                            💸 Transferir S/.{monto.toFixed(2)} a:
+                                                        </div>
+                                                        {tasksPrincipales.filter(t => t.task_id !== task.task_id).map(targetTask => (
+                                                            <button
+                                                                key={targetTask.task_id}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onTransferCost?.(task, targetTask);
+                                                                }}
+                                                                className="w-full text-left px-3 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-purple-100 dark:hover:bg-purple-500/30 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 last:rounded-b-lg"
+                                                            >
+                                                                📋 {targetTask.nombre.substring(0, 40)}{targetTask.nombre.length > 40 ? '...' : ''}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* Editar */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEditTask?.(pkl.pkl_id, task);
+                                                }}
+                                                className="p-1 rounded hover:bg-cyan-500/20 text-gray-400 hover:text-cyan-400"
+                                                title="Editar task"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            {/* Eliminar */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (confirm(`¿Eliminar task "${task.nombre}"?`)) {
+                                                        onDeleteTask?.(pkl.pkl_id, task.task_id);
+                                                    }
+                                                }}
+                                                className="p-1 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400"
+                                                title="Eliminar task"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        };
+
+                        // Renderizar tasks principales y sus vinculados
+                        return (
+                            <>
+                                {tasksPrincipales.map(task => {
+                                    const vinculadosDeEsteTask = tasksVinculados.filter(
+                                        tv => (tv as any).vinculado_a_task_id === task.task_id
+                                    );
+                                    return (
+                                        <div key={task.task_id}>
+                                            {renderTask(task, false)}
+                                            {/* Tasks vinculados a este task */}
+                                            {vinculadosDeEsteTask.map(tv => renderTask(tv, true))}
+                                        </div>
+                                    );
+                                })}
+                                {/* Tasks vinculados sin padre encontrado */}
+                                {tasksVinculados
+                                    .filter(tv => !tasksPrincipales.some(tp => tp.task_id === (tv as any).vinculado_a_task_id))
+                                    .map(tv => renderTask(tv, true))
+                                }
+                            </>
+                        );
+                    })()}
+
+                    {/* Eventos vinculados sin task (huérfanos) */}
+                    {eventosHuerfanos.map((evento, idx) => {
+                        const tipoEmojis = { movimiento: '🚚', rendicion: '💰', produccion: '🏭' };
+                        const emoji = tipoEmojis[evento.tipo];
+
+                        return (
+                            <div
+                                key={`huerfano-${idx}`}
+                                className="flex items-start gap-2 p-2 rounded bg-amber-500/10 border border-amber-500/30 group"
+                            >
+                                <span className="text-lg">{emoji}</span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-white text-sm">{evento.descripcion}</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                                            vinculado
+                                        </span>
+                                    </div>
+                                    {/* Botones de acción para asociar a un task */}
+                                    {tasksDelDia.length > 0 && evento.monto && evento.monto > 0 && (
+                                        <div className="mt-1 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <span className="text-[10px] text-gray-500">Asociar costo a:</span>
+                                            {tasksDelDia.map(task => (
+                                                <button
+                                                    key={task.task_id}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onMergeEventoToTask?.(evento, task);
+                                                    }}
+                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/40 transition-colors"
+                                                    title={`Asociar S/.${evento.monto?.toFixed(2)} a "${task.nombre}"`}
+                                                >
+                                                    {task.nombre.substring(0, 20)}...
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                {evento.monto && evento.monto > 0 && (
+                                    <span className="text-amber-400 font-mono text-xs">
+                                        S/. {evento.monto.toFixed(2)}
+                                    </span>
+                                )}
+                                {/* Botón para desvincular */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onUnlinkEvento?.(evento.tipo, evento.id);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
+                                    title="Desvincular del PKL"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        );
+                    })}
+
+                    {/* Footer con acciones */}
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-700/50">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onAddTask?.(pkl.pkl_id);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 text-xs text-green-400 hover:text-green-300 py-2 hover:bg-green-500/10 rounded transition-colors"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Agregar Task
+                        </button>
+                        <button
+                            onClick={() => onNavigateToPKL?.(pkl.pkl_id)}
+                            className="flex-1 text-center text-xs text-cyan-400 hover:text-cyan-300 py-2 hover:bg-cyan-500/10 rounded transition-colors"
+                        >
+                            Ver PKL completo →
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -2484,6 +2817,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
         pkls,
         createPKL,
         updatePKL,
+        updatePKLTask,
         deletePKLTask,
         createPKLTask,
         pklParaMerge,
@@ -2491,6 +2825,8 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
         mergePKLs,
         convertEventoToTask,
     } = useDatabase();
+
+    const { showToast } = useToast();
 
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion'>('all');
@@ -2529,6 +2865,19 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
         isOpen: boolean;
         pkls: PKL[];
         currentDate: string;
+    } | null>(null);
+
+    // Estado para editar task desde el acordeón
+    const [editTaskFromAccordion, setEditTaskFromAccordion] = useState<{
+        isOpen: boolean;
+        pklId: string;
+        task: TaskPKL;
+    } | null>(null);
+
+    // Estado para agregar task rápido desde el acordeón
+    const [addTaskModal, setAddTaskModal] = useState<{
+        isOpen: boolean;
+        pklId: string;
     } | null>(null);
 
     // Resetear PKLs expandidos cuando cambia el día seleccionado
@@ -2750,28 +3099,6 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
 
         return result;
     }, [selectedEventos, movimientosLogisticos, rendiciones, eventosProduccion]);
-
-    // Handler para desvincular un evento de un PKL
-    const handleDecoupleFromPKL = async (pklId: string, eventId: string) => {
-        const pkl = pkls.find(p => p.pkl_id === pklId);
-        if (!pkl) {
-            console.error('PKL no encontrado:', pklId);
-            return;
-        }
-
-        // Buscar el task que tiene este evento_origen_id
-        const taskToDelete = pkl.tasks.find(task => (task as any).evento_origen_id === eventId);
-
-        if (!taskToDelete) {
-            console.error('Task no encontrado para evento:', eventId);
-            alert('No se encontró el task vinculado a este evento');
-            return;
-        }
-
-        // Eliminar el task usando deletePKLTask
-        await deletePKLTask(pklId, taskToDelete.task_id);
-        console.log(`✅ Evento ${eventId} desvinculado de ${pklId} (task: ${taskToDelete.task_id})`);
-    };
 
     // Handlers para eliminar
     const handleDeleteMovimiento = (id: string) => {
@@ -3268,16 +3595,133 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                 </div>
                             )}
 
-                            {/* Movimientos */}
-                            {(filterType === 'all' || filterType === 'movimientos') && diaSeleccionado.movimientos.length > 0 && (
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3">
-                                        🚚 Eventos Logísticos ({diaSeleccionado.movimientos.length})
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {diaSeleccionado.movimientos.map(m => {
-                                            const linkedPKL = findPKLForEvent(m.id, pkls, m.pedido_id);
-                                            return (
+                            {/* Movimientos + TODOS los PKLs del día - con acordeón */}
+                            {(() => {
+                                // Recolectar TODOS los PKLs únicos que tienen cualquier evento vinculado
+                                // (movimientos, rendiciones O producciones)
+                                const todosLosPKLsMap = new Map<string, PKL>();
+
+                                diaSeleccionado.movimientos.forEach(m => {
+                                    const linkedPKL = findPKLForEvent(m.id, pkls, m.pedido_id);
+                                    if (linkedPKL && !todosLosPKLsMap.has(linkedPKL.pkl_id)) {
+                                        todosLosPKLsMap.set(linkedPKL.pkl_id, linkedPKL);
+                                    }
+                                });
+                                diaSeleccionado.rendiciones.forEach(r => {
+                                    const linkedPKL = findPKLForEvent(r.id, pkls, r.pedido_id);
+                                    if (linkedPKL && !todosLosPKLsMap.has(linkedPKL.pkl_id)) {
+                                        todosLosPKLsMap.set(linkedPKL.pkl_id, linkedPKL);
+                                    }
+                                });
+                                diaSeleccionado.producciones.forEach(p => {
+                                    const linkedPKL = findPKLForEvent(p.id, pkls, p.pedido_id);
+                                    if (linkedPKL && !todosLosPKLsMap.has(linkedPKL.pkl_id)) {
+                                        todosLosPKLsMap.set(linkedPKL.pkl_id, linkedPKL);
+                                    }
+                                });
+
+                                // PKLs del día que NO tienen eventos vinculados (pero tienen tasks ese día)
+                                const pklsDelDiaSinEventos = diaSeleccionado.pklsDelDia?.filter(
+                                    pkl => !todosLosPKLsMap.has(pkl.pkl_id)
+                                ) || [];
+
+                                // Agregar los PKLs del día que no tienen eventos vinculados
+                                pklsDelDiaSinEventos.forEach(pkl => {
+                                    if (!todosLosPKLsMap.has(pkl.pkl_id)) {
+                                        todosLosPKLsMap.set(pkl.pkl_id, pkl);
+                                    }
+                                });
+
+                                // Movimientos SIN PKL vinculado
+                                const movimientosSinPKL = diaSeleccionado.movimientos.filter(m =>
+                                    !findPKLForEvent(m.id, pkls, m.pedido_id)
+                                );
+
+                                const todosLosPKLs = Array.from(todosLosPKLsMap.values());
+                                const totalEventosDisplay = movimientosSinPKL.length + todosLosPKLs.length;
+
+                                return (filterType === 'all' || filterType === 'movimientos') && totalEventosDisplay > 0 && (
+                                    <div className="mb-6">
+                                        <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3">
+                                            🚚 Eventos Logísticos ({totalEventosDisplay})
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {/* TODOS los PKLs únicos del día (UN acordeón por PKL) */}
+                                            {todosLosPKLs.map(pkl => (
+                                                <PKLEventoAcordeon
+                                                    key={pkl.pkl_id}
+                                                    pkl={pkl}
+                                                    selectedDate={selectedDate!}
+                                                    getClienteLogo={getClienteLogo}
+                                                    expandedPKLs={expandedPKLs}
+                                                    setExpandedPKLs={setExpandedPKLs}
+                                                    onNavigateToPKL={onNavigateToPKL}
+                                                    eventosDelDia={{
+                                                        movimientos: diaSeleccionado.movimientos,
+                                                        rendiciones: diaSeleccionado.rendiciones,
+                                                        producciones: diaSeleccionado.producciones
+                                                    }}
+                                                    onEditTask={(pklId, task) => setEditTaskFromAccordion({ isOpen: true, pklId, task })}
+                                                    onDeleteTask={async (pklId, taskId) => {
+                                                        await deletePKLTask(pklId, taskId);
+                                                        showToast('Task eliminado', 'success');
+                                                    }}
+                                                    onTransferCost={async (fromTask, toTask) => {
+                                                        const fromMonto = fromTask.costo ? (typeof fromTask.costo === 'number' ? fromTask.costo : fromTask.costo.monto || 0) : 0;
+                                                        const toMonto = toTask.costo ? (typeof toTask.costo === 'number' ? toTask.costo : toTask.costo.monto || 0) : 0;
+
+                                                        // Sumar el monto al task destino
+                                                        await updatePKLTask(pkl.pkl_id, toTask.task_id, {
+                                                            costo: { monto: toMonto + fromMonto, moneda: 'PEN' }
+                                                        });
+
+                                                        // En lugar de eliminar, vincular el task origen al destino
+                                                        // Ponemos monto 0 y lo marcamos como vinculado
+                                                        await updatePKLTask(pkl.pkl_id, fromTask.task_id, {
+                                                            costo: { monto: 0, moneda: 'PEN' },
+                                                            vinculado_a_task_id: toTask.task_id,
+                                                            descripcion: `[Costo transferido a: ${toTask.nombre}] ${fromTask.descripcion || ''}`
+                                                        } as any);
+
+                                                        showToast(`S/.${fromMonto.toFixed(2)} transferido a "${toTask.nombre}"`, 'success');
+                                                    }}
+                                                    onUnlinkEvento={async (tipo, eventoId) => {
+                                                        // Quitar el pedido_id del evento para desvincularlo
+                                                        if (tipo === 'movimiento') {
+                                                            await updateMovimientoLogistico(eventoId, { pedido_id: null } as any);
+                                                        } else if (tipo === 'rendicion') {
+                                                            await updateRendicion(eventoId, { pedido_id: null } as any);
+                                                        } else {
+                                                            await updateEventoProduccion(eventoId, { pedido_id: null } as any);
+                                                        }
+                                                        showToast('Evento desvinculado del PKL', 'success');
+                                                    }}
+                                                    onMergeEventoToTask={async (evento, task) => {
+                                                        // Agregar el monto del evento al task y desvincular el evento
+                                                        const currentMonto = task.costo ? (typeof task.costo === 'number' ? task.costo : task.costo.monto || 0) : 0;
+                                                        const newMonto = currentMonto + (evento.monto || 0);
+
+                                                        await updatePKLTask(pkl.pkl_id, task.task_id, {
+                                                            costo: { monto: newMonto, moneda: 'PEN' }
+                                                        });
+
+                                                        // Desvincular el evento
+                                                        if (evento.tipo === 'movimiento') {
+                                                            await updateMovimientoLogistico(evento.id, { pedido_id: null } as any);
+                                                        } else if (evento.tipo === 'rendicion') {
+                                                            await updateRendicion(evento.id, { pedido_id: null } as any);
+                                                        } else {
+                                                            await updateEventoProduccion(evento.id, { pedido_id: null } as any);
+                                                        }
+
+                                                        showToast(`Costo de S/.${evento.monto?.toFixed(2)} agregado a "${task.nombre}"`, 'success');
+                                                    }}
+                                                    onAddTask={(pklId) => setAddTaskModal({ isOpen: true, pklId })}
+                                                />
+                                            ))}
+
+                                            {/* Movimientos sin PKL vinculado */}
+                                            {movimientosSinPKL.map(m => (
                                                 <MovimientoCard
                                                     key={m.id}
                                                     movimiento={m}
@@ -3287,31 +3731,33 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                                     onSync={() => handleSync('movimiento', m)}
                                                     clienteLogo={m.cliente ? getClienteLogo(m.cliente) : null}
                                                     isSelected={selectedEventos.has(m.id)}
-                                                    onToggleSelect={linkedPKL ? undefined : () => toggleEventoSelection(m.id)}
-                                                    linkedPKL={linkedPKL}
-                                                    onDecouple={handleDecoupleFromPKL}
+                                                    onToggleSelect={() => toggleEventoSelection(m.id)}
                                                     onConvertToTask={() => setConvertToTaskModal({
                                                         isOpen: true,
                                                         eventoTipo: 'movimiento',
                                                         eventoId: m.id
                                                     })}
                                                 />
-                                            );
-                                        })}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
-                            {/* Rendiciones */}
-                            {(filterType === 'all' || filterType === 'rendiciones') && diaSeleccionado.rendiciones.length > 0 && (
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-bold text-orange-400 uppercase tracking-wider mb-3">
-                                        💰 Rendiciones y Pagos ({diaSeleccionado.rendiciones.length})
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {diaSeleccionado.rendiciones.map(r => {
-                                            const linkedPKL = findPKLForEvent(r.id, pkls, r.pedido_id);
-                                            return (
+                            {/* Rendiciones - SOLO las que NO tienen PKL vinculado (PKLs ya se muestran arriba) */}
+                            {(() => {
+                                // Solo rendiciones SIN PKL vinculado (los PKLs ya aparecen en Eventos Logísticos)
+                                const rendicionesSinPKL = diaSeleccionado.rendiciones.filter(r =>
+                                    !findPKLForEvent(r.id, pkls, r.pedido_id)
+                                );
+
+                                return (filterType === 'all' || filterType === 'rendiciones') && rendicionesSinPKL.length > 0 && (
+                                    <div className="mb-6">
+                                        <h3 className="text-sm font-bold text-orange-400 uppercase tracking-wider mb-3">
+                                            💰 Rendiciones y Pagos ({rendicionesSinPKL.length})
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {rendicionesSinPKL.map(r => (
                                                 <RendicionCard
                                                     key={r.id}
                                                     rendicion={r}
@@ -3321,31 +3767,33 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                                     onSync={() => handleSync('rendicion', r)}
                                                     clienteLogo={r.cliente ? getClienteLogo(r.cliente) : null}
                                                     isSelected={selectedEventos.has(r.id)}
-                                                    onToggleSelect={linkedPKL ? undefined : () => toggleEventoSelection(r.id)}
-                                                    linkedPKL={linkedPKL}
-                                                    onDecouple={handleDecoupleFromPKL}
+                                                    onToggleSelect={() => toggleEventoSelection(r.id)}
                                                     onConvertToTask={() => setConvertToTaskModal({
                                                         isOpen: true,
                                                         eventoTipo: 'rendicion',
                                                         eventoId: r.id
                                                     })}
                                                 />
-                                            );
-                                        })}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
-                            {/* Producciones */}
-                            {(filterType === 'all' || filterType === 'produccion') && diaSeleccionado.producciones.length > 0 && (
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3">
-                                        🏭 Producción ({diaSeleccionado.producciones.length})
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {diaSeleccionado.producciones.map(e => {
-                                            const linkedPKL = findPKLForEvent(e.id, pkls, e.pedido_id);
-                                            return (
+                            {/* Producciones - SOLO las que NO tienen PKL vinculado (PKLs ya se muestran arriba) */}
+                            {(() => {
+                                // Solo producciones SIN PKL vinculado (los PKLs ya aparecen en Eventos Logísticos)
+                                const produccionesSinPKL = diaSeleccionado.producciones.filter(p =>
+                                    !findPKLForEvent(p.id, pkls, p.pedido_id)
+                                );
+
+                                return (filterType === 'all' || filterType === 'produccion') && produccionesSinPKL.length > 0 && (
+                                    <div className="mb-6">
+                                        <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3">
+                                            🏭 Producción ({produccionesSinPKL.length})
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {produccionesSinPKL.map(e => (
                                                 <ProduccionCard
                                                     key={e.id}
                                                     evento={e}
@@ -3354,179 +3802,13 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                                     onSync={() => handleSync('produccion', e)}
                                                     clienteLogo={e.cliente ? getClienteLogo(e.cliente) : null}
                                                     isSelected={selectedEventos.has(e.id)}
-                                                    onToggleSelect={linkedPKL ? undefined : () => toggleEventoSelection(e.id)}
-                                                    linkedPKL={linkedPKL}
-                                                    onDecouple={handleDecoupleFromPKL}
+                                                    onToggleSelect={() => toggleEventoSelection(e.id)}
                                                 />
-                                            );
-                                        })}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-
-                            {/* PKLs del día como eventos con acordeón */}
-                            {filterType === 'all' && diaSeleccionado.pklsDelDia && diaSeleccionado.pklsDelDia.length > 0 && (
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-3">
-                                        📋 PKLs del Día ({diaSeleccionado.pklsDelDia.length})
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {diaSeleccionado.pklsDelDia.map(pkl => {
-                                            const estadoInfo = ESTADOS_PKL.find(e => e.value === pkl.estado.actual);
-                                            const tipoInfo = TIPOS_OPERACION_PKL.find(t => t.value === pkl.clasificacion?.tipo_operacion);
-                                            const clienteLogo = pkl.cliente?.nombre ? getClienteLogo(pkl.cliente.nombre) : null;
-
-                                            // Filtrar tasks de este PKL que corresponden a ESTE día
-                                            const tasksDelDia = pkl.tasks?.filter(task => {
-                                                const taskFecha = task.fecha_completado || pkl.origen?.fecha_solicitud || pkl.created_at;
-                                                const taskFechaKey = getDateKey(taskFecha);
-                                                return taskFechaKey === selectedDate;
-                                            }) || [];
-
-                                            const isExpanded = expandedPKLs.has(pkl.pkl_id);
-
-                                            // Calcular monto solo de los tasks de este día
-                                            const montoDelDia = tasksDelDia.reduce((sum, task) => {
-                                                if (task.costo) {
-                                                    const monto = typeof task.costo === 'number' ? task.costo : (task.costo.monto || 0);
-                                                    return sum + monto;
-                                                }
-                                                return sum;
-                                            }, 0);
-
-                                            return (
-                                                <div
-                                                    key={pkl.pkl_id}
-                                                    className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden hover:border-cyan-500/50 transition-colors"
-                                                >
-                                                    {/* Header del PKL - clickeable para expandir/colapsar */}
-                                                    <button
-                                                        onClick={() => {
-                                                            setExpandedPKLs(prev => {
-                                                                const next = new Set(prev);
-                                                                if (next.has(pkl.pkl_id)) {
-                                                                    next.delete(pkl.pkl_id);
-                                                                } else {
-                                                                    next.add(pkl.pkl_id);
-                                                                }
-                                                                return next;
-                                                            });
-                                                        }}
-                                                        className="w-full p-4 text-left hover:bg-gray-800/80 transition-colors"
-                                                    >
-                                                        <div className="flex items-start gap-3">
-                                                            {/* Indicador de expandir */}
-                                                            <div className={`w-6 h-6 rounded flex items-center justify-center transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                                </svg>
-                                                            </div>
-
-                                                            {/* Logo del cliente */}
-                                                            {clienteLogo ? (
-                                                                <img src={clienteLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded-lg object-cover" />
-                                                            ) : (
-                                                                <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold text-sm">
-                                                                    {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
-                                                                </div>
-                                                            )}
-
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex items-center gap-2 flex-wrap">
-                                                                    <span className="text-white font-medium truncate">
-                                                                        {pkl.origen.descripcion_inicial}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mt-1 text-xs">
-                                                                    <span className="text-gray-400">{pkl.cliente.nombre}</span>
-                                                                    {tipoInfo && (
-                                                                        <>
-                                                                            <span className="text-gray-600">•</span>
-                                                                            <span className="text-gray-500">{tipoInfo.label}</span>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mt-2">
-                                                                    <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded text-xs font-mono">
-                                                                        {pkl.pkl_id}
-                                                                    </span>
-                                                                    <span className={`px-2 py-0.5 rounded text-xs text-white ${estadoInfo?.color || 'bg-gray-500'}`}>
-                                                                        {estadoInfo?.label || pkl.estado.actual}
-                                                                    </span>
-                                                                    <span className="text-cyan-400 text-xs font-medium">
-                                                                        {tasksDelDia.length} task{tasksDelDia.length !== 1 ? 's' : ''} este día
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Monto del día */}
-                                                            {montoDelDia > 0 && (
-                                                                <div className="text-right">
-                                                                    <span className="text-amber-400 font-mono font-bold">
-                                                                        S/. {montoDelDia.toFixed(2)}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </button>
-
-                                                    {/* Tasks del día (acordeón) */}
-                                                    {isExpanded && tasksDelDia.length > 0 && (
-                                                        <div className="border-t border-gray-700 bg-gray-900/50 p-3 space-y-2">
-                                                            {tasksDelDia.map(task => {
-                                                                const tipoEmojis: Record<string, string> = {
-                                                                    cotizacion: '📋', coordinacion_proveedor: '🤝', compra_insumo: '🛒',
-                                                                    pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📄'
-                                                                };
-                                                                const emoji = tipoEmojis[task.tipo] || '📋';
-                                                                const monto = task.costo ? (typeof task.costo === 'number' ? task.costo : task.costo.monto) : 0;
-
-                                                                return (
-                                                                    <div
-                                                                        key={task.task_id}
-                                                                        className="flex items-start gap-2 p-2 rounded bg-gray-800/50 border border-gray-700/50"
-                                                                    >
-                                                                        <span className="text-lg">{emoji}</span>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-white text-sm">{task.nombre}</span>
-                                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                                                                    task.estado === 'completado' ? 'bg-green-500/20 text-green-400' :
-                                                                                    task.estado === 'en_progreso' ? 'bg-blue-500/20 text-blue-400' :
-                                                                                    task.estado === 'cancelado' ? 'bg-red-500/20 text-red-400' :
-                                                                                    'bg-gray-500/20 text-gray-400'
-                                                                                }`}>
-                                                                                    {task.estado}
-                                                                                </span>
-                                                                            </div>
-                                                                            {task.descripcion && task.descripcion !== task.nombre && (
-                                                                                <p className="text-gray-500 text-xs mt-0.5">{task.descripcion}</p>
-                                                                            )}
-                                                                        </div>
-                                                                        {monto > 0 && (
-                                                                            <span className="text-amber-400 font-mono text-xs">
-                                                                                S/. {monto.toFixed(2)}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-
-                                                            {/* Link para ver PKL completo */}
-                                                            <button
-                                                                onClick={() => onNavigateToPKL?.(pkl.pkl_id)}
-                                                                className="w-full text-center text-xs text-cyan-400 hover:text-cyan-300 py-2 hover:bg-cyan-500/10 rounded transition-colors"
-                                                            >
-                                                                Ver PKL completo →
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
                         </div>
                     ) : (
@@ -3908,9 +4190,15 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                     onSuccess={async (pklId) => {
                         // Vincular eventos seleccionados al PKL
                         const pkl = pkls.find(p => p.pkl_id === pklId);
+                        const tasksIniciales = pkl?.tasks?.length || 0;
+                        let eventosVinculados = 0;
+                        let errores: string[] = [];
+
+                        console.log(`🔗 Iniciando vinculación de ${eventosSeleccionadosData.length} eventos al PKL ${pklId}`);
 
                         // Crear tasks para cada evento
-                        for (const evento of eventosSeleccionadosData) {
+                        for (let i = 0; i < eventosSeleccionadosData.length; i++) {
+                            const evento = eventosSeleccionadosData[i];
                             const tipoEmoji = evento.tipo_evento === 'movimiento' ? '🚚' :
                                              evento.tipo_evento === 'rendicion' ? '💰' : '🏭';
                             const taskTipo = evento.tipo_evento === 'movimiento' ? 'movilidad' :
@@ -3919,26 +4207,35 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                             // Obtener la fecha del evento para fecha_completado
                             const fechaEvento = evento.fecha || selectedDate || new Date().toISOString().split('T')[0];
 
-                            await createPKLTask(pklId, {
-                                nombre: `${tipoEmoji} ${evento.descripcion}`.substring(0, 100),
-                                descripcion: evento.descripcion,
-                                tipo: taskTipo as any,
-                                estado: 'completado',
-                                orden: (pkl?.tasks?.length || 0) + 1,
-                                costo: evento.monto ? { monto: evento.monto, moneda: 'PEN' } : undefined,
-                                evento_origen_id: evento.id,
-                                fecha_completado: fechaEvento,
-                                responsable: 'Huber',
-                                es_happy_path: true,
-                            } as any);
+                            try {
+                                // Crear task con orden incremental
+                                await createPKLTask(pklId, {
+                                    nombre: `${tipoEmoji} ${evento.descripcion}`.substring(0, 100),
+                                    descripcion: evento.descripcion,
+                                    tipo: taskTipo as any,
+                                    estado: 'completado',
+                                    orden: tasksIniciales + i + 1,
+                                    costo: evento.monto ? { monto: evento.monto, moneda: 'PEN' } : undefined,
+                                    evento_origen_id: evento.id,
+                                    fecha_completado: fechaEvento,
+                                    responsable: 'Huber',
+                                    es_happy_path: true,
+                                } as any);
 
-                            // Actualizar el evento con el pkl_id
-                            if (evento.tipo_evento === 'movimiento') {
-                                await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
-                            } else if (evento.tipo_evento === 'rendicion') {
-                                await updateRendicion(evento.id, { pedido_id: pklId });
-                            } else {
-                                await updateEventoProduccion(evento.id, { pedido_id: pklId });
+                                // Actualizar el evento con el pkl_id
+                                if (evento.tipo_evento === 'movimiento') {
+                                    await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
+                                } else if (evento.tipo_evento === 'rendicion') {
+                                    await updateRendicion(evento.id, { pedido_id: pklId });
+                                } else {
+                                    await updateEventoProduccion(evento.id, { pedido_id: pklId });
+                                }
+
+                                eventosVinculados++;
+                                console.log(`✅ Evento ${i + 1}/${eventosSeleccionadosData.length} vinculado: ${evento.descripcion}`);
+                            } catch (err) {
+                                console.error(`❌ Error vinculando evento ${evento.id}:`, err);
+                                errores.push(evento.descripcion || evento.id);
                             }
                         }
 
@@ -3951,6 +4248,15 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                     total: (pkl.costos?.total || 0) + totalMonto,
                                 }
                             } as any);
+                        }
+
+                        // Mostrar resultado
+                        if (errores.length === 0) {
+                            showToast(`✅ ${eventosVinculados} evento${eventosVinculados > 1 ? 's' : ''} vinculado${eventosVinculados > 1 ? 's' : ''} al ${pklId}`, 'success');
+                        } else if (eventosVinculados > 0) {
+                            showToast(`⚠️ ${eventosVinculados} vinculado${eventosVinculados > 1 ? 's' : ''}, ${errores.length} con error`, 'error');
+                        } else {
+                            showToast(`❌ Error vinculando eventos al ${pklId}`, 'error');
                         }
 
                         setShowVincularPKLModal(false);
@@ -4022,6 +4328,36 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                             }
                         }
                         setEditPKLDateModal(null);
+                    }}
+                />
+            )}
+
+            {/* Modal para editar task desde el acordeón */}
+            {editTaskFromAccordion?.isOpen && (
+                <EditTaskModal
+                    isOpen={true}
+                    task={editTaskFromAccordion.task}
+                    pklId={editTaskFromAccordion.pklId}
+                    onClose={() => setEditTaskFromAccordion(null)}
+                    onSave={async (taskId, changes) => {
+                        await updatePKLTask(editTaskFromAccordion.pklId, taskId, changes);
+                        setEditTaskFromAccordion(null);
+                        showToast('Task actualizado correctamente', 'success');
+                    }}
+                />
+            )}
+
+            {/* Modal para agregar task rápido desde el acordeón */}
+            {addTaskModal?.isOpen && selectedDate && (
+                <AddQuickTaskModal
+                    isOpen={true}
+                    pklId={addTaskModal.pklId}
+                    selectedDate={selectedDate}
+                    onClose={() => setAddTaskModal(null)}
+                    onSave={async (pklId, taskData) => {
+                        await createPKLTask(pklId, taskData as any);
+                        setAddTaskModal(null);
+                        showToast('Task agregado correctamente', 'success');
                     }}
                 />
             )}
@@ -4189,6 +4525,313 @@ function EditPKLDateModal({ isOpen, pkls, currentDate, onClose, onSave }: {
                             <>
                                 <span>💾</span>
                                 <span>Mover {selectedPkls.size} PKL{selectedPkls.size !== 1 ? 's' : ''}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
+// Modal para editar task desde el acordeón
+function EditTaskModal({ isOpen: _isOpen, task, pklId, onClose, onSave }: {
+    isOpen: boolean;
+    task: TaskPKL;
+    pklId: string;
+    onClose: () => void;
+    onSave: (taskId: string, changes: Partial<TaskPKL>) => Promise<void>;
+}) {
+    const [nombre, setNombre] = useState(task.nombre || '');
+    const [descripcion, setDescripcion] = useState(task.descripcion || '');
+    const [estado, setEstado] = useState(task.estado || 'pendiente');
+    const [monto, setMonto] = useState(
+        task.costo ? (typeof task.costo === 'number' ? task.costo : task.costo.monto || 0) : 0
+    );
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await onSave(task.task_id, {
+                nombre,
+                descripcion,
+                estado: estado as TaskPKL['estado'],
+                costo: monto > 0 ? { monto, moneda: 'PEN' } : undefined,
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return createPortal(
+        <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-gray-900 border border-cyan-500/30 rounded-2xl w-full max-w-lg">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 rounded-t-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">✏️</span>
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Editar Task</h2>
+                                <p className="text-white/70 text-xs">{pklId}</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-4">
+                    {/* Nombre */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Nombre</label>
+                        <input
+                            type="text"
+                            value={nombre}
+                            onChange={(e) => setNombre(e.target.value)}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
+                        />
+                    </div>
+
+                    {/* Descripción */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Descripción</label>
+                        <textarea
+                            value={descripcion}
+                            onChange={(e) => setDescripcion(e.target.value)}
+                            rows={2}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none resize-none"
+                        />
+                    </div>
+
+                    {/* Estado y Monto en una fila */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Estado</label>
+                            <select
+                                value={estado}
+                                onChange={(e) => setEstado(e.target.value as 'pendiente' | 'en_progreso' | 'completado' | 'cancelado')}
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
+                            >
+                                <option value="pendiente">Pendiente</option>
+                                <option value="en_progreso">En progreso</option>
+                                <option value="completado">Completado</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Monto (S/.)</label>
+                            <input
+                                type="number"
+                                value={monto || ''}
+                                onChange={(e) => setMonto(parseFloat(e.target.value) || 0)}
+                                placeholder="0.00"
+                                step="0.01"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 p-4 border-t border-gray-800">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving || !nombre.trim()}
+                        className="flex-1 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-90 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                        {isSaving ? (
+                            <span className="animate-pulse">Guardando...</span>
+                        ) : (
+                            <>
+                                <span>💾</span>
+                                <span>Guardar</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
+// Modal para agregar task rápidamente desde el acordeón
+function AddQuickTaskModal({ isOpen, pklId, selectedDate, onClose, onSave }: {
+    isOpen: boolean;
+    pklId: string;
+    selectedDate: string;
+    onClose: () => void;
+    onSave: (pklId: string, task: Partial<TaskPKL>) => Promise<void>;
+}) {
+    const [nombre, setNombre] = useState('');
+    const [descripcion, setDescripcion] = useState('');
+    const [tipo, setTipo] = useState<TaskPKL['tipo']>('movilidad');
+    const [monto, setMonto] = useState(0);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Reset form when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setNombre('');
+            setDescripcion('');
+            setTipo('movilidad');
+            setMonto(0);
+        }
+    }, [isOpen]);
+
+    const handleSave = async () => {
+        if (!nombre.trim()) return;
+        setIsSaving(true);
+        try {
+            await onSave(pklId, {
+                nombre,
+                descripcion,
+                tipo,
+                estado: 'completado',
+                costo: monto > 0 ? { monto, moneda: 'PEN' } : undefined,
+                fecha_completado: selectedDate,
+                responsable: 'Huber',
+                es_happy_path: false,
+            });
+            onClose();
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    const tiposTask = [
+        { value: 'movilidad', label: '🚚 Movilidad', color: 'text-cyan-400' },
+        { value: 'pago', label: '💰 Pago/Rendición', color: 'text-amber-400' },
+        { value: 'compra_insumo', label: '🛒 Compra', color: 'text-orange-400' },
+        { value: 'coordinacion_proveedor', label: '🤝 Coordinación', color: 'text-blue-400' },
+        { value: 'cotizacion', label: '📋 Cotización', color: 'text-yellow-400' },
+        { value: 'instalacion', label: '🔧 Instalación', color: 'text-pink-400' },
+    ];
+
+    return createPortal(
+        <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-white dark:bg-gray-900 border border-green-500/30 rounded-2xl w-full max-w-lg shadow-2xl">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-t-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">➕</span>
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Agregar Task</h2>
+                                <p className="text-white/70 text-xs">{pklId} • {selectedDate}</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-4">
+                    {/* Tipo de Task - Chips */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Task</label>
+                        <div className="flex flex-wrap gap-2">
+                            {tiposTask.map(t => (
+                                <button
+                                    key={t.value}
+                                    onClick={() => setTipo(t.value as TaskPKL['tipo'])}
+                                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                        tipo === t.value
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Nombre */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre *</label>
+                        <input
+                            type="text"
+                            value={nombre}
+                            onChange={(e) => setNombre(e.target.value)}
+                            placeholder="Ej: Movilidad por recojo de materiales"
+                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none"
+                            autoFocus
+                        />
+                    </div>
+
+                    {/* Descripción */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción (opcional)</label>
+                        <textarea
+                            value={descripcion}
+                            onChange={(e) => setDescripcion(e.target.value)}
+                            rows={2}
+                            placeholder="Detalles adicionales..."
+                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none resize-none"
+                        />
+                    </div>
+
+                    {/* Monto */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto (S/.)</label>
+                        <input
+                            type="number"
+                            value={monto || ''}
+                            onChange={(e) => setMonto(parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                            step="0.01"
+                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none"
+                        />
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving || !nombre.trim()}
+                        className="flex-1 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:opacity-90 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                        {isSaving ? (
+                            <span className="animate-pulse">Guardando...</span>
+                        ) : (
+                            <>
+                                <span>➕</span>
+                                <span>Agregar Task</span>
                             </>
                         )}
                     </button>
@@ -4631,7 +5274,7 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
         }
 
         // Solo excluir cancelados, permitir cerrado_ok
-        let filtered = pkls.filter(p => p.estado.actual !== 'cerrado_cancelado');
+        let filtered = pkls.filter(p => p.estado.actual !== 'cancelado');
 
         // Búsqueda de texto
         if (searchQuery) {

@@ -4,6 +4,68 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🚨 REGLAS CRÍTICAS PARA CLAUDE (LEER SIEMPRE)
+
+### 1. NO hacer commits automáticamente
+- **NUNCA** hacer `git commit` ni `git push` sin que el usuario lo pida explícitamente
+- Esperar a que el usuario confirme que los cambios funcionan correctamente
+- El usuario dirá "haz commit" o "súbelo a GitHub" cuando esté listo
+- Razón: Si hay errores, el usuario necesita poder revertir fácilmente
+
+### 2. Errores comunes a evitar
+- **No eliminar funcionalidad** sin que el usuario lo pida - solo ocultar visualmente si eso es lo que se pide
+- **No modificar lógica de datos** cuando solo se pide cambiar la UI
+- **Preguntar antes de asumir** - si hay ambigüedad, preguntar al usuario
+- **Al eliminar una sección visual, verificar que los datos no se pierdan**:
+  - Ejemplo: La sección "PKLs del día" muestra PKLs con tasks de ese día
+  - Estos PKLs pueden NO tener eventos correspondientes en Movimientos/Rendiciones/Producciones
+  - Si se elimina la sección sin mover los datos a otro lugar, esos días aparecerán vacíos
+  - **SIEMPRE verificar**: ¿Los datos de esta sección se muestran en otro lugar? Si no, NO eliminar
+
+### 3. Al vincular eventos a PKLs
+- El evento del Día a Día se convierte en un **TASK** del PKL
+- Debe guardarse `fecha_completado` con la fecha del evento original
+- Debe guardarse `evento_origen_id` para rastrear el origen
+- Los datos deben persistir en Supabase (verificar con F5)
+
+### 4. Búsqueda de PKLs
+- Si el usuario escribe solo un número (ej: "2"), buscar PKL-YYYY-0002
+- La búsqueda por número debe ignorar filtros de estado (incluir cerrados)
+- Solo excluir `cerrado_cancelado`, permitir `cerrado_ok`
+
+### 5. UI/UX - Compatibilidad Light/Dark Mode
+- **SIEMPRE usar colores compatibles con ambos modos** (light y dark)
+- **NO usar colores fijos oscuros** como `bg-gray-800`, `text-white`, `border-gray-700`
+- **USAR clases duales**: `bg-white dark:bg-gray-800`, `text-gray-900 dark:text-white`
+- Ejemplos de patrones correctos:
+  ```css
+  /* Fondos */
+  bg-white dark:bg-gray-800
+  bg-gray-100 dark:bg-gray-900
+
+  /* Textos - IMPORTANTE: usar colores oscuros para light mode */
+  text-gray-800 dark:text-gray-100   /* Para texto principal */
+  text-gray-600 dark:text-gray-400   /* Para texto secundario */
+  font-medium                         /* Agregar peso para mejor legibilidad */
+
+  /* Bordes */
+  border-gray-300 dark:border-gray-700
+  border-2 border-purple-400          /* Bordes más gruesos para dropdowns */
+
+  /* Hover states */
+  hover:bg-gray-100 dark:hover:bg-gray-700
+  hover:bg-purple-100 dark:hover:bg-purple-500/30
+  ```
+- **Dropdowns, modales, tooltips** son especialmente importantes:
+  - Usar bordes más gruesos y coloreados (`border-2 border-purple-400`)
+  - Usar `z-[100]` o superior para asegurar visibilidad
+  - Agregar emojis (📋, 💸) para mejorar identificación visual
+  - Usar `font-medium` o `font-semibold` para texto legible
+  - Fondo del header con color distintivo (`bg-purple-50 dark:bg-purple-900/30`)
+  - **POSICIONAMIENTO**: Si el dropdown está cerca del borde inferior, usar `bottom-full mb-1` en lugar de `top-full mt-1` para que se abra hacia ARRIBA y no se corte
+
+---
+
 ## ⚠️ MODELO DE DATOS FUNDAMENTAL (LEER PRIMERO)
 
 ### Jerarquía de Datos

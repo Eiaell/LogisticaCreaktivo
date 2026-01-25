@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import type { PKL, EstadoPKL, TipoOperacionPKL, TipoTaskPKL } from '../types';
 import { ESTADOS_PKL, TIPOS_OPERACION_PKL, TIPOS_TASK_PKL } from '../types';
 import { useDatabase } from '../context/DatabaseContext';
+// Funciones centralizadas de cálculo de costos (#12)
+import { getCostoMonto, calcularCostoTotalPKL } from '../utils/pklCostos';
 
 // Helper to get estado config
 const getEstadoConfig = (estado: EstadoPKL) => {
@@ -16,22 +18,6 @@ const getTipoOperacionConfig = (tipo: TipoOperacionPKL) => {
 // Helper to get task type config
 const getTaskTypeConfig = (tipo: string) => {
     return TIPOS_TASK_PKL.find(t => t.value === tipo);
-};
-
-// Helper to get monto from costo (puede ser número directo o objeto CostoTaskPKL)
-const getCostoMonto = (costo: any): number => {
-    if (!costo) return 0;
-    if (typeof costo === 'number') return costo;
-    if (typeof costo === 'object' && costo.monto) return Number(costo.monto);
-    return Number(costo) || 0;
-};
-
-// Helper to calculate total PKL cost (tasks + manual costos sin duplicados)
-const calcularCostoTotalPKL = (pkl: PKL): number => {
-    const costosTasks = pkl.tasks?.reduce((sum, t) => sum + getCostoMonto(t.costo), 0) || 0;
-    // Solo sumar costos manuales que NO tienen task_id (evitar duplicados)
-    const costosDetalle = pkl.costos?.detalle?.filter(d => !d.task_id).reduce((sum, d) => sum + (d.monto || 0), 0) || 0;
-    return costosTasks + costosDetalle;
 };
 
 interface PKLPageProps {
@@ -558,7 +544,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
 
             {/* Tab Content */}
             <div className="p-6">
-                {activeTab === 'overview' && <OverviewTab pkl={pkl} onUpdate={onUpdate} />}
+                {activeTab === 'overview' && <OverviewTab pkl={pkl} onUpdate={onUpdate} onUpdateTask={onUpdateTask} />}
                 {activeTab === 'tasks' && <TasksTab pkl={pkl} onUpdateTask={onUpdateTask} onCreateTask={onCreateTask} onDeleteTask={onDeleteTask} />}
                 {activeTab === 'eventos' && <EventosTab pkl={pkl} onUpdate={onUpdate} />}
             </div>
@@ -1335,8 +1321,10 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
 }
 
 // Overview Tab
-function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
+function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: UpdatePKLFn; onUpdateTask?: (pklId: string, taskId: string, updates: Partial<import('../types').TaskPKL>) => void }) {
     const { proveedores: proveedoresDB } = useDatabase();
+    // Estado local para tasks en Overview
+    const [localTasks, setLocalTasks] = useState(pkl.tasks || []);
     const [editingObs, setEditingObs] = useState(false);
     const [obsValue, setObsValue] = useState(pkl.observaciones || '');
 
@@ -1515,7 +1503,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
         onUpdate({ proveedores: [...pkl.proveedores, newProveedor] } as any);
 
         // Si el proveedor está elegido y tiene cotización, sincronizar con task de cotización
-        if (proveedorForm.elegido && cotizacion && cotizacion.precio_total > 0) {
+        if (proveedorForm.elegido && cotizacion && cotizacion.precio_total > 0 && onUpdateTask) {
             const taskCotizacion = localTasks.find(t => t.tipo === 'cotizacion');
             if (taskCotizacion) {
                 await onUpdateTask(pkl.pkl_id, taskCotizacion.task_id, {
@@ -1601,7 +1589,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
         onUpdate({ proveedores: updated } as any);
 
         // Si el proveedor está elegido y tiene cotización, sincronizar con task de cotización
-        if (proveedorForm.elegido && cotizacion && cotizacion.precio_total > 0) {
+        if (proveedorForm.elegido && cotizacion && cotizacion.precio_total > 0 && onUpdateTask) {
             // Buscar task de tipo cotización para actualizar su costo
             const taskCotizacion = localTasks.find(t => t.tipo === 'cotizacion');
             if (taskCotizacion) {
@@ -1662,7 +1650,7 @@ function OverviewTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
         onUpdate({ proveedores: updated } as any);
 
         // Si el proveedor se marca como elegido y tiene cotización, sincronizar con task
-        if (nuevoEstadoElegido && proveedor?.cotizacion && proveedor.cotizacion.precio_total > 0) {
+        if (nuevoEstadoElegido && proveedor?.cotizacion && proveedor.cotizacion.precio_total > 0 && onUpdateTask) {
             const taskCotizacion = localTasks.find(t => t.tipo === 'cotizacion');
             if (taskCotizacion) {
                 await onUpdateTask(pkl.pkl_id, taskCotizacion.task_id, {

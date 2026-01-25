@@ -805,18 +805,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        // Generate unique task ID - find the maximum existing task number
-        let maxTaskNum = 0;
-        currentPkl.tasks.forEach(t => {
-            // Extract number from task_id like "PKL-2026-0024-T001" or "T001"
-            const match = t.task_id.match(/T(\d+)$/i);
-            if (match) {
-                const num = parseInt(match[1], 10);
-                if (num > maxTaskNum) maxTaskNum = num;
-            }
-        });
-        const taskNum = maxTaskNum + 1;
-        const taskId = `${pklId}-T${String(taskNum).padStart(3, '0')}`;
+        // Generate unique task ID using timestamp + random to avoid duplicates
+        // when creating multiple tasks in rapid succession
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 6);
+        const taskId = `${pklId}-T${timestamp}-${randomSuffix}`;
+
+        // Calculate orden based on existing tasks + passed orden or default
+        const taskNum = taskData.orden || (currentPkl.tasks.length + 1);
 
         const newTask: TaskPKL = {
             ...taskData,
@@ -894,6 +890,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             return;
         }
 
+        // Find the task being deleted to check for evento_origen_id
+        const taskToDelete = currentPkl.tasks.find(t => t.task_id === taskId);
+        const eventoOrigenId = (taskToDelete as any)?.evento_origen_id;
+
         // Update state - remove task and reorder
         const updatedTasks = currentPkl.tasks
             .filter(t => t.task_id !== taskId)
@@ -916,6 +916,29 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
             // Update PKL's updated_at
             await supabase.from('pkls').update({ updated_at: now }).eq('pkl_id', pklId);
+
+            // IMPORTANTE: Si el task tenía evento_origen_id, verificar que el evento tenga pedido_id
+            // para que siga apareciendo en el acordeón del PKL (como evento huérfano)
+            if (eventoOrigenId) {
+                // Buscar si el evento existe y actualizar su pedido_id si no lo tiene
+                const movimiento = movimientosLogisticos.find(m => m.id === eventoOrigenId);
+                if (movimiento && movimiento.pedido_id !== pklId) {
+                    console.log(`📎 Actualizando pedido_id del movimiento ${eventoOrigenId} a ${pklId}`);
+                    await updateMovimientoLogistico(eventoOrigenId, { pedido_id: pklId });
+                }
+
+                const rendicion = rendiciones.find(r => r.id === eventoOrigenId);
+                if (rendicion && rendicion.pedido_id !== pklId) {
+                    console.log(`📎 Actualizando pedido_id de la rendición ${eventoOrigenId} a ${pklId}`);
+                    await updateRendicion(eventoOrigenId, { pedido_id: pklId });
+                }
+
+                const produccion = eventosProduccion.find(e => e.id === eventoOrigenId);
+                if (produccion && produccion.pedido_id !== pklId) {
+                    console.log(`📎 Actualizando pedido_id de la producción ${eventoOrigenId} a ${pklId}`);
+                    await updateEventoProduccion(eventoOrigenId, { pedido_id: pklId });
+                }
+            }
         } catch (err) {
             console.error('Error deleting PKL task:', err);
         }
@@ -1240,6 +1263,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         };
 
         const taskId = `TASK-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+        // IMPORTANTE: Usar la fecha del evento original para que aparezca en el día correcto
+        const fechaEvento = eventoData.fecha || now.split('T')[0];
+        const costoTask = eventoData.monto ? { monto: Number(eventoData.monto), moneda: 'PEN' as const } :
+                         eventoData.costo_movilidad ? { monto: Number(eventoData.costo_movilidad), moneda: 'PEN' as const } :
+                         undefined;
+
         const newTask: TaskPKL = {
             task_id: taskId,
             tipo: mapTipoToTask(),
@@ -1250,10 +1280,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             orden: (targetPkl.tasks?.length || 0) + 1,
             responsable: 'Huber',
             es_happy_path: false,
-            costo: eventoData.monto ? { monto: Number(eventoData.monto), moneda: 'PEN' } :
-                   eventoData.costo_movilidad ? { monto: Number(eventoData.costo_movilidad), moneda: 'PEN' } :
-                   undefined,
-            fecha_completado: eventoData.estado === 'completado' ? now : undefined,
+            costo: costoTask,
+            // CRÍTICO: fecha_completado debe ser la fecha del evento original, no "now"
+            fecha_completado: fechaEvento,
             evento_origen_id: eventoId,
         };
 
@@ -1281,7 +1310,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 break;
         }
 
-        // Guardar task en Supabase
+        // Guardar task en Supabase - INCLUIR todos los campos importantes
         try {
             await supabase.from('pkl_tasks').insert({
                 pkl_id: targetPklId,
@@ -1293,12 +1322,16 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 orden: newTask.orden,
                 responsable: newTask.responsable,
                 es_happy_path: newTask.es_happy_path,
+                // CRÍTICO: Guardar fecha, evento_origen y costo
+                fecha_completado: newTask.fecha_completado,
+                evento_origen_id: newTask.evento_origen_id,
+                costo: costoTask ? JSON.stringify(costoTask) : null,
             });
 
             // Actualizar PKL
             await supabase.from('pkls').update({ updated_at: now }).eq('pkl_id', targetPklId);
 
-            console.log(`✓ Evento ${eventoTipo} ${eventoId} convertido a task en ${targetPklId}`);
+            console.log(`✓ Evento ${eventoTipo} ${eventoId} convertido a task en ${targetPklId} (fecha: ${fechaEvento})`);
         } catch (err) {
             console.error('Error guardando task:', err);
         }
@@ -2369,12 +2402,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const updatedData = { ...data, updated_at: new Date().toISOString() };
         setRendiciones(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
 
+        console.log("🔧 updateRendicion:", { id, pedido_id: data.pedido_id, updatedData });
+
         try {
-            const { error } = await supabase.from('rendiciones').update(updatedData).eq('id', id);
-            if (error) console.warn("Error actualizando rendición:", error.message);
-            else console.log("💰 Rendición actualizada:", id);
+            const { error, data: result } = await supabase.from('rendiciones').update(updatedData).eq('id', id).select();
+            if (error) {
+                console.error("❌ Error actualizando rendición:", error.message);
+                throw new Error(`Error actualizando rendición: ${error.message}`);
+            } else {
+                console.log("✅ Rendición actualizada:", id, "pedido_id:", result?.[0]?.pedido_id);
+            }
         } catch (err) {
-            console.error("Error updating rendición:", err);
+            console.error("❌ Error updating rendición:", err);
+            throw err;
         }
     };
 
@@ -2403,17 +2443,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const { seccion, ...supabaseData } = updatedData as any;
         void seccion; // Ignorar campo local
 
-        console.log("🔧 updateMovimientoLogistico:", { id, tipo: data.tipo, supabaseData });
+        console.log("🔧 updateMovimientoLogistico:", { id, pedido_id: data.pedido_id, supabaseData });
 
         try {
             const { error, data: result } = await supabase.from('movimientos_logisticos').update(supabaseData).eq('id', id).select();
             if (error) {
                 console.error("❌ Error actualizando movimiento en Supabase:", error.message, error);
+                throw new Error(`Error actualizando movimiento: ${error.message}`);
             } else {
-                console.log("✅ Movimiento actualizado en Supabase:", id, result);
+                console.log("✅ Movimiento actualizado en Supabase:", id, "pedido_id:", result?.[0]?.pedido_id);
             }
         } catch (err) {
             console.error("❌ Error updating movimiento:", err);
+            throw err; // Re-lanzar para que el llamador pueda manejarlo
         }
     };
 
@@ -2474,12 +2516,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const updatedData = { ...data, updated_at: new Date().toISOString() };
         setEventosProduccion(prev => prev.map(e => e.id === id ? { ...e, ...updatedData } : e));
 
+        console.log("🔧 updateEventoProduccion:", { id, pedido_id: data.pedido_id, updatedData });
+
         try {
-            const { error } = await supabase.from('eventos_produccion').update(updatedData).eq('id', id);
-            if (error) console.warn("Error actualizando evento producción:", error.message);
-            else console.log("🏭 Evento producción actualizado:", id);
+            const { error, data: result } = await supabase.from('eventos_produccion').update(updatedData).eq('id', id).select();
+            if (error) {
+                console.error("❌ Error actualizando evento producción:", error.message);
+                throw new Error(`Error actualizando evento producción: ${error.message}`);
+            } else {
+                console.log("✅ Evento producción actualizado:", id, "pedido_id:", result?.[0]?.pedido_id);
+            }
         } catch (err) {
-            console.error("Error updating evento producción:", err);
+            console.error("❌ Error updating evento producción:", err);
+            throw err;
         }
     };
 

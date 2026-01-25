@@ -290,19 +290,19 @@ export function CotizacionesPage({ onBack, onNavigateToPKL }: CotizacionesPagePr
         ) : (
           <div className="space-y-3">
             {cotizacionesFiltradas.map((cot) => {
-              const isExpanded = expandedId === cot.task.id;
+              const isExpanded = expandedId === cot.task.task_id;
               const clienteLogo = getClienteLogo(cot.cliente);
 
               return (
                 <div
-                  key={cot.task.id}
+                  key={cot.task.task_id}
                   className={`rounded-xl border transition-all ${isExpanded ? 'ring-2 ring-cyan-500/50' : 'hover:border-cyan-500/30'}`}
                   style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
                 >
                   {/* Header - siempre visible */}
                   <div
                     className="p-4 cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : cot.task.id)}
+                    onClick={() => setExpandedId(isExpanded ? null : cot.task.task_id)}
                   >
                     <div className="flex items-start gap-4">
                       {/* Logo cliente */}
@@ -373,7 +373,7 @@ export function CotizacionesPage({ onBack, onNavigateToPKL }: CotizacionesPagePr
                           <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                             <p className="text-xs uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Tipo PKL</p>
                             <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-primary)' }}>
-                              {cot.pkl.tipoOperacion || 'No definido'}
+                              {cot.pkl.clasificacion.tipo_operacion || 'No definido'}
                             </p>
                           </div>
                         </div>
@@ -485,12 +485,12 @@ export function CotizacionesPage({ onBack, onNavigateToPKL }: CotizacionesPagePr
                           </div>
                         )}
 
-                        {/* Notas si existen */}
-                        {cot.task.notas && (
+                        {/* Descripción si existe */}
+                        {cot.task.descripcion && (
                           <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                             <p className="text-xs uppercase font-bold mb-2" style={{ color: 'var(--text-muted)' }}>Notas</p>
                             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                              {cot.task.notas}
+                              {cot.task.descripcion}
                             </p>
                           </div>
                         )}

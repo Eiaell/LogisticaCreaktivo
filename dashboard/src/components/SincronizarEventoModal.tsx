@@ -205,11 +205,11 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
             }
 
             // Validar estado del PKL seleccionado (#6)
-            // Solo bloquear cerrado_cancelado - cerrado_ok sí permite vincular
+            // Solo bloquear cancelado - cerrado_ok sí permite vincular
             // (el cliente puede reactivar cotizaciones que parecían muertas)
             if (mode === 'vincular' && pklId) {
                 const pklTarget = pkls.find(p => p.pkl_id === pklId);
-                if (pklTarget && pklTarget.estado.actual === 'cerrado_cancelado') {
+                if (pklTarget && pklTarget.estado.actual === 'cancelado') {
                     showToast('No puedes vincular a un PKL cancelado', 'error');
                     setIsSubmitting(false);
                     return;
@@ -307,18 +307,22 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                 throw taskError;
             }
 
-            // Actualizar el evento con el pkl_id
+            // Actualizar el evento con el pkl_id para que se muestre como acordeón
             try {
+                console.log(`🔗 Vinculando evento ${evento.id} (${tipo}) al PKL ${pklId}`);
                 if (tipo === 'movimiento') {
                     await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
+                    console.log(`✅ Movimiento ${evento.id} vinculado a PKL ${pklId}`);
                 } else if (tipo === 'rendicion') {
                     await updateRendicion(evento.id, { pedido_id: pklId });
+                    console.log(`✅ Rendición ${evento.id} vinculada a PKL ${pklId}`);
                 } else if (tipo === 'produccion') {
                     await updateEventoProduccion(evento.id, { pedido_id: pklId });
+                    console.log(`✅ Producción ${evento.id} vinculada a PKL ${pklId}`);
                 }
             } catch (updateError) {
-                console.error('Error vinculando evento:', updateError);
-                showToast(`Error: Task creado pero el evento no se vinculó al PKL. El PKL es ${pklId}.`, 'error');
+                console.error('❌ Error vinculando evento:', updateError);
+                showToast(`Error: Task creado pero el evento no se vinculó al PKL ${pklId}. Verifica manualmente.`, 'error');
                 throw updateError;
             }
 
