@@ -424,6 +424,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                         alertas: p.alertas || { dias_sin_actividad: 0, umbral_pausa_dias: 3 },
                         riesgos_identificados: p.riesgos_identificados,
                         observaciones: p.observaciones,
+                        parent_pkl_id: p.parent_pkl_id || undefined, // PKL padre (si fue vinculado)
                     }));
                     setPkls(pklsParsed);
                     console.log(`📋 ${pklsParsed.length} PKLs cargados desde Supabase`);
@@ -680,6 +681,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             updated.observaciones = changes.observaciones;
         }
 
+        // Handle parent_pkl_id changes (direct replace - for linking PKLs)
+        if (changes.parent_pkl_id !== undefined) {
+            updated.parent_pkl_id = changes.parent_pkl_id;
+        }
+
         // Update state
         setPkls(prev => prev.map(pkl => pkl.pkl_id === id ? updated : pkl));
 
@@ -704,7 +710,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 cierre: updated.cierre,
                 alertas: updated.alertas,
                 riesgos_identificados: updated.riesgos_identificados,
-                observaciones: updated.observaciones
+                observaciones: updated.observaciones,
+                parent_pkl_id: updated.parent_pkl_id || null
             }, { onConflict: 'pkl_id' });
 
             if (error) {

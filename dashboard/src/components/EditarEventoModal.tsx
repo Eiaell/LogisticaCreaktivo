@@ -140,7 +140,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
     if (eventoNotFound) {
         return createPortal(
             <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4">
-                <div className="liquid-glass liquid-glass-purple rounded-2xl p-8 max-w-md text-center">
+                <div className="liquid-glass liquid-glass-orange rounded-2xl p-8 max-w-md text-center">
                     <div className="text-5xl mb-4">❌</div>
                     <h2 className="text-xl font-bold text-white mb-2">Evento no encontrado</h2>
                     <p className="text-gray-400 mb-4">
@@ -162,7 +162,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
     if (Object.keys(formData).length === 0) {
         return createPortal(
             <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4">
-                <div className="liquid-glass liquid-glass-purple rounded-2xl p-8 text-center">
+                <div className="liquid-glass liquid-glass-orange rounded-2xl p-8 text-center">
                     <div className="text-4xl animate-pulse mb-4">⏳</div>
                     <p className="text-gray-400">Cargando datos...</p>
                 </div>
@@ -226,10 +226,10 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
     };
 
     return createPortal(
-        <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="liquid-glass liquid-glass-purple rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4">
+            <div className="liquid-glass liquid-glass-orange rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
                 {/* Header - Compacto como PKL */}
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 rounded-t-2xl">
+                <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-3 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className="text-2xl">{currentConfig.icon}</span>
@@ -261,7 +261,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     console.log('🔄 Cambiando tipo:', formData.tipo, '->', e.target.value);
                                     handleChange('tipo', e.target.value);
                                 }}
-                                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
                                 style={{ colorScheme: 'dark' }}
                             >
                                 {currentConfig.tipos.map(t => (
@@ -276,7 +276,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             <select
                                 value={formData.estado || ''}
                                 onChange={(e) => handleChange('estado', e.target.value)}
-                                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
                                 style={{ colorScheme: 'dark' }}
                             >
                                 {currentConfig.estados.map(e => (
@@ -294,13 +294,13 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                 <select
                                     value={formData.cliente || ''}
                                     onChange={(e) => handleChange('cliente', e.target.value)}
-                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
                                     style={{ colorScheme: 'dark' }}
                                 >
                                     <option value="">Seleccionar cliente...</option>
                                     <option value="INTERNO">🏢 Interno / Creaktivo</option>
                                     {clientesList.map(c => (
-                                        <option key={c.id} value={c.id}>{c.display}</option>
+                                        <option key={c.id} value={c.display}>{c.display}</option>
                                     ))}
                                 </select>
                             </div>
@@ -311,7 +311,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     list="proveedores-list-edit"
                                     value={formData.proveedor || ''}
                                     onChange={(e) => handleChange('proveedor', e.target.value.toUpperCase())}
-                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none placeholder-gray-500"
+                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
                                     placeholder="Nombre del proveedor"
                                 />
                                 <datalist id="proveedores-list-edit">
@@ -328,7 +328,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             type="date"
                             value={formData.fecha || ''}
                             onChange={(e) => handleChange('fecha', e.target.value)}
-                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none [color-scheme:dark]"
+                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none [color-scheme:dark]"
                         />
                     </div>
 
@@ -342,7 +342,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     <button
                                         type="button"
                                         onClick={addItem}
-                                        className="text-xs text-purple-400 hover:text-purple-300"
+                                        className="text-xs text-orange-400 hover:text-orange-300"
                                     >
                                         + Agregar Item
                                     </button>
@@ -391,7 +391,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                             type="text"
                                             value={formData.detalle?.origen || ''}
                                             onChange={(e) => handleChange('detalle', { ...formData.detalle, origen: e.target.value })}
-                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none placeholder-gray-500"
+                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
                                             placeholder="Lugar de origen"
                                         />
                                     </div>
@@ -401,7 +401,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                             type="text"
                                             value={formData.detalle?.destino || ''}
                                             onChange={(e) => handleChange('detalle', { ...formData.detalle, destino: e.target.value })}
-                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none placeholder-gray-500"
+                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
                                             placeholder="Lugar de destino"
                                         />
                                     </div>
@@ -417,7 +417,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         step="0.01"
                                         value={formData.costo_movilidad || ''}
                                         onChange={(e) => handleChange('costo_movilidad', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none placeholder-gray-500"
+                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -433,7 +433,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     type="text"
                                     value={formData.descripcion || ''}
                                     onChange={(e) => handleChange('descripcion', e.target.value)}
-                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none placeholder-gray-500"
+                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
                                     placeholder="Descripción de la rendición"
                                 />
                             </div>
@@ -447,7 +447,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                             step="0.01"
                                             value={formData.monto || ''}
                                             onChange={(e) => handleChange('monto', parseFloat(e.target.value) || 0)}
-                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none placeholder-gray-500"
+                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
                                             placeholder="0.00"
                                         />
                                     </div>
@@ -456,7 +456,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         <select
                                             value={formData.moneda || 'PEN'}
                                             onChange={(e) => handleChange('moneda', e.target.value)}
-                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
                                             style={{ colorScheme: 'dark' }}
                                         >
                                             <option value="PEN">PEN (Soles)</option>
@@ -476,7 +476,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     type="text"
                                     value={formData.producto || ''}
                                     onChange={(e) => handleChange('producto', e.target.value)}
-                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none placeholder-gray-500"
+                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
                                     placeholder="Nombre del producto"
                                 />
                             </div>
@@ -487,7 +487,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         type="number"
                                         value={formData.cantidad || ''}
                                         onChange={(e) => handleChange('cantidad', parseInt(e.target.value) || 0)}
-                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
                                         placeholder="0"
                                     />
                                 </div>
@@ -498,7 +498,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         step="0.01"
                                         value={formData.precio_unitario || ''}
                                         onChange={(e) => handleChange('precio_unitario', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -509,7 +509,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                         step="0.01"
                                         value={formData.precio_total || ''}
                                         onChange={(e) => handleChange('precio_total', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -524,7 +524,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             <button
                                 type="button"
                                 onClick={() => setShowAddTask(true)}
-                                className="text-xs text-purple-400 hover:text-purple-300"
+                                className="text-xs text-orange-400 hover:text-orange-300"
                             >
                                 + Agregar Task
                             </button>
@@ -563,7 +563,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
 
                         {/* Formulario agregar task */}
                         {showAddTask && (
-                            <div className="mt-2 p-2 bg-gray-800/80 border border-purple-500/30 rounded-lg space-y-2">
+                            <div className="mt-2 p-2 bg-gray-800/80 border border-orange-500/30 rounded-lg space-y-2">
                                 <div className="flex gap-2">
                                     <select
                                         value={newTaskTipo}
@@ -605,7 +605,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     <button
                                         type="button"
                                         onClick={handleAddTask}
-                                        className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded"
+                                        className="px-2 py-1 bg-orange-600 hover:bg-orange-500 text-white text-xs rounded"
                                     >
                                         Agregar
                                     </button>
@@ -621,7 +621,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                             value={formData.observaciones || ''}
                             onChange={(e) => handleChange('observaciones', e.target.value)}
                             rows={2}
-                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-none placeholder-gray-500"
+                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none resize-none placeholder-gray-500"
                             placeholder="Notas adicionales..."
                         />
                     </div>
@@ -638,7 +638,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2 text-sm"
+                        className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2 text-sm"
                     >
                         {isSubmitting ? (
                             <span className="animate-pulse">Guardando...</span>

@@ -573,7 +573,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                 { label: 'Cliente', w: 'w-48', field: 'cliente' as SortField },
                                 { label: 'Tipo', w: 'w-32', field: 'tipo' as SortField, hasFilter: true },
                                 { label: 'Descripción', w: 'w-56', field: 'descripcion' as SortField },
-                                { label: 'Vendedor/a', w: 'w-32', field: 'vendedora' as SortField },
+                                { label: 'Ejecutiva', w: 'w-32', field: 'vendedora' as SortField },
                                 { label: 'Estado', w: 'w-40', field: 'estado' as SortField },
                                 { label: 'RL', w: 'w-32', field: 'rl_numero' as SortField },
                                 { label: 'RQ', w: 'w-28', field: 'rq_numero' as SortField },
@@ -930,17 +930,26 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                     <td
                                         className="p-4 align-middle transition-colors group/seller cursor-pointer"
                                         onClick={() => handleEditStart(row.id, 'vendedora', row.vendedora)}
-                                        title="Click para editar vendedor/a"
+                                        title="Click para editar ejecutiva"
                                     >
                                         {editingCell?.id === row.id && editingCell?.field === 'vendedora' ? (
-                                            <input
-                                                autoFocus
-                                                value={editValue}
-                                                onChange={e => setEditValue(e.target.value)}
-                                                onBlur={handleEditSave}
-                                                onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
-                                                className="bg-white dark:bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-cyan-600 dark:text-cyan-400"
-                                            />
+                                            <>
+                                                <input
+                                                    autoFocus
+                                                    list="ejecutivas-list"
+                                                    value={editValue}
+                                                    onChange={e => setEditValue(e.target.value)}
+                                                    onBlur={handleEditSave}
+                                                    onKeyDown={e => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') { setEditingCell(null); setEditValue(''); } }}
+                                                    className="bg-white dark:bg-gray-950 border border-cyan-500 rounded px-2 py-1 w-full outline-none text-cyan-600 dark:text-cyan-400"
+                                                />
+                                                <datalist id="ejecutivas-list">
+                                                    <option value="Angélica" />
+                                                    <option value="Johana" />
+                                                    <option value="Natalia" />
+                                                    <option value="Giovana" />
+                                                </datalist>
+                                            </>
                                         ) : (
                                             <div className="text-gray-300 transition-colors font-medium group-hover/seller:text-cyan-400">
                                                 {row.vendedora || '(Sin asignar)'}

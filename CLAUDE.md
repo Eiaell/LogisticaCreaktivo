@@ -64,6 +64,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Fondo del header con color distintivo (`bg-purple-50 dark:bg-purple-900/30`)
   - **POSICIONAMIENTO**: Si el dropdown está cerca del borde inferior, usar `bottom-full mb-1` en lugar de `top-full mt-1` para que se abra hacia ARRIBA y no se corte
 
+### 6. Modales - NO cerrar al hacer click afuera
+- **NUNCA** agregar `onClick={(e) => e.target === e.currentTarget && onClose()}` al overlay de modales
+- Los modales solo deben cerrarse con:
+  - El botón X (cerrar)
+  - El botón Cancelar
+  - La tecla Escape (opcional)
+- Razón: El usuario puede hacer click accidentalmente afuera y perder datos del formulario
+
+### 7. Preferir Autocompletado en lugar de Dropdowns
+- **SIEMPRE usar inputs con autocompletado** en lugar de dropdowns/selects fijos
+- El usuario debe poder:
+  - Escribir texto libre (para valores nuevos)
+  - Ver sugerencias que coincidan con lo que escribe
+  - Buscar por número parcial (ej: escribir "2" debe encontrar "PKL-2026-0002")
+- Implementación recomendada:
+  ```jsx
+  <input
+    type="text"
+    list="opciones-list"
+    placeholder="Escribe para buscar..."
+  />
+  <datalist id="opciones-list">
+    {opciones.map(op => <option key={op.id} value={op.display} />)}
+  </datalist>
+  ```
+- Razón: Mayor flexibilidad para el usuario, permite valores nuevos, más rápido que navegar dropdowns largos
+
 ---
 
 ## ⚠️ MODELO DE DATOS FUNDAMENTAL (LEER PRIMERO)

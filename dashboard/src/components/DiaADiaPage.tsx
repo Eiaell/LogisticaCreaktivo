@@ -62,6 +62,272 @@ const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const DIAS_SEMANA_FULL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
+// Categorías de eventos
+const CATEGORIAS_EVENTO = [
+    { value: 'cotizacion', label: '📋 Cotización', color: 'from-yellow-500 to-orange-500' },
+    { value: 'movimiento', label: '🚚 Movimiento', color: 'from-cyan-500 to-blue-500' },
+    { value: 'rendicion', label: '💰 Rendición/Pago', color: 'from-orange-500 to-amber-500' },
+    { value: 'produccion', label: '🏭 Producción', color: 'from-purple-500 to-pink-500' },
+];
+
+// Subtipos por categoría
+const SUBTIPOS_EVENTO: Record<string, { value: string; label: string }[]> = {
+    cotizacion: [
+        { value: 'cotizacion_nueva', label: '📋 Cotización Nueva' },
+        { value: 'cotizacion_revision', label: '🔄 Revisión de Cotización' },
+    ],
+    movimiento: [
+        { value: 'traslado', label: '🚚 Traslado' },
+        { value: 'entrega', label: '📦 Entrega' },
+        { value: 'recojo', label: '📥 Recojo' },
+        { value: 'instalacion', label: '🔧 Instalación' },
+        { value: 'supervision', label: '👁️ Supervisión' },
+    ],
+    rendicion: [
+        { value: 'pago_proveedor', label: '💵 Pago Proveedor' },
+        { value: 'adelanto_produccion', label: '🏭 Adelanto Producción' },
+        { value: 'movilidad', label: '🚕 Movilidad' },
+        { value: 'compra_insumo', label: '🛒 Compra Insumo' },
+        { value: 'viaticos', label: '🍔 Viáticos' },
+        { value: 'caja_chica', label: '💰 Caja Chica' },
+    ],
+    produccion: [
+        { value: 'impresion', label: '🖨️ Impresión' },
+        { value: 'confeccion', label: '👕 Confección' },
+        { value: 'bordado', label: '🧵 Bordado' },
+        { value: 'sublimacion', label: '🌈 Sublimación' },
+        { value: 'corte', label: '✂️ Corte' },
+        { value: 'acabado', label: '✨ Acabado' },
+    ],
+};
+
+// Modal para agregar evento manual
+interface AgregarEventoModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    tipo: 'movimiento' | 'rendicion' | 'produccion';
+    fecha: string;
+    clientes: Record<string, any>;
+    proveedores: Record<string, any>;
+    onSubmit: (data: {
+        categoria: string;
+        subtipo: string;
+        fecha: string;
+        cliente?: string;
+        proveedor?: string;
+        descripcion: string;
+        monto?: number;
+        observaciones?: string;
+    }) => Promise<void>;
+}
+
+function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onSubmit }: AgregarEventoModalProps) {
+    const [categoria, setCategoria] = useState('cotizacion');
+    const [subtipo, setSubtipo] = useState('cotizacion_nueva');
+    const [formData, setFormData] = useState({
+        fecha,
+        cliente: '',
+        proveedor: '',
+        descripcion: '',
+        monto: 0,
+        observaciones: '',
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Reset form when opening
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(prev => ({ ...prev, fecha }));
+        }
+    }, [isOpen, fecha]);
+
+    // Update subtipo when categoria changes
+    useEffect(() => {
+        const subtipos = SUBTIPOS_EVENTO[categoria];
+        if (subtipos && subtipos.length > 0) {
+            setSubtipo(subtipos[0].value);
+        }
+    }, [categoria]);
+
+    if (!isOpen) return null;
+
+    const currentCategoria = CATEGORIAS_EVENTO.find(c => c.value === categoria);
+    const subtipos = SUBTIPOS_EVENTO[categoria] || [];
+    const clientesList = Object.entries(clientes).map(([key, c]: [string, any]) => ({
+        id: key,
+        display: c.nombre_comercial || c.razon_social || key
+    }));
+    const proveedoresList = Object.keys(proveedores);
+
+    const handleSubmit = async () => {
+        if (!formData.descripcion.trim()) {
+            alert('Por favor ingresa una descripción');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await onSubmit({ ...formData, categoria, subtipo });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return createPortal(
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-900 border border-green-500/30 rounded-2xl w-full max-w-lg shadow-2xl">
+                {/* Header */}
+                <div className={`bg-gradient-to-r ${currentCategoria?.color || 'from-green-500 to-emerald-500'} p-4 rounded-t-2xl`}>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-white">➕ Agregar Evento</h2>
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <p className="text-white/70 text-xs mt-1">{fecha}</p>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-3">
+                    {/* Categoría - Chips */}
+                    <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">Tipo de Evento</label>
+                        <div className="flex flex-wrap gap-2">
+                            {CATEGORIAS_EVENTO.map(cat => (
+                                <button
+                                    key={cat.value}
+                                    onClick={() => setCategoria(cat.value)}
+                                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                        categoria === cat.value
+                                            ? `bg-gradient-to-r ${cat.color} text-white`
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {cat.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Subtipo */}
+                    {subtipos.length > 0 && (
+                        <div>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Subtipo</label>
+                            <input
+                                type="text"
+                                list={`subtipos-${categoria}-list`}
+                                value={subtipo}
+                                onChange={(e) => setSubtipo(e.target.value)}
+                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                placeholder="Tipo de operación"
+                            />
+                            <datalist id={`subtipos-${categoria}-list`}>
+                                {subtipos.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            </datalist>
+                        </div>
+                    )}
+
+                    {/* Cliente y Proveedor */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
+                            <input
+                                type="text"
+                                list="clientes-add-list"
+                                value={formData.cliente}
+                                onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
+                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                placeholder="Nombre del cliente"
+                            />
+                            <datalist id="clientes-add-list">
+                                {clientesList.map(c => <option key={c.id} value={c.display} />)}
+                            </datalist>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Proveedor</label>
+                            <input
+                                type="text"
+                                list="proveedores-add-list"
+                                value={formData.proveedor}
+                                onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                placeholder="Nombre proveedor"
+                            />
+                            <datalist id="proveedores-add-list">
+                                {proveedoresList.map(p => <option key={p} value={p} />)}
+                            </datalist>
+                        </div>
+                    </div>
+
+                    {/* Descripción */}
+                    <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Descripción *</label>
+                        <input
+                            type="text"
+                            value={formData.descripcion}
+                            onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
+                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                            placeholder="Descripción del evento"
+                        />
+                    </div>
+
+                    {/* Monto */}
+                    <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monto (S/.)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={formData.monto || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
+                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                            placeholder="0.00"
+                        />
+                    </div>
+
+                    {/* Observaciones */}
+                    <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Observaciones</label>
+                        <textarea
+                            value={formData.observaciones}
+                            onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none resize-none placeholder-gray-400"
+                            rows={2}
+                            placeholder="Notas adicionales..."
+                        />
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className={`flex-1 py-2 bg-gradient-to-r ${currentCategoria?.color || 'from-green-500 to-emerald-500'} hover:opacity-90 disabled:opacity-50 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2`}
+                    >
+                        {isSubmitting ? (
+                            <span className="animate-spin">⏳</span>
+                        ) : (
+                            <>
+                                <span>➕</span>
+                                Crear
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
 // Componente de Calendario Premium - Inspirado en HeroUI y mejores prácticas
 interface CalendarioProps {
     fechasConEventos: Record<string, { movimientos: number; rendiciones: number; producciones: number; totalMonto: number }>;
@@ -175,16 +441,16 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
 
     return (
         <div
-            className="w-full max-w-2xl mx-auto rounded-3xl overflow-hidden shadow-2xl"
+            className="w-full max-w-4xl mx-auto rounded-3xl overflow-hidden shadow-2xl"
             style={{
-                background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.98) 0%, rgba(31, 41, 55, 0.98) 100%)',
-                border: '1px solid rgba(75, 85, 99, 0.4)',
-                backdropFilter: 'blur(20px)'
+                background: 'linear-gradient(145deg, #1e293b 0%, #334155 100%)',
+                border: '2px solid rgba(100, 116, 139, 0.5)',
+                minWidth: '700px'
             }}
         >
             {/* Header Premium */}
             <div
-                className="relative p-6 pb-4"
+                className="relative p-8 pb-6"
                 style={{
                     background: 'linear-gradient(135deg, #0891b2 0%, #6366f1 50%, #8b5cf6 100%)'
                 }}
@@ -240,7 +506,7 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                         onClick={() => setShowMonthPicker(!showMonthPicker)}
                         className="text-center group"
                     >
-                        <h2 className="text-3xl font-black text-white tracking-tight group-hover:scale-105 transition-transform">
+                        <h2 className="text-4xl font-black text-white tracking-tight group-hover:scale-105 transition-transform">
                             {MESES[currentMonth.getMonth()]}
                         </h2>
                     </button>
@@ -256,18 +522,18 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                 </div>
 
                 {/* Estadísticas del mes */}
-                <div className="relative flex justify-center gap-6 mt-4 pt-4 border-t border-white/20">
+                <div className="relative flex justify-center gap-10 mt-5 pt-5 border-t border-white/20">
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-white">{monthStats.diasConEventos}</div>
-                        <div className="text-xs text-white/70 uppercase tracking-wider">Días activos</div>
+                        <div className="text-3xl font-bold text-white">{monthStats.diasConEventos}</div>
+                        <div className="text-sm text-white/70 uppercase tracking-wider">Días activos</div>
                     </div>
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-white">{monthStats.totalEventos}</div>
-                        <div className="text-xs text-white/70 uppercase tracking-wider">Eventos</div>
+                        <div className="text-3xl font-bold text-white">{monthStats.totalEventos}</div>
+                        <div className="text-sm text-white/70 uppercase tracking-wider">Eventos</div>
                     </div>
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-amber-300">S/. {monthStats.totalMonto.toFixed(0)}</div>
-                        <div className="text-xs text-white/70 uppercase tracking-wider">Total</div>
+                        <div className="text-3xl font-bold text-amber-300">S/. {monthStats.totalMonto.toFixed(0)}</div>
+                        <div className="text-sm text-white/70 uppercase tracking-wider">Total</div>
                     </div>
                 </div>
 
@@ -295,30 +561,30 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
             </div>
 
             {/* Cuerpo del calendario */}
-            <div className="p-6">
+            <div className="p-8">
                 {/* Botón de hoy */}
                 <button
                     onClick={goToToday}
-                    className="w-full mb-5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2"
+                    className="w-full mb-6 py-4 px-6 rounded-xl font-bold text-base transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02]"
                     style={{
-                        background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)',
-                        border: '1px solid rgba(6, 182, 212, 0.3)',
-                        color: '#22d3ee'
+                        background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%)',
+                        border: '2px solid rgba(34, 211, 238, 0.6)',
+                        color: '#67e8f9'
                     }}
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     Ir al día de hoy
                 </button>
 
                 {/* Días de la semana */}
-                <div className="grid grid-cols-7 gap-2 mb-3">
+                <div className="grid grid-cols-7 gap-3 mb-4">
                     {DIAS_SEMANA.map((dia, idx) => (
                         <div
                             key={dia}
-                            className={`text-center text-xs font-bold uppercase tracking-wider py-2 rounded-lg ${
-                                idx === 0 || idx === 6 ? 'text-rose-400/70' : 'text-gray-500'
+                            className={`text-center text-sm font-bold uppercase tracking-wider py-3 rounded-lg ${
+                                idx === 0 || idx === 6 ? 'text-rose-300' : 'text-slate-300'
                             }`}
                         >
                             {dia}
@@ -327,7 +593,7 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                 </div>
 
                 {/* Grilla de días */}
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 gap-3">
                     {days.map((dayInfo, index) => {
                         const eventos = getEventIndicators(dayInfo.date);
                         const isSelected = selectedDate === dayInfo.date;
@@ -339,22 +605,22 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                             <button
                                 key={index}
                                 onClick={() => {
-                                    if (hasEvents) {
+                                    if (dayInfo.isCurrentMonth) {
                                         onSelectDate(dayInfo.date);
                                         onClose?.();
                                     }
                                 }}
                                 onMouseEnter={() => setHoveredDate(dayInfo.date)}
                                 onMouseLeave={() => setHoveredDate(null)}
-                                disabled={!hasEvents && dayInfo.isCurrentMonth}
+                                disabled={!dayInfo.isCurrentMonth}
                                 className={`
-                                    relative h-14 rounded-xl flex flex-col items-center justify-center
+                                    relative h-20 rounded-xl flex flex-col items-center justify-center
                                     transition-all duration-200 group
                                     ${!dayInfo.isCurrentMonth ? 'opacity-30' : ''}
                                     ${isSelected
-                                        ? 'scale-110 z-10'
-                                        : hasEvents
-                                            ? 'hover:scale-105 cursor-pointer'
+                                        ? 'scale-105 z-10'
+                                        : dayInfo.isCurrentMonth
+                                            ? 'hover:scale-102 cursor-pointer'
                                             : 'cursor-default'
                                     }
                                 `}
@@ -363,16 +629,20 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                                         ? 'linear-gradient(135deg, #0891b2 0%, #6366f1 100%)'
                                         : hasEvents
                                             ? isHovered
-                                                ? 'rgba(75, 85, 99, 0.6)'
-                                                : 'rgba(55, 65, 81, 0.4)'
-                                            : 'transparent',
+                                                ? 'rgba(100, 116, 139, 0.7)'
+                                                : 'rgba(71, 85, 105, 0.6)'
+                                            : dayInfo.isCurrentMonth && isHovered
+                                                ? 'rgba(100, 116, 139, 0.4)'
+                                                : 'rgba(51, 65, 85, 0.5)',
                                     border: isSelected
-                                        ? '2px solid rgba(34, 211, 238, 0.6)'
+                                        ? '2px solid rgba(34, 211, 238, 0.8)'
                                         : dayInfo.isToday
-                                            ? '2px solid rgba(251, 191, 36, 0.6)'
+                                            ? '2px solid rgba(251, 191, 36, 0.8)'
                                             : hasEvents
-                                                ? '1px solid rgba(75, 85, 99, 0.5)'
-                                                : '1px solid transparent',
+                                                ? '2px solid rgba(100, 116, 139, 0.6)'
+                                                : dayInfo.isCurrentMonth
+                                                    ? '1px solid rgba(100, 116, 139, 0.4)'
+                                                    : '1px solid transparent',
                                     boxShadow: isSelected
                                         ? '0 8px 25px rgba(6, 182, 212, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3)'
                                         : hasEvents && isHovered
@@ -381,16 +651,18 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                                 }}
                             >
                                 <span
-                                    className={`text-base font-semibold ${
+                                    className={`text-lg font-bold ${
                                         isSelected
                                             ? 'text-white'
                                             : dayInfo.isToday
-                                                ? 'text-amber-400'
+                                                ? 'text-amber-300 font-black'
                                                 : hasEvents
                                                     ? 'text-white'
                                                     : isWeekend && dayInfo.isCurrentMonth
-                                                        ? 'text-rose-400/50'
-                                                        : 'text-gray-600'
+                                                        ? 'text-rose-300'
+                                                        : dayInfo.isCurrentMonth
+                                                            ? 'text-slate-200'
+                                                            : 'text-slate-500'
                                     }`}
                                 >
                                     {dayInfo.day}
@@ -398,24 +670,24 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
 
                                 {/* Indicadores de eventos */}
                                 {hasEvents && (
-                                    <div className="flex gap-1 mt-1">
+                                    <div className="flex gap-1.5 mt-1.5">
                                         {eventos.movimientos > 0 && (
                                             <div
-                                                className="w-2 h-2 rounded-full"
+                                                className="w-2.5 h-2.5 rounded-full"
                                                 style={{ backgroundColor: '#3b82f6' }}
                                                 title={`${eventos.movimientos} movimientos`}
                                             />
                                         )}
                                         {eventos.rendiciones > 0 && (
                                             <div
-                                                className="w-2 h-2 rounded-full"
+                                                className="w-2.5 h-2.5 rounded-full"
                                                 style={{ backgroundColor: '#f97316' }}
                                                 title={`${eventos.rendiciones} rendiciones`}
                                             />
                                         )}
                                         {eventos.producciones > 0 && (
                                             <div
-                                                className="w-2 h-2 rounded-full"
+                                                className="w-2.5 h-2.5 rounded-full"
                                                 style={{ backgroundColor: '#8b5cf6' }}
                                                 title={`${eventos.producciones} producciones`}
                                             />
@@ -432,63 +704,72 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                     })}
                 </div>
 
-                {/* Preview del día hover/seleccionado */}
-                {previewData && previewDate && (
-                    <div
-                        className="mt-5 p-4 rounded-xl"
-                        style={{
-                            background: 'linear-gradient(135deg, rgba(55, 65, 81, 0.5) 0%, rgba(31, 41, 55, 0.5) 100%)',
-                            border: '1px solid rgba(75, 85, 99, 0.5)'
-                        }}
-                    >
-                        <div className="flex items-center justify-between mb-3">
-                            <div>
-                                <p className="text-white font-semibold">
-                                    {DIAS_SEMANA_FULL[new Date(previewDate + 'T12:00:00').getDay()]}
-                                </p>
-                                <p className="text-gray-400 text-sm">{previewDate}</p>
+                {/* Preview del día hover/seleccionado - siempre visible */}
+                <div
+                    className="mt-5 p-4 rounded-xl min-h-[100px]"
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(55, 65, 81, 0.5) 0%, rgba(31, 41, 55, 0.5) 100%)',
+                        border: '1px solid rgba(75, 85, 99, 0.5)'
+                    }}
+                >
+                    {previewData && previewDate ? (
+                        <>
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <p className="text-white font-semibold">
+                                        {DIAS_SEMANA_FULL[new Date(previewDate + 'T12:00:00').getDay()]}
+                                    </p>
+                                    <p className="text-slate-400 text-sm">{previewDate}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-2xl font-bold text-amber-400">S/. {previewData.totalMonto.toFixed(2)}</p>
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-2xl font-bold text-amber-400">S/. {previewData.totalMonto.toFixed(2)}</p>
+                            <div className="flex gap-4">
+                                {previewData.movimientos > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
+                                        <span>🚚</span>
+                                        <span className="text-blue-400 font-medium">{previewData.movimientos}</span>
+                                    </div>
+                                )}
+                                {previewData.rendiciones > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(249, 115, 22, 0.2)' }}>
+                                        <span>💰</span>
+                                        <span className="text-orange-400 font-medium">{previewData.rendiciones}</span>
+                                    </div>
+                                )}
+                                {previewData.producciones > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)' }}>
+                                        <span>🏭</span>
+                                        <span className="text-violet-400 font-medium">{previewData.producciones}</span>
+                                    </div>
+                                )}
+                                {previewData.movimientos === 0 && previewData.rendiciones === 0 && previewData.producciones === 0 && (
+                                    <p className="text-slate-500 text-sm">Sin eventos este día</p>
+                                )}
                             </div>
+                        </>
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-slate-500">
+                            <p>Pasa el mouse sobre un día para ver detalles</p>
                         </div>
-                        <div className="flex gap-4">
-                            {previewData.movimientos > 0 && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
-                                    <span>🚚</span>
-                                    <span className="text-blue-400 font-medium">{previewData.movimientos}</span>
-                                </div>
-                            )}
-                            {previewData.rendiciones > 0 && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(249, 115, 22, 0.2)' }}>
-                                    <span>💰</span>
-                                    <span className="text-orange-400 font-medium">{previewData.rendiciones}</span>
-                                </div>
-                            )}
-                            {previewData.producciones > 0 && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)' }}>
-                                    <span>🏭</span>
-                                    <span className="text-violet-400 font-medium">{previewData.producciones}</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* Leyenda */}
-                <div className="mt-5 pt-4 border-t border-gray-700/50">
-                    <div className="flex items-center justify-center gap-6 text-xs">
+                <div className="mt-6 pt-5 border-t border-slate-500/50">
+                    <div className="flex items-center justify-center gap-8 text-sm">
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#3b82f6' }}></div>
-                            <span className="text-gray-400">Movimientos</span>
+                            <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#3b82f6' }}></div>
+                            <span className="text-slate-300 font-medium">Movimientos</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f97316' }}></div>
-                            <span className="text-gray-400">Rendiciones</span>
+                            <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#f97316' }}></div>
+                            <span className="text-slate-300 font-medium">Rendiciones</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></div>
-                            <span className="text-gray-400">Producción</span>
+                            <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></div>
+                            <span className="text-slate-300 font-medium">Producción</span>
                         </div>
                     </div>
                 </div>
@@ -1059,7 +1340,11 @@ function PKLEventoAcordeon({
     onTransferCost,
     onUnlinkEvento,
     onMergeEventoToTask,
-    onAddTask
+    onAddTask,
+    onEditPKL,
+    onDeletePKL,
+    onLinkToOtherPKL,
+    allPKLs
 }: {
     pkl: PKL;
     selectedDate: string;
@@ -1074,7 +1359,13 @@ function PKLEventoAcordeon({
     onUnlinkEvento?: (tipo: 'movimiento' | 'rendicion' | 'produccion', eventoId: string) => void;
     onMergeEventoToTask?: (evento: { id: string; tipo: 'movimiento' | 'rendicion' | 'produccion'; monto?: number }, task: TaskPKL) => void;
     onAddTask?: (pklId: string) => void;
+    onEditPKL?: (pkl: PKL) => void;
+    onDeletePKL?: (pklId: string) => void;
+    onLinkToOtherPKL?: (sourcePKL: PKL, targetPKLId: string, fecha: string) => void;
+    allPKLs?: PKL[];
 }) {
+    const [showLinkInput, setShowLinkInput] = useState(false);
+    const [linkSearch, setLinkSearch] = useState('');
     const estadoInfo = ESTADOS_PKL.find(e => e.value === pkl.estado.actual);
     const tipoInfo = TIPOS_OPERACION_PKL.find(t => t.value === pkl.clasificacion?.tipo_operacion);
     const clienteLogo = pkl.cliente?.nombre ? getClienteLogo(pkl.cliente.nombre) : null;
@@ -1178,47 +1469,76 @@ function PKLEventoAcordeon({
     }, 0) + eventosHuerfanos.reduce((sum, e) => sum + (e.monto || 0), 0);
 
     return (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden hover:border-cyan-500/50 transition-colors">
+        <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-cyan-500/50 transition-colors group/pkl">
             {/* Header del PKL - clickeable para expandir/colapsar */}
-            <button
-                onClick={() => {
-                    setExpandedPKLs(prev => {
-                        const next = new Set(prev);
-                        if (next.has(pkl.pkl_id)) {
-                            next.delete(pkl.pkl_id);
-                        } else {
-                            next.add(pkl.pkl_id);
-                        }
-                        return next;
-                    });
-                }}
-                className="w-full p-4 text-left hover:bg-gray-800/80 transition-colors"
-            >
+            <div className="w-full p-4 text-left hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors">
                 <div className="flex items-start gap-3">
-                    {/* Indicador de expandir */}
-                    <div className={`w-6 h-6 rounded flex items-center justify-center transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                    {/* Indicador de expandir - clickeable */}
+                    <button
+                        onClick={() => {
+                            setExpandedPKLs(prev => {
+                                const next = new Set(prev);
+                                if (next.has(pkl.pkl_id)) {
+                                    next.delete(pkl.pkl_id);
+                                } else {
+                                    next.add(pkl.pkl_id);
+                                }
+                                return next;
+                            });
+                        }}
+                        className={`w-6 h-6 rounded flex items-center justify-center transition-transform hover:bg-gray-200 dark:hover:bg-gray-600 ${isExpanded ? 'rotate-90' : ''}`}
+                    >
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
-                    </div>
+                    </button>
 
-                    {/* Logo del cliente */}
-                    {clienteLogo ? (
-                        <img src={clienteLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded-lg object-cover" />
-                    ) : (
-                        <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold text-sm">
-                            {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
-                        </div>
-                    )}
+                    {/* Logo del cliente - clickeable para expandir */}
+                    <button
+                        onClick={() => {
+                            setExpandedPKLs(prev => {
+                                const next = new Set(prev);
+                                if (next.has(pkl.pkl_id)) {
+                                    next.delete(pkl.pkl_id);
+                                } else {
+                                    next.add(pkl.pkl_id);
+                                }
+                                return next;
+                            });
+                        }}
+                        className="flex-shrink-0"
+                    >
+                        {clienteLogo ? (
+                            <img src={clienteLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded-lg object-cover" />
+                        ) : (
+                            <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold text-sm">
+                                {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
+                            </div>
+                        )}
+                    </button>
 
-                    <div className="flex-1 min-w-0">
+                    {/* Info principal - clickeable para expandir */}
+                    <button
+                        onClick={() => {
+                            setExpandedPKLs(prev => {
+                                const next = new Set(prev);
+                                if (next.has(pkl.pkl_id)) {
+                                    next.delete(pkl.pkl_id);
+                                } else {
+                                    next.add(pkl.pkl_id);
+                                }
+                                return next;
+                            });
+                        }}
+                        className="flex-1 min-w-0 text-left"
+                    >
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-white font-medium truncate">
+                            <span className="text-gray-900 dark:text-white font-medium truncate">
                                 {pkl.origen.descripcion_inicial}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 mt-1 text-xs">
-                            <span className="text-gray-400">{pkl.cliente.nombre}</span>
+                            <span className="text-gray-600 dark:text-gray-400">{pkl.cliente.nombre}</span>
                             {tipoInfo && (
                                 <>
                                     <span className="text-gray-600">•</span>
@@ -1237,7 +1557,7 @@ function PKLEventoAcordeon({
                                 {totalItemsDelDia} {totalItemsDelDia === 1 ? 'actividad' : 'actividades'} este día
                             </span>
                         </div>
-                    </div>
+                    </button>
 
                     {/* Monto del día */}
                     {montoDelDia > 0 && (
@@ -1247,12 +1567,168 @@ function PKLEventoAcordeon({
                             </span>
                         </div>
                     )}
+
+                    {/* Botones de acción - Vincular/Editar/Eliminar PKL */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover/pkl:opacity-100 transition-all">
+                        {/* Vincular a otro PKL */}
+                        {allPKLs && allPKLs.length > 1 && (
+                            <>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowLinkInput(!showLinkInput);
+                                        setLinkSearch('');
+                                    }}
+                                    className={`p-1.5 rounded transition-colors ${showLinkInput ? 'bg-purple-500/30 text-purple-400' : 'hover:bg-purple-500/20 text-gray-400 hover:text-purple-400'}`}
+                                    title="Vincular a otro PKL"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    </svg>
+                                </button>
+                                {/* Modal de vincular - usando portal */}
+                                {showLinkInput && createPortal(
+                                    <div
+                                        className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+                                        onClick={() => setShowLinkInput(false)}
+                                    >
+                                        <div
+                                            className="bg-white dark:bg-gray-800 border-2 border-purple-400 dark:border-purple-600 rounded-xl shadow-2xl w-full max-w-md"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <div className="flex items-center justify-between p-4 border-b border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 rounded-t-xl">
+                                                <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">🔗 Vincular a otro PKL</span>
+                                                <button
+                                                    onClick={() => setShowLinkInput(false)}
+                                                    className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-lg"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                            <div className="p-4">
+                                                <input
+                                                    type="text"
+                                                    value={linkSearch}
+                                                    onChange={(e) => setLinkSearch(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Escape') {
+                                                            setShowLinkInput(false);
+                                                        }
+                                                    }}
+                                                    placeholder="Escribe número o nombre... (ej: 2)"
+                                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border-2 border-purple-300 dark:border-purple-600 rounded-lg text-gray-900 dark:text-white text-base focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                    autoFocus
+                                                />
+                                                {/* Lista filtrada de PKLs */}
+                                                <div className="mt-3 max-h-[300px] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                                                    {(() => {
+                                                        const searchLower = linkSearch.toLowerCase().trim();
+                                                        const searchNum = linkSearch.replace(/\D/g, '');
+
+                                                        const filteredPKLs = allPKLs
+                                                            .filter(p => p.pkl_id !== pkl.pkl_id && p.estado.actual !== 'cancelado')
+                                                            .filter(p => {
+                                                                if (!searchLower) return true;
+                                                                const pklNum = p.pkl_id.split('-')[2];
+                                                                // Buscar por número (ej: "2" encuentra "0002")
+                                                                if (searchNum && pklNum.endsWith(searchNum.padStart(pklNum.length, '0').slice(-pklNum.length))) {
+                                                                    return true;
+                                                                }
+                                                                if (searchNum && parseInt(pklNum, 10).toString() === searchNum) {
+                                                                    return true;
+                                                                }
+                                                                // Buscar por ID completo o descripción
+                                                                return p.pkl_id.toLowerCase().includes(searchLower) ||
+                                                                       p.origen.descripcion_inicial.toLowerCase().includes(searchLower) ||
+                                                                       p.cliente.nombre.toLowerCase().includes(searchLower);
+                                                            })
+                                                            .sort((a, b) => {
+                                                                // Priorizar coincidencia exacta por número
+                                                                if (searchNum) {
+                                                                    const aNum = parseInt(a.pkl_id.split('-')[2], 10);
+                                                                    const bNum = parseInt(b.pkl_id.split('-')[2], 10);
+                                                                    const targetNum = parseInt(searchNum, 10);
+                                                                    if (aNum === targetNum) return -1;
+                                                                    if (bNum === targetNum) return 1;
+                                                                }
+                                                                return b.pkl_id.localeCompare(a.pkl_id);
+                                                            })
+                                                            .slice(0, 10);
+
+                                                        if (filteredPKLs.length === 0) {
+                                                            return (
+                                                                <div className="p-4 text-center text-gray-500">
+                                                                    No se encontraron PKLs con "{linkSearch}"
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        return filteredPKLs.map(targetPKL => (
+                                                            <button
+                                                                key={targetPKL.pkl_id}
+                                                                onClick={() => {
+                                                                    setShowLinkInput(false);
+                                                                    if (confirm(`¿Vincular "${pkl.origen.descripcion_inicial}" como task de ${targetPKL.pkl_id}?\n\nSe creará un task en ${targetPKL.pkl_id} con fecha ${selectedDate}.`)) {
+                                                                        onLinkToOtherPKL?.(pkl, targetPKL.pkl_id, selectedDate);
+                                                                    }
+                                                                }}
+                                                                className="w-full text-left px-4 py-3 hover:bg-purple-100 dark:hover:bg-purple-500/30 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-purple-600 dark:text-purple-400 font-mono text-sm font-bold">{targetPKL.pkl_id}</span>
+                                                                </div>
+                                                                <div className="text-gray-800 dark:text-gray-200 text-sm mt-1">
+                                                                    {targetPKL.origen.descripcion_inicial.substring(0, 50)}{targetPKL.origen.descripcion_inicial.length > 50 ? '...' : ''}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                                    {targetPKL.cliente.nombre}
+                                                                </div>
+                                                            </button>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>,
+                                    document.body
+                                )}
+                            </>
+                        )}
+                        {/* Editar PKL */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEditPKL?.(pkl);
+                            }}
+                            className="p-1.5 rounded hover:bg-cyan-500/20 text-gray-400 hover:text-cyan-400 transition-colors"
+                            title="Editar PKL"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                        {/* Eliminar PKL */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`¿Eliminar PKL "${pkl.pkl_id}"?\n\nEsto eliminará el PKL y todas sus tareas. Esta acción no se puede deshacer.`)) {
+                                    onDeletePKL?.(pkl.pkl_id);
+                                }
+                            }}
+                            className="p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                            title="Eliminar PKL"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-            </button>
+            </div>
 
             {/* Tasks del día (acordeón) */}
             {isExpanded && tasksDelDia.length > 0 && (
-                <div className="border-t border-gray-700 bg-gray-900/50 p-3 space-y-2">
+                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-3 space-y-2">
                     {(() => {
                         // Separar tasks principales de vinculados
                         const tasksPrincipales = tasksDelDia.filter(t => !(t as any).vinculado_a_task_id);
@@ -1274,14 +1750,14 @@ function PKLEventoAcordeon({
                                     key={task.task_id}
                                     className={`flex items-start gap-2 p-2 rounded border group hover:border-cyan-500/30 ${
                                         isVinculado
-                                            ? 'ml-6 bg-purple-900/20 border-purple-500/30 border-l-2 border-l-purple-500'
-                                            : 'bg-gray-800/50 border-gray-700/50'
+                                            ? 'ml-6 bg-purple-100 dark:bg-purple-900/20 border-purple-500/30 border-l-2 border-l-purple-500'
+                                            : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/50'
                                     }`}
                                 >
                                     <span className="text-lg">{isVinculado ? '↳' : emoji}</span>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className={`text-sm ${isVinculado ? 'text-purple-300' : 'text-white'}`}>
+                                            <span className={`text-sm ${isVinculado ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-white'}`}>
                                                 {isVinculado ? `💸 ${task.nombre}` : task.nombre}
                                             </span>
                                             <span className={`text-[10px] px-1.5 py-0.5 rounded ${
@@ -1412,7 +1888,7 @@ function PKLEventoAcordeon({
                                 <span className="text-lg">{emoji}</span>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-white text-sm">{evento.descripcion}</span>
+                                        <span className="text-gray-900 dark:text-white text-sm">{evento.descripcion}</span>
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
                                             vinculado
                                         </span>
@@ -1460,7 +1936,7 @@ function PKLEventoAcordeon({
                     })}
 
                     {/* Footer con acciones */}
-                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-700/50">
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -2812,13 +3288,16 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
         getClienteLogo,
         createPedido, updatePedido, addPayment,
         updateMovimientoLogistico, updateRendicion, updateEventoProduccion,
+        createMovimientoLogistico, createRendicion, createEventoProduccion,
         createProduccion,
         clientes,
+        proveedores,
         pkls,
         createPKL,
         updatePKL,
         updatePKLTask,
         deletePKLTask,
+        deletePKL,
         createPKLTask,
         pklParaMerge,
         setPKLParaMerge,
@@ -2880,6 +3359,12 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
         pklId: string;
     } | null>(null);
 
+    // Estado para agregar evento manual al día
+    const [addEventoModal, setAddEventoModal] = useState<{
+        isOpen: boolean;
+        tipo: 'movimiento' | 'rendicion' | 'produccion';
+    } | null>(null);
+
     // Resetear PKLs expandidos cuando cambia el día seleccionado
     useEffect(() => {
         setExpandedPKLs(new Set());
@@ -2937,6 +3422,9 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
 
         // Agregar PKLs y sus tasks por fecha
         pkls.forEach(pkl => {
+            // Skip PKLs que fueron vinculados a otro PKL (ahora viven como tasks del padre)
+            if (pkl.parent_pkl_id) return;
+
             const fechasConPKL = new Set<string>();
 
             // 1. Fecha de solicitud del origen
@@ -3022,8 +3510,17 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
         return { movimientos, rendiciones: rendicionesCount, producciones: produccionesCount, montoTotal, dias: fechasOrdenadas.length };
     }, [eventosPorFecha, fechasOrdenadas]);
 
-    // Datos del día seleccionado
-    const diaSeleccionado = selectedDate ? eventosPorFecha[selectedDate] : null;
+    // Datos del día seleccionado (crear grupo vacío si no existe)
+    const diaSeleccionado = selectedDate
+        ? eventosPorFecha[selectedDate] || {
+            movimientos: [],
+            rendiciones: [],
+            producciones: [],
+            pklsDelDia: [],
+            pklTasks: [],
+            totalMonto: 0
+          }
+        : null;
 
     // Toggle selección de evento
     const toggleEventoSelection = (id: string) => {
@@ -3298,11 +3795,20 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                     >
                         ← Volver
                     </button>
-                    <div>
-                        <h1 className="text-3xl font-black">
-                            <span className="text-cyan-400">📅</span> Día a Día
-                        </h1>
-                        <p className="text-gray-500 text-sm">Registro de actividades diarias</p>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setShowCalendar(true)}
+                            className="text-4xl hover:scale-110 transition-transform cursor-pointer"
+                            title="Abrir calendario"
+                        >
+                            📅
+                        </button>
+                        <div>
+                            <h1 className="text-3xl font-black text-gray-800 dark:text-white">
+                                Día a Día
+                            </h1>
+                            <p className="text-gray-500 text-sm">Registro de actividades diarias</p>
+                        </div>
                     </div>
                 </div>
 
@@ -3507,11 +4013,30 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div>
+                                    <div className="flex items-center gap-2">
                                         <h2 className="text-xl font-bold text-white capitalize">
                                             {formatDate(selectedDate)}
                                         </h2>
-                                        <p className="text-gray-500 text-sm">
+                                        {/* Botón de calendario para cambiar fecha */}
+                                        <label className="relative cursor-pointer">
+                                            <div className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 transition-colors">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                            <input
+                                                type="date"
+                                                value={selectedDate}
+                                                onChange={(e) => {
+                                                    if (e.target.value) {
+                                                        setSelectedDate(e.target.value);
+                                                    }
+                                                }}
+                                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                title="Seleccionar otra fecha"
+                                            />
+                                        </label>
+                                        <p className="text-gray-500 text-sm ml-2">
                                             {diaSeleccionado.movimientos.length + diaSeleccionado.rendiciones.length + diaSeleccionado.producciones.length} eventos
                                             {(pendientes.movimientos.length + pendientes.rendiciones.length + pendientes.producciones.length) > 0 && (
                                                 <span className="ml-2 text-yellow-500">
@@ -3536,6 +4061,17 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                             </svg>
                                         </button>
                                     )}
+                                    {/* Botón para agregar evento */}
+                                    <button
+                                        onClick={() => setAddEventoModal({ isOpen: true, tipo: 'movimiento' })}
+                                        className="px-3 py-2 rounded-lg bg-green-500/20 hover:bg-green-500 text-green-400 hover:text-white transition-colors flex items-center gap-2 font-medium text-sm"
+                                        title="Agregar evento al día"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Agregar
+                                    </button>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-amber-400 font-bold text-2xl">
@@ -3697,9 +4233,9 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                                         showToast('Evento desvinculado del PKL', 'success');
                                                     }}
                                                     onMergeEventoToTask={async (evento, task) => {
-                                                        // Agregar el monto del evento al task y desvincular el evento
-                                                        const currentMonto = task.costo ? (typeof task.costo === 'number' ? task.costo : task.costo.monto || 0) : 0;
-                                                        const newMonto = currentMonto + (evento.monto || 0);
+                                                        // El monto del evento REEMPLAZA el monto del task (no suma)
+                                                        // porque el evento representa el gasto real de esa actividad
+                                                        const newMonto = evento.monto || 0;
 
                                                         await updatePKLTask(pkl.pkl_id, task.task_id, {
                                                             costo: { monto: newMonto, moneda: 'PEN' }
@@ -3714,9 +4250,70 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                                             await updateEventoProduccion(evento.id, { pedido_id: null } as any);
                                                         }
 
-                                                        showToast(`Costo de S/.${evento.monto?.toFixed(2)} agregado a "${task.nombre}"`, 'success');
+                                                        showToast(`Costo actualizado a S/.${newMonto.toFixed(2)} en "${task.nombre}"`, 'success');
                                                     }}
                                                     onAddTask={(pklId) => setAddTaskModal({ isOpen: true, pklId })}
+                                                    onEditPKL={(pklToEdit) => {
+                                                        // Navegar a la página del PKL para editar
+                                                        if (onNavigateToPKL) {
+                                                            onNavigateToPKL(pklToEdit.pkl_id);
+                                                        }
+                                                    }}
+                                                    onDeletePKL={async (pklId) => {
+                                                        try {
+                                                            await deletePKL(pklId);
+                                                            showToast(`PKL ${pklId} eliminado`, 'success');
+                                                        } catch (error) {
+                                                            showToast(`Error al eliminar PKL: ${error}`, 'error');
+                                                        }
+                                                    }}
+                                                    allPKLs={pkls}
+                                                    onLinkToOtherPKL={async (sourcePKL, targetPKLId, fecha) => {
+                                                        try {
+                                                            // Crear un task en el PKL destino con los datos del PKL origen
+                                                            const taskId = `TASK-${Date.now()}`;
+                                                            const tipoOp = sourcePKL.clasificacion?.tipo_operacion || 'produccion';
+                                                            const tipoTask = tipoOp.includes('cotizacion') ? 'cotizacion' :
+                                                                            tipoOp.includes('produccion') ? 'produccion' : 'logistica';
+
+                                                            // Calcular monto total de los tasks del PKL origen
+                                                            const montoTotal = (sourcePKL.tasks || []).reduce((sum, t) => {
+                                                                const monto = t.costo ? (typeof t.costo === 'number' ? t.costo : t.costo.monto || 0) : 0;
+                                                                return sum + monto;
+                                                            }, 0);
+
+                                                            await createPKLTask(targetPKLId, {
+                                                                task_id: taskId,
+                                                                tipo: tipoTask as any,
+                                                                nombre: `📎 ${sourcePKL.origen.descripcion_inicial}`,
+                                                                descripcion: `Vinculado desde ${sourcePKL.pkl_id} - Cliente: ${sourcePKL.cliente.nombre}`,
+                                                                estado: 'completado',
+                                                                orden: (pkls.find(p => p.pkl_id === targetPKLId)?.tasks || []).length + 1,
+                                                                responsable: 'Huber',
+                                                                es_happy_path: false,
+                                                                fecha_completado: fecha,
+                                                                costo: montoTotal > 0 ? { monto: montoTotal, moneda: 'PEN' } : undefined,
+                                                                pkl_origen_id: sourcePKL.pkl_id // Guardar referencia al PKL origen
+                                                            } as any);
+
+                                                            // Cerrar el PKL origen como vinculado
+                                                            await updatePKL(sourcePKL.pkl_id, {
+                                                                estado: {
+                                                                    ...sourcePKL.estado,
+                                                                    actual: 'cerrado_ok',
+                                                                    historial: [
+                                                                        ...sourcePKL.estado.historial,
+                                                                        { estado: 'cerrado_ok', fecha: new Date().toISOString(), motivo: `Vinculado a ${targetPKLId}` }
+                                                                    ]
+                                                                },
+                                                                parent_pkl_id: targetPKLId
+                                                            } as any);
+
+                                                            showToast(`✅ Vinculado a ${targetPKLId}`, 'success');
+                                                        } catch (error) {
+                                                            showToast(`Error al vincular: ${error}`, 'error');
+                                                        }
+                                                    }}
                                                 />
                                             ))}
 
@@ -3843,6 +4440,149 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                     onClose={() => setEditModal(null)}
                     tipo={editModal.tipo}
                     eventoId={editModal.id}
+                />
+            )}
+
+            {/* Modal para agregar evento manual */}
+            {addEventoModal && (
+                <AgregarEventoModal
+                    isOpen={addEventoModal.isOpen}
+                    onClose={() => setAddEventoModal(null)}
+                    tipo={addEventoModal.tipo}
+                    fecha={selectedDate || new Date().toISOString().split('T')[0]}
+                    clientes={clientes}
+                    proveedores={proveedores}
+                    onSubmit={async (data) => {
+                        const now = new Date().toISOString();
+                        const id = `${data.categoria.toUpperCase()}-${Date.now()}`;
+
+                        if (data.categoria === 'cotizacion') {
+                            // Cotización crea un PKL con un task inicial para que aparezca en el día
+                            // Calcular el siguiente número de PKL correctamente
+                            const year = new Date().getFullYear();
+                            const existingNumbers = pkls
+                                .filter(p => p.pkl_id.startsWith(`PKL-${year}-`))
+                                .map(p => parseInt(p.pkl_id.split('-')[2], 10))
+                                .filter(n => !isNaN(n));
+                            const maxNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+                            const pklId = `PKL-${year}-${String(maxNum + 1).padStart(4, '0')}`;
+                            const taskId = `TASK-${Date.now()}`;
+                            await createPKL({
+                                pkl_id: pklId,
+                                version: '2.0',
+                                clasificacion: {
+                                    tipo_operacion: 'solo_cotizacion',
+                                    area: 'logistica'
+                                },
+                                cliente: {
+                                    nombre: data.cliente || 'Sin cliente',
+                                    contacto: { nombre: '', telefono: '', email: '' }
+                                },
+                                origen: {
+                                    canal: 'presencial',
+                                    descripcion_inicial: data.descripcion,
+                                    fecha_solicitud: data.fecha
+                                },
+                                productos: [],
+                                proveedores: data.proveedor ? [{
+                                    proveedor_id: `PROV-${Date.now()}`,
+                                    nombre: data.proveedor,
+                                    servicio: data.descripcion
+                                }] : [],
+                                estado: {
+                                    actual: 'cotizado',
+                                    historial: [{
+                                        estado: 'cotizado',
+                                        fecha: now,
+                                        motivo: 'Creado manualmente desde Día a Día'
+                                    }]
+                                },
+                                tasks: [{
+                                    task_id: taskId,
+                                    tipo: 'cotizacion',
+                                    nombre: data.descripcion,
+                                    descripcion: data.observaciones || '',
+                                    estado: 'completado',
+                                    orden: 1,
+                                    responsable: 'Huber',
+                                    es_happy_path: true,
+                                    fecha_completado: data.fecha,
+                                    costo: data.monto ? { monto: data.monto, moneda: 'PEN' } : undefined
+                                }],
+                                eventos_externos: [],
+                                costos: {
+                                    detalle: [],
+                                    moneda: 'PEN'
+                                },
+                                cierre: {
+                                    evidencias: []
+                                },
+                                alertas: {
+                                    dias_sin_actividad: 0,
+                                    umbral_pausa_dias: 7
+                                },
+                                observaciones: data.observaciones,
+                                created_at: `${data.fecha}T12:00:00.000Z`,
+                                updated_at: now
+                            });
+                            showToast(`📋 Cotización creada: ${pklId}`, 'success');
+                        } else if (data.categoria === 'movimiento') {
+                            // Mapear subtipos a tipos válidos
+                            const tipoMovimiento = (['entrega', 'recojo', 'compra', 'traslado', 'solicitud_stock', 'cotizacion', 'coordinacion'].includes(data.subtipo || '')
+                                ? data.subtipo
+                                : 'traslado') as 'entrega' | 'recojo' | 'compra' | 'traslado' | 'solicitud_stock' | 'cotizacion' | 'coordinacion';
+                            await createMovimientoLogistico({
+                                id,
+                                fecha: data.fecha,
+                                tipo: tipoMovimiento,
+                                cliente: data.cliente,
+                                proveedor: data.proveedor,
+                                detalle: { descripcion: data.descripcion },
+                                estado: 'completado',
+                                observaciones: data.observaciones,
+                                costo_movilidad: data.monto || 0,
+                                created_at: now,
+                                updated_at: now
+                            } as any);
+                            showToast('🚚 Movimiento creado', 'success');
+                        } else if (data.categoria === 'rendicion') {
+                            // Mapear subtipos a tipos válidos
+                            const tipoRendicion = (['movilidad', 'adelanto_produccion', 'pago_saldo', 'gasto_extra', 'compra_material', 'caja_diaria'].includes(data.subtipo || '')
+                                ? data.subtipo
+                                : 'gasto_extra') as 'movilidad' | 'adelanto_produccion' | 'pago_saldo' | 'gasto_extra' | 'compra_material' | 'caja_diaria';
+                            await createRendicion({
+                                id,
+                                fecha: data.fecha,
+                                tipo: tipoRendicion,
+                                cliente: data.cliente,
+                                proveedor: data.proveedor,
+                                monto: data.monto || 0,
+                                moneda: 'PEN',
+                                detalle: { concepto: data.descripcion, monto: data.monto || 0, moneda: 'PEN' as const },
+                                estado: 'pagado',
+                                observaciones: data.observaciones,
+                                tiene_comprobante: false,
+                                created_at: now,
+                                updated_at: now
+                            } as any);
+                            showToast('💰 Rendición creada', 'success');
+                        } else if (data.categoria === 'produccion') {
+                            await createEventoProduccion({
+                                id,
+                                fecha: data.fecha,
+                                tipo: 'orden_produccion',
+                                cliente: data.cliente || 'Sin cliente',
+                                proveedor: data.proveedor || 'Sin proveedor',
+                                producto: data.descripcion,
+                                estado: 'completado',
+                                observaciones: data.observaciones,
+                                created_at: now,
+                                updated_at: now
+                            } as any);
+                            showToast('🏭 Producción creada', 'success');
+                        }
+                        setAddEventoModal(null);
+                    }}
                 />
             )}
 
@@ -4416,7 +5156,6 @@ function EditPKLDateModal({ isOpen, pkls, currentDate, onClose, onSave }: {
     return createPortal(
         <div
             className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <div className="liquid-glass liquid-glass-blue rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
                 {/* Header */}
@@ -4568,7 +5307,6 @@ function EditTaskModal({ isOpen: _isOpen, task, pklId, onClose, onSave }: {
     return createPortal(
         <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <div className="bg-gray-900 border border-cyan-500/30 rounded-2xl w-full max-w-lg">
                 {/* Header */}
@@ -4730,7 +5468,6 @@ function AddQuickTaskModal({ isOpen, pklId, selectedDate, onClose, onSave }: {
     return createPortal(
         <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <div className="bg-white dark:bg-gray-900 border border-green-500/30 rounded-2xl w-full max-w-lg shadow-2xl">
                 {/* Header */}
@@ -4911,7 +5648,6 @@ function MergePKLModal({ isOpen, onClose, sourcePklId, pkls, getClienteLogo, onM
     return createPortal(
         <div
             className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <div className="liquid-glass liquid-glass-purple rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}
@@ -5101,7 +5837,6 @@ function ConvertToTaskModal({ isOpen, onClose, eventoTipo, eventoId: _eventoId, 
     return createPortal(
         <div
             className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <div className="liquid-glass liquid-glass-purple rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}
@@ -5311,7 +6046,6 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
     return createPortal(
         <div
             className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <div className="liquid-glass liquid-glass-cyan rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}

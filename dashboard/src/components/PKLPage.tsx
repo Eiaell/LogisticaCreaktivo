@@ -45,6 +45,8 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
     // Filter PKLs
     const filteredPKLs = useMemo(() => {
         return pkls.filter(pkl => {
+            // Excluir PKLs que fueron vinculados a otro PKL (ahora viven como tasks)
+            if (pkl.parent_pkl_id) return false;
             // Estado filter
             if (filterEstado !== 'todos' && pkl.estado.actual !== filterEstado) return false;
             // Tipo filter
@@ -62,14 +64,15 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
         });
     }, [pkls, filterEstado, filterTipo, searchTerm]);
 
-    // Stats
+    // Stats (excluyendo PKLs vinculados a otro)
     const stats = useMemo(() => {
-        const total = pkls.length;
-        const cerrados = pkls.filter(p => p.estado.actual === 'cerrado_ok').length;
-        const enCurso = pkls.filter(p => ['recibido', 'cotizado', 'en_produccion', 'para_recoger'].includes(p.estado.actual)).length;
-        const enPausa = pkls.filter(p => p.estado.actual === 'en_pausa').length;
-        const totalCosto = pkls.reduce((sum, p) => sum + calcularCostoTotalPKL(p), 0);
-        const totalTasks = pkls.reduce((sum, p) => sum + p.tasks.length, 0);
+        const pklsActivos = pkls.filter(p => !p.parent_pkl_id);
+        const total = pklsActivos.length;
+        const cerrados = pklsActivos.filter(p => p.estado.actual === 'cerrado_ok').length;
+        const enCurso = pklsActivos.filter(p => ['recibido', 'cotizado', 'en_produccion', 'para_recoger'].includes(p.estado.actual)).length;
+        const enPausa = pklsActivos.filter(p => p.estado.actual === 'en_pausa').length;
+        const totalCosto = pklsActivos.reduce((sum, p) => sum + calcularCostoTotalPKL(p), 0);
+        const totalTasks = pklsActivos.reduce((sum, p) => sum + (p.tasks || []).length, 0);
         return { total, cerrados, enCurso, enPausa, totalCosto, totalTasks };
     }, [pkls]);
 
@@ -252,7 +255,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                                                         {tipoConfig.label}
                                                     </span>
                                                     <span className="text-gray-500">
-                                                        {pkl.tasks.length} tasks | S/ {calcularCostoTotalPKL(pkl).toFixed(2)}
+                                                        {(pkl.tasks || []).length} tasks | S/ {calcularCostoTotalPKL(pkl).toFixed(2)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -536,8 +539,8 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         }`}
                     >
                         {tab === 'overview' && 'Resumen'}
-                        {tab === 'tasks' && `Tasks (${pkl.tasks.length})`}
-                        {tab === 'eventos' && `Eventos (${pkl.eventos_externos.length})`}
+                        {tab === 'tasks' && `Tasks (${(pkl.tasks || []).length})`}
+                        {tab === 'eventos' && `Eventos (${(pkl.eventos_externos || []).length})`}
                     </button>
                 ))}
             </div>
@@ -1360,8 +1363,8 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
     const [editingCostoIndex, setEditingCostoIndex] = useState<number | null>(null);
     const [costoForm, setCostoForm] = useState({ concepto: '', monto: '', incluye_igv: false });
 
-    const tasksCompletados = pkl.tasks.filter(t => t.estado === 'completado').length;
-    const tasksTotal = pkl.tasks.length;
+    const tasksCompletados = (pkl.tasks || []).filter(t => t.estado === 'completado').length;
+    const tasksTotal = (pkl.tasks || []).length;
     const progreso = tasksTotal > 0 ? (tasksCompletados / tasksTotal) * 100 : 0;
 
     // Calcular precios de cotización automáticamente
@@ -1450,7 +1453,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
 
     const handleSaveProducto = () => {
         if (!editingProductoId) return;
-        const updated = pkl.productos.map(p =>
+        const updated = (pkl.productos || []).map(p =>
             p.producto_id === editingProductoId
                 ? { ...p, tipo: productoForm.tipo, cantidad: productoForm.cantidad ? parseInt(productoForm.cantidad) : undefined, descripcion: productoForm.descripcion }
                 : p
@@ -1461,7 +1464,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
     };
 
     const handleDeleteProducto = (productoId: string) => {
-        onUpdate({ productos: pkl.productos.filter(p => p.producto_id !== productoId) } as any);
+        onUpdate({ productos: (pkl.productos || []).filter(p => p.producto_id !== productoId) } as any);
     };
 
     // Proveedor handlers
@@ -1573,7 +1576,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             notas: proveedorForm.cotizacion_notas.trim() || undefined
         } : undefined;
 
-        const updated = pkl.proveedores.map(p =>
+        const updated = (pkl.proveedores || []).map(p =>
             p.proveedor_id === editingProveedorId
                 ? {
                     ...p,
@@ -1624,7 +1627,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
     };
 
     const handleDeleteProveedor = (proveedorId: string) => {
-        onUpdate({ proveedores: pkl.proveedores.filter(p => p.proveedor_id !== proveedorId) } as any);
+        onUpdate({ proveedores: (pkl.proveedores || []).filter(p => p.proveedor_id !== proveedorId) } as any);
     };
 
     const handleSelectProveedorFromDB = (prov: typeof proveedoresDB[string]) => {
@@ -1640,10 +1643,10 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
 
     // Marcar/desmarcar proveedor como elegido
     const handleToggleElegido = async (proveedorId: string) => {
-        const proveedor = pkl.proveedores.find(p => p.proveedor_id === proveedorId);
+        const proveedor = (pkl.proveedores || []).find(p => p.proveedor_id === proveedorId);
         const nuevoEstadoElegido = proveedor ? !proveedor.elegido : false;
 
-        const updated = pkl.proveedores.map(p => ({
+        const updated = (pkl.proveedores || []).map(p => ({
             ...p,
             elegido: p.proveedor_id === proveedorId ? nuevoEstadoElegido : p.elegido
         }));
@@ -1694,7 +1697,8 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             monto: parseFloat(costoForm.monto) || 0,
             incluye_igv: costoForm.incluye_igv
         };
-        const newDetalle = [...pkl.costos.detalle, newCosto];
+        const currentDetalle = pkl.costos?.detalle || [];
+        const newDetalle = [...currentDetalle, newCosto];
         const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
         onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
         setCostoForm({ concepto: '', monto: '', incluye_igv: false });
@@ -1702,14 +1706,16 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
     };
 
     const handleEditCosto = (index: number) => {
-        const costo = pkl.costos.detalle[index];
+        const costo = (pkl.costos?.detalle || [])[index];
+        if (!costo) return;
         setEditingCostoIndex(index);
         setCostoForm({ concepto: costo.concepto, monto: costo.monto.toString(), incluye_igv: costo.incluye_igv || false });
     };
 
     const handleSaveCosto = () => {
         if (editingCostoIndex === null) return;
-        const newDetalle = [...pkl.costos.detalle];
+        const currentDetalle = pkl.costos?.detalle || [];
+        const newDetalle = [...currentDetalle];
         newDetalle[editingCostoIndex] = {
             ...newDetalle[editingCostoIndex],
             concepto: costoForm.concepto,
@@ -1723,7 +1729,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
     };
 
     const handleDeleteCosto = (index: number) => {
-        const newDetalle = pkl.costos.detalle.filter((_, i) => i !== index);
+        const newDetalle = (pkl.costos?.detalle || []).filter((_, i) => i !== index);
         const newTotal = newDetalle.reduce((sum, d) => sum + d.monto, 0);
         onUpdate({ costos: { ...pkl.costos, detalle: newDetalle, total: newTotal } } as any);
     };
@@ -1792,9 +1798,9 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                         </div>
                     )}
 
-                    {pkl.productos.length === 0 ? (
+                    {(pkl.productos || []).length === 0 ? (
                         <div className="text-gray-500 dark:text-gray-600 dark:text-gray-500 italic text-sm py-4 text-center">Sin productos agregados</div>
-                    ) : pkl.productos.map(prod => (
+                    ) : (pkl.productos || []).map(prod => (
                         <div key={prod.producto_id} className="mb-3 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg group hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
                             {editingProductoId === prod.producto_id ? (
                                 <div className="space-y-2">
@@ -2039,9 +2045,9 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                         </div>
                     )}
 
-                    {pkl.proveedores.length === 0 ? (
+                    {(pkl.proveedores || []).length === 0 ? (
                         <div className="text-gray-500 dark:text-gray-600 dark:text-gray-500 italic text-sm py-4 text-center">Sin proveedores asignados</div>
-                    ) : pkl.proveedores.map(prov => (
+                    ) : (pkl.proveedores || []).map(prov => (
                         <div key={prov.proveedor_id} className={`mb-3 p-3 rounded-lg group transition-colors ${
                             prov.elegido
                                 ? 'bg-emerald-500/10 border-2 border-emerald-500/50 hover:bg-emerald-500/20'
@@ -2256,17 +2262,17 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                 {/* Cierre */}
                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
                     <h4 className="text-gray-600 dark:text-gray-400 text-sm mb-3">Cierre</h4>
-                    {pkl.cierre.estado_final ? (
+                    {pkl.cierre?.estado_final ? (
                         <>
                             <div className="text-gray-900 dark:text-white mb-2">
                                 Estado: {getEstadoConfig(pkl.cierre.estado_final).label}
                             </div>
                             <div className="text-gray-800 dark:text-gray-400 text-sm">
-                                Fecha: {pkl.cierre.fecha_cierre || 'N/A'}
+                                Fecha: {pkl.cierre?.fecha_cierre || 'N/A'}
                             </div>
-                            {pkl.cierre.evidencias.length > 0 && (
+                            {(pkl.cierre?.evidencias || []).length > 0 && (
                                 <div className="text-gray-800 dark:text-gray-400 text-sm mt-2">
-                                    Evidencias: {pkl.cierre.evidencias.map(e => e.tipo).join(', ')}
+                                    Evidencias: {(pkl.cierre?.evidencias || []).map(e => e.tipo).join(', ')}
                                 </div>
                             )}
                         </>
@@ -2294,7 +2300,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
 
                     // Filtrar costos del detalle que NO tienen task_id (evitar duplicados)
                     // Los costos con task_id ya se muestran en costosFromTasks
-                    const costosManualDetalle = pkl.costos.detalle.filter(d => !d.task_id);
+                    const costosManualDetalle = (pkl.costos?.detalle || []).filter(d => !d.task_id);
 
                     // Combinar: tasks + costos manuales (sin task_id)
                     const allCostos = [
@@ -2430,7 +2436,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                         {/* Costos manuales del detalle (solo los que NO tienen task_id) */}
                         {costosManualDetalle.map((d, i) => {
                             // Encontrar el índice real en pkl.costos.detalle para edición/eliminación
-                            const realIndex = pkl.costos.detalle.findIndex(det => det.concepto === d.concepto && det.monto === d.monto && !det.task_id);
+                            const realIndex = (pkl.costos?.detalle || []).findIndex(det => det.concepto === d.concepto && det.monto === d.monto && !det.task_id);
                             return (
                             <div key={`manual-${i}`} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 group">
                                 {editingCostoIndex === realIndex ? (
@@ -2566,7 +2572,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
     const handleCreateTask = () => {
         if (!newTaskName.trim()) return;
         onCreateTask({
-            orden: pkl.tasks.length + 1,
+            orden: (pkl.tasks || []).length + 1,
             nombre: newTaskName.trim(),
             descripcion: newTaskDesc.trim() || undefined,
             tipo: newTaskTipo,
@@ -2686,7 +2692,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
             )}
 
             {/* Empty state */}
-            {pkl.tasks.length === 0 && !showNewTask && (
+            {(pkl.tasks || []).length === 0 && !showNewTask && (
                 <div className="text-center py-8 text-gray-500">
                     <div className="text-4xl mb-2">📋</div>
                     <p>No hay tasks en este PKL</p>
@@ -2694,10 +2700,10 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                 </div>
             )}
 
-            {pkl.tasks.map((task, index) => {
+            {(pkl.tasks || []).map((task, index) => {
                 const typeConfig = getTaskTypeConfig(task.tipo);
                 const isCompleted = task.estado === 'completado';
-                const isLast = index === pkl.tasks.length - 1;
+                const isLast = index === (pkl.tasks || []).length - 1;
                 const isEditing = editingTask === task.task_id;
 
                 return (

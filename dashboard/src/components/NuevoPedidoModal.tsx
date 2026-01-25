@@ -10,7 +10,7 @@ interface Props {
     onClose: () => void;
 }
 
-const VENDEDORAS = ['Angélica', 'Johana', 'Natalia', 'Patricia', 'Pati', 'Logística'];
+const EJECUTIVAS = ['Angélica', 'Johana', 'Natalia', 'Giovana'];
 
 // Generate next PKL ID
 function generatePKLId(existingPkls: PKL[]): string {
@@ -388,7 +388,7 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                                 className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none"
                             >
                                 <option value="">Sin asignar</option>
-                                {VENDEDORAS.map(v => (
+                                {EJECUTIVAS.map(v => (
                                     <option key={v} value={v}>{v}</option>
                                 ))}
                             </select>

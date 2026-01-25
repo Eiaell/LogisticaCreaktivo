@@ -366,7 +366,6 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
     return createPortal(
         <div
             className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
             onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
             tabIndex={0}
             ref={(el) => el?.focus()}
