@@ -311,13 +311,13 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
             try {
                 console.log(`🔗 Vinculando evento ${evento.id} (${tipo}) al PKL ${pklId}`);
                 if (tipo === 'movimiento') {
-                    await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
+                    await updateMovimientoLogistico(evento.id, { pkl_id: pklId });
                     console.log(`✅ Movimiento ${evento.id} vinculado a PKL ${pklId}`);
                 } else if (tipo === 'rendicion') {
-                    await updateRendicion(evento.id, { pedido_id: pklId });
+                    await updateRendicion(evento.id, { pkl_id: pklId });
                     console.log(`✅ Rendición ${evento.id} vinculada a PKL ${pklId}`);
                 } else if (tipo === 'produccion') {
-                    await updateEventoProduccion(evento.id, { pedido_id: pklId });
+                    await updateEventoProduccion(evento.id, { pkl_id: pklId });
                     console.log(`✅ Producción ${evento.id} vinculada a PKL ${pklId}`);
                 }
             } catch (updateError) {
@@ -367,8 +367,6 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
         <div
             className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
             onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
-            tabIndex={0}
-            ref={(el) => el?.focus()}
         >
             <div className="liquid-glass liquid-glass-cyan rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}

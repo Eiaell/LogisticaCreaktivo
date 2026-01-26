@@ -9,12 +9,12 @@ import { SincronizarEventoModal } from './SincronizarEventoModal';
 
 // Función para encontrar el PKL vinculado a un evento
 // Optimizada: una sola pasada por todos los PKLs (#10)
-function findPKLForEvent(eventId: string, pkls: PKL[], pedidoId?: string): PKL | null {
-    // Si hay pedido_id explícito, buscar primero por ID exacto (más rápido)
-    if (pedidoId) {
-        const pklByPedidoId = pkls.find(pkl => pkl.pkl_id === pedidoId);
-        if (pklByPedidoId) {
-            return pklByPedidoId;
+function findPKLForEvent(eventId: string, pkls: PKL[], pklId?: string): PKL | null {
+    // Si hay pkl_id explícito, buscar primero por ID exacto (más rápido)
+    if (pklId) {
+        const pklByPklId = pkls.find(pkl => pkl.pkl_id === pklId);
+        if (pklByPklId) {
+            return pklByPklId;
         }
     }
 
@@ -172,13 +172,25 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
     const [nuevoItem, setNuevoItem] = useState({ descripcion: '', cantidad: 1, precio: 0, esPrecioUnitario: true, incluye_igv: false });
 
     // Reset form when opening
+    // Reset form only when modal opens (not when fecha changes during typing)
     useEffect(() => {
         if (isOpen) {
-            setFormData(prev => ({ ...prev, fecha }));
+            setFormData({
+                fecha,
+                cliente: '',
+                proveedor: '',
+                descripcion: '',
+                monto: 0,
+                observaciones: '',
+                incluye_igv: false,
+            });
             setItemsCotizacion([]);
             setNuevoItem({ descripcion: '', cantidad: 1, precio: 0, esPrecioUnitario: true, incluye_igv: false });
+            setCategoria('cotizacion');
+            setSubtipo('cotizacion_nueva');
         }
-    }, [isOpen, fecha]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]); // Only reset when modal opens, not when fecha changes
 
     // Agregar item de cotización
     const handleAgregarItem = () => {
@@ -1584,13 +1596,13 @@ function PKLEventoAcordeon({
     const eventosIdsDelDia = new Set<string>();
     if (eventosDelDia) {
         eventosDelDia.movimientos.forEach(m => {
-            if (m.pedido_id === pkl.pkl_id) eventosIdsDelDia.add(m.id);
+            if (m.pkl_id === pkl.pkl_id) eventosIdsDelDia.add(m.id);
         });
         eventosDelDia.rendiciones.forEach(r => {
-            if (r.pedido_id === pkl.pkl_id) eventosIdsDelDia.add(r.id);
+            if (r.pkl_id === pkl.pkl_id) eventosIdsDelDia.add(r.id);
         });
         eventosDelDia.producciones.forEach(p => {
-            if (p.pedido_id === pkl.pkl_id) eventosIdsDelDia.add(p.id);
+            if (p.pkl_id === pkl.pkl_id) eventosIdsDelDia.add(p.id);
         });
     }
 
@@ -1633,7 +1645,7 @@ function PKLEventoAcordeon({
     const eventosHuerfanos: Array<{ id: string; tipo: 'movimiento' | 'rendicion' | 'produccion'; descripcion: string; monto?: number }> = [];
     if (eventosDelDia) {
         eventosDelDia.movimientos.forEach(m => {
-            if (m.pedido_id === pkl.pkl_id && !taskEventoOrigenIds.has(m.id)) {
+            if (m.pkl_id === pkl.pkl_id && !taskEventoOrigenIds.has(m.id)) {
                 // Construir descripción más completa - usar propiedades correctas del tipo
                 const detalle = m.detalle as { origen?: string; destino?: string; item?: string } || {};
                 const desc = m.observaciones ||
@@ -1643,7 +1655,7 @@ function PKLEventoAcordeon({
             }
         });
         eventosDelDia.rendiciones.forEach(r => {
-            if (r.pedido_id === pkl.pkl_id && !taskEventoOrigenIds.has(r.id)) {
+            if (r.pkl_id === pkl.pkl_id && !taskEventoOrigenIds.has(r.id)) {
                 // Construir descripción más completa - usar propiedades correctas del tipo
                 const detalle = r.detalle as { concepto?: string } || {};
                 const desc = r.observaciones ||
@@ -1654,7 +1666,7 @@ function PKLEventoAcordeon({
             }
         });
         eventosDelDia.producciones.forEach(p => {
-            if (p.pedido_id === pkl.pkl_id && !taskEventoOrigenIds.has(p.id)) {
+            if (p.pkl_id === pkl.pkl_id && !taskEventoOrigenIds.has(p.id)) {
                 // Construir descripción más completa - usar propiedades correctas del tipo
                 const desc = p.observaciones ||
                     (p.producto ? `${p.producto}${p.proveedor ? ` - ${p.proveedor}` : ''}` : null) ||
@@ -3676,19 +3688,19 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
 
             // 3. Fechas de eventos vinculados (movimientos, rendiciones, producciones)
             movimientosLogisticos.forEach(m => {
-                if (m.pedido_id === pkl.pkl_id) {
+                if (m.pkl_id === pkl.pkl_id) {
                     const fecha = getDateKey(m.fecha);
                     if (fecha) fechasConPKL.add(fecha);
                 }
             });
             rendiciones.forEach(r => {
-                if (r.pedido_id === pkl.pkl_id) {
+                if (r.pkl_id === pkl.pkl_id) {
                     const fecha = getDateKey(r.fecha);
                     if (fecha) fechasConPKL.add(fecha);
                 }
             });
             eventosProduccion.forEach(e => {
-                if (e.pedido_id === pkl.pkl_id) {
+                if (e.pkl_id === pkl.pkl_id) {
                     const fecha = getDateKey(e.fecha);
                     if (fecha) fechasConPKL.add(fecha);
                 }
@@ -3882,13 +3894,13 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
         });
     };
 
-    // Obtener items pendientes de sincronizar (sin pedido_id)
+    // Obtener items pendientes de sincronizar (sin pkl_id)
     const getPendientesSinSincronizar = () => {
         if (!diaSeleccionado) return { movimientos: [], rendiciones: [], producciones: [] };
         return {
-            movimientos: diaSeleccionado.movimientos.filter(m => !m.pedido_id),
-            rendiciones: diaSeleccionado.rendiciones.filter(r => !r.pedido_id),
-            producciones: diaSeleccionado.producciones.filter(p => !p.pedido_id)
+            movimientos: diaSeleccionado.movimientos.filter(m => !m.pkl_id),
+            rendiciones: diaSeleccionado.rendiciones.filter(r => !r.pkl_id),
+            producciones: diaSeleccionado.producciones.filter(p => !p.pkl_id)
         };
     };
 
@@ -3961,7 +3973,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                 // Vincular según tipo detectado
                 if (isMovimiento) {
                     const mov = evento as MovimientoLogistico;
-                    await updateMovimientoLogistico(mov.id, { pedido_id: newPedido.id });
+                    await updateMovimientoLogistico(mov.id, { pkl_id: newPedido.id });
                     if (mov.tipo === 'entrega') {
                         await updatePedido(newPedido.id, { estado: 'entregado' });
                     } else if (mov.tipo === 'recojo') {
@@ -3969,13 +3981,13 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                     }
                 } else if (isRendicion) {
                     const rend = evento as Rendicion;
-                    await updateRendicion(rend.id, { pedido_id: newPedido.id });
+                    await updateRendicion(rend.id, { pkl_id: newPedido.id });
                     if (rend.tipo === 'adelanto_produccion' || rend.tipo === 'pago_saldo') {
                         await addPayment(newPedido.id, rend.monto, `Rendición: ${rend.tipo.replace('_', ' ')}`);
                     }
                 } else if (isProduccion) {
                     const prod = evento as EventoProduccion;
-                    await updateEventoProduccion(prod.id, { pedido_id: newPedido.id });
+                    await updateEventoProduccion(prod.id, { pkl_id: newPedido.id });
                     await createProduccion({
                         pedido_id: newPedido.id,
                         proveedor_id: prod.proveedor || 'Sin Proveedor',
@@ -4086,15 +4098,15 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                                 const eventosSeleccionables: string[] = [];
 
                                 diaSeleccionado.movimientos.forEach(m => {
-                                    const linkedPKL = findPKLForEvent(m.id, pkls, m.pedido_id);
+                                    const linkedPKL = findPKLForEvent(m.id, pkls, m.pkl_id);
                                     if (!linkedPKL) eventosSeleccionables.push(m.id);
                                 });
                                 diaSeleccionado.rendiciones.forEach(r => {
-                                    const linkedPKL = findPKLForEvent(r.id, pkls, r.pedido_id);
+                                    const linkedPKL = findPKLForEvent(r.id, pkls, r.pkl_id);
                                     if (!linkedPKL) eventosSeleccionables.push(r.id);
                                 });
                                 diaSeleccionado.producciones.forEach(p => {
-                                    const linkedPKL = findPKLForEvent(p.id, pkls, p.pedido_id);
+                                    const linkedPKL = findPKLForEvent(p.id, pkls, p.pkl_id);
                                     if (!linkedPKL) eventosSeleccionables.push(p.id);
                                 });
 
@@ -4113,13 +4125,13 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                                     // Calcular si todos están seleccionados
                                     const eventosSeleccionables: string[] = [];
                                     diaSeleccionado.movimientos.forEach(m => {
-                                        if (!findPKLForEvent(m.id, pkls, m.pedido_id)) eventosSeleccionables.push(m.id);
+                                        if (!findPKLForEvent(m.id, pkls, m.pkl_id)) eventosSeleccionables.push(m.id);
                                     });
                                     diaSeleccionado.rendiciones.forEach(r => {
-                                        if (!findPKLForEvent(r.id, pkls, r.pedido_id)) eventosSeleccionables.push(r.id);
+                                        if (!findPKLForEvent(r.id, pkls, r.pkl_id)) eventosSeleccionables.push(r.id);
                                     });
                                     diaSeleccionado.producciones.forEach(p => {
-                                        if (!findPKLForEvent(p.id, pkls, p.pedido_id)) eventosSeleccionables.push(p.id);
+                                        if (!findPKLForEvent(p.id, pkls, p.pkl_id)) eventosSeleccionables.push(p.id);
                                     });
                                     const allSelected = eventosSeleccionables.length > 0 && eventosSeleccionables.every(id => selectedEventos.has(id));
                                     return allSelected ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-green-600/50';
@@ -4356,19 +4368,19 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                                 const todosLosPKLsMap = new Map<string, PKL>();
 
                                 diaSeleccionado.movimientos.forEach(m => {
-                                    const linkedPKL = findPKLForEvent(m.id, pkls, m.pedido_id);
+                                    const linkedPKL = findPKLForEvent(m.id, pkls, m.pkl_id);
                                     if (linkedPKL && !todosLosPKLsMap.has(linkedPKL.pkl_id)) {
                                         todosLosPKLsMap.set(linkedPKL.pkl_id, linkedPKL);
                                     }
                                 });
                                 diaSeleccionado.rendiciones.forEach(r => {
-                                    const linkedPKL = findPKLForEvent(r.id, pkls, r.pedido_id);
+                                    const linkedPKL = findPKLForEvent(r.id, pkls, r.pkl_id);
                                     if (linkedPKL && !todosLosPKLsMap.has(linkedPKL.pkl_id)) {
                                         todosLosPKLsMap.set(linkedPKL.pkl_id, linkedPKL);
                                     }
                                 });
                                 diaSeleccionado.producciones.forEach(p => {
-                                    const linkedPKL = findPKLForEvent(p.id, pkls, p.pedido_id);
+                                    const linkedPKL = findPKLForEvent(p.id, pkls, p.pkl_id);
                                     if (linkedPKL && !todosLosPKLsMap.has(linkedPKL.pkl_id)) {
                                         todosLosPKLsMap.set(linkedPKL.pkl_id, linkedPKL);
                                     }
@@ -4388,7 +4400,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
 
                                 // Movimientos SIN PKL vinculado
                                 const movimientosSinPKL = diaSeleccionado.movimientos.filter(m =>
-                                    !findPKLForEvent(m.id, pkls, m.pedido_id)
+                                    !findPKLForEvent(m.id, pkls, m.pkl_id)
                                 );
 
                                 const todosLosPKLs = Array.from(todosLosPKLsMap.values());
@@ -4440,13 +4452,13 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                                                         showToast(`S/.${fromMonto.toFixed(2)} transferido a "${toTask.nombre}"`, 'success');
                                                     }}
                                                     onUnlinkEvento={async (tipo, eventoId) => {
-                                                        // Quitar el pedido_id del evento para desvincularlo
+                                                        // Quitar el pkl_id del evento para desvincularlo
                                                         if (tipo === 'movimiento') {
-                                                            await updateMovimientoLogistico(eventoId, { pedido_id: null } as any);
+                                                            await updateMovimientoLogistico(eventoId, { pkl_id: null } as any);
                                                         } else if (tipo === 'rendicion') {
-                                                            await updateRendicion(eventoId, { pedido_id: null } as any);
+                                                            await updateRendicion(eventoId, { pkl_id: null } as any);
                                                         } else {
-                                                            await updateEventoProduccion(eventoId, { pedido_id: null } as any);
+                                                            await updateEventoProduccion(eventoId, { pkl_id: null } as any);
                                                         }
                                                         showToast('Evento desvinculado del PKL', 'success');
                                                     }}
@@ -4461,11 +4473,11 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
 
                                                         // Desvincular el evento
                                                         if (evento.tipo === 'movimiento') {
-                                                            await updateMovimientoLogistico(evento.id, { pedido_id: null } as any);
+                                                            await updateMovimientoLogistico(evento.id, { pkl_id: null } as any);
                                                         } else if (evento.tipo === 'rendicion') {
-                                                            await updateRendicion(evento.id, { pedido_id: null } as any);
+                                                            await updateRendicion(evento.id, { pkl_id: null } as any);
                                                         } else {
-                                                            await updateEventoProduccion(evento.id, { pedido_id: null } as any);
+                                                            await updateEventoProduccion(evento.id, { pkl_id: null } as any);
                                                         }
 
                                                         showToast(`Costo actualizado a S/.${newMonto.toFixed(2)} en "${task.nombre}"`, 'success');
@@ -4563,7 +4575,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                             {(() => {
                                 // Solo rendiciones SIN PKL vinculado (los PKLs ya aparecen en Eventos Logísticos)
                                 const rendicionesSinPKL = diaSeleccionado.rendiciones.filter(r =>
-                                    !findPKLForEvent(r.id, pkls, r.pedido_id)
+                                    !findPKLForEvent(r.id, pkls, r.pkl_id)
                                 );
 
                                 return (filterType === 'all' || filterType === 'rendiciones') && rendicionesSinPKL.length > 0 && (
@@ -4599,7 +4611,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                             {(() => {
                                 // Solo producciones SIN PKL vinculado (los PKLs ya aparecen en Eventos Logísticos)
                                 const produccionesSinPKL = diaSeleccionado.producciones.filter(p =>
-                                    !findPKLForEvent(p.id, pkls, p.pedido_id)
+                                    !findPKLForEvent(p.id, pkls, p.pkl_id)
                                 );
 
                                 return (filterType === 'all' || filterType === 'produccion') && produccionesSinPKL.length > 0 && (
@@ -5305,11 +5317,11 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
 
                                 // Actualizar el evento con el pkl_id
                                 if (evento.tipo_evento === 'movimiento') {
-                                    await updateMovimientoLogistico(evento.id, { pedido_id: pklId });
+                                    await updateMovimientoLogistico(evento.id, { pkl_id: pklId });
                                 } else if (evento.tipo_evento === 'rendicion') {
-                                    await updateRendicion(evento.id, { pedido_id: pklId });
+                                    await updateRendicion(evento.id, { pkl_id: pklId });
                                 } else {
-                                    await updateEventoProduccion(evento.id, { pedido_id: pklId });
+                                    await updateEventoProduccion(evento.id, { pkl_id: pklId });
                                 }
 
                                 eventosVinculados++;

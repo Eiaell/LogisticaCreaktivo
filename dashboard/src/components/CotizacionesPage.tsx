@@ -31,6 +31,7 @@ export function CotizacionesPage({ onBack, onNavigateToPKL }: CotizacionesPagePr
   const { pkls, getClienteLogo } = useDatabase();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterEstado, setFilterEstado] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Extraer todas las cotizaciones de PKLs (de tasks y de proveedores)
   const todasLasCotizaciones = useMemo(() => {
@@ -145,11 +146,38 @@ export function CotizacionesPage({ onBack, onNavigateToPKL }: CotizacionesPagePr
     });
   }, [pkls]);
 
-  // Filtrar cotizaciones por estado
+  // Filtrar cotizaciones por estado y búsqueda
   const cotizacionesFiltradas = useMemo(() => {
-    if (!filterEstado) return todasLasCotizaciones;
-    return todasLasCotizaciones.filter(c => c.estado === filterEstado);
-  }, [todasLasCotizaciones, filterEstado]);
+    let resultado = todasLasCotizaciones;
+
+    // Filtrar por estado
+    if (filterEstado) {
+      resultado = resultado.filter(c => c.estado === filterEstado);
+    }
+
+    // Filtrar por búsqueda
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      resultado = resultado.filter(c =>
+        c.cliente.toLowerCase().includes(term) ||
+        c.descripcion.toLowerCase().includes(term) ||
+        c.proveedor.toLowerCase().includes(term) ||
+        c.pkl.pkl_id.toLowerCase().includes(term) ||
+        c.pkl.origen?.descripcion_inicial?.toLowerCase().includes(term) ||
+        // Buscar en items de cotización
+        c.task.items_cotizacion?.some(item =>
+          item.descripcion?.toLowerCase().includes(term)
+        ) ||
+        // Buscar en productos del PKL
+        c.pkl.productos?.some(prod =>
+          prod.nombre?.toLowerCase().includes(term) ||
+          prod.descripcion?.toLowerCase().includes(term)
+        )
+      );
+    }
+
+    return resultado;
+  }, [todasLasCotizaciones, filterEstado, searchTerm]);
 
   // Agrupar por estado
   const cotizacionesPorEstado = useMemo(() => {
@@ -242,6 +270,38 @@ export function CotizacionesPage({ onBack, onNavigateToPKL }: CotizacionesPagePr
             <p className="text-sm font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Monto Total</p>
             <p className="text-2xl font-bold text-emerald-400 mt-2">S/. {totales.total.toFixed(2)}</p>
           </div>
+        </div>
+
+        {/* Barra de búsqueda */}
+        <div className="mb-6">
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="🔍 Buscar por producto, cliente, proveedor... (ej: vinil, bolsa, banner)"
+              className="w-full px-4 py-3 rounded-xl border text-sm transition-all focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 outline-none"
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-4 text-gray-400 hover:text-gray-200 transition-colors"
+                title="Limpiar búsqueda"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {searchTerm && (
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+              {cotizacionesFiltradas.length} resultado{cotizacionesFiltradas.length !== 1 ? 's' : ''} para "{searchTerm}"
+            </p>
+          )}
         </div>
 
         {/* Filtro por estado */}

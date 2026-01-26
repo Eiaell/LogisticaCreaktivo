@@ -433,7 +433,8 @@ export interface MovimientoLogistico {
     tipo: TipoMovimientoLogistico;
     cliente?: string;                       // Cliente asociado
     proveedor?: string;                     // Proveedor asociado
-    pedido_id?: string;                     // FK a pedidos (si aplica)
+    pedido_id?: string;                     // FK a pedidos (legacy)
+    pkl_id?: string;                        // FK a pkls (nuevo sistema)
 
     // Detalle flexible según tipo
     detalle: DetalleMovimientoEntrega | DetalleMovimientoRecojo | Record<string, unknown>;
@@ -480,7 +481,8 @@ export interface Rendicion {
     tipo: TipoRendicion;
     cliente?: string;                       // Cliente asociado
     proveedor?: string;                     // Proveedor asociado
-    pedido_id?: string;                     // FK a pedidos (si aplica)
+    pedido_id?: string;                     // FK a pedidos (legacy)
+    pkl_id?: string;                        // FK a pkls (nuevo sistema)
     produccion_id?: string;                 // FK a producciones (si aplica)
 
     // Detalle flexible según tipo
@@ -524,7 +526,8 @@ export interface EventoProduccion {
     tipo: 'orden_produccion';
     cliente: string;
     proveedor: string;
-    pedido_id?: string;                     // FK a pedidos (si aplica)
+    pedido_id?: string;                     // FK a pedidos (legacy)
+    pkl_id?: string;                        // FK a pkls (nuevo sistema)
 
     // Detalle del producto (campos directos para la DB)
     producto: string;
