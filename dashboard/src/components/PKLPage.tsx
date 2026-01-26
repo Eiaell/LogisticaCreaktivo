@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { PKL, EstadoPKL, TipoOperacionPKL, TipoTaskPKL } from '../types';
-import { ESTADOS_PKL, TIPOS_OPERACION_PKL, TIPOS_TASK_PKL } from '../types';
+import { ESTADOS_PKL, TIPOS_OPERACION_PKL, TIPOS_TASK_PKL, GRUPOS_OPERACION_PKL } from '../types';
 import { useDatabase } from '../context/DatabaseContext';
 // Funciones centralizadas de cálculo de costos (#12)
 import { getCostoMonto, calcularCostoTotalPKL } from '../utils/pklCostos';
@@ -23,9 +23,11 @@ const getTaskTypeConfig = (tipo: string) => {
 interface PKLPageProps {
     initialSelectedPKLId?: string | null;
     initialTab?: 'overview' | 'tasks' | 'eventos';
+    onBack?: () => void;
+    returnToLabel?: string;
 }
 
-export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPageProps) {
+export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, returnToLabel }: PKLPageProps) {
     const { pkls, updatePKL, updatePKLTask, createPKLTask, deletePKLTask, deletePKL, pklParaMerge, setPKLParaMerge, clientes } = useDatabase();
     const [selectedPKLId, setSelectedPKLId] = useState<string | null>(initialSelectedPKLId || null);
     const [filterEstado, setFilterEstado] = useState<EstadoPKL | 'todos'>('todos');
@@ -78,6 +80,16 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
 
     return (
         <div className="p-6 space-y-6">
+            {/* Botón Volver */}
+            {onBack && (
+                <button
+                    onClick={onBack}
+                    className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 font-medium transition-colors mb-2"
+                >
+                    <span>{returnToLabel || '← Volver'}</span>
+                </button>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between mb-2">
                 <div>
@@ -144,8 +156,17 @@ export default function PKLPage({ initialSelectedPKLId, initialTab }: PKLPagePro
                     className="px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
                 >
                     <option value="todos">Todos los tipos</option>
-                    {TIPOS_OPERACION_PKL.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
+                    {GRUPOS_OPERACION_PKL.map(grupo => (
+                        <optgroup key={grupo.grupo} label={grupo.grupo}>
+                            {grupo.tipos.map(tipoValue => {
+                                const tipoConfig = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
+                                return tipoConfig ? (
+                                    <option key={tipoValue} value={tipoValue}>
+                                        {tipoConfig.label}
+                                    </option>
+                                ) : null;
+                            })}
+                        </optgroup>
                     ))}
                 </select>
             </div>
@@ -441,15 +462,26 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                             <span className={`px-3 py-1 rounded ${tipoConfig.color} !text-white text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
                                 {tipoConfig.label}
                             </span>
-                            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[180px]">
-                                {TIPOS_OPERACION_PKL.map(tipo => (
-                                    <button
-                                        key={tipo.value}
-                                        onClick={() => onUpdate({ clasificacion: { ...pkl.clasificacion, tipo_operacion: tipo.value } } as any)}
-                                        className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
-                                    >
-                                        {tipo.label}
-                                    </button>
+                            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[220px] max-h-[400px] overflow-y-auto">
+                                {GRUPOS_OPERACION_PKL.map((grupo) => (
+                                    <div key={grupo.grupo}>
+                                        <div className={`px-3 py-1.5 text-xs font-bold ${grupo.color} bg-gray-100 dark:bg-gray-800 sticky top-0`}>
+                                            {grupo.grupo}
+                                        </div>
+                                        {grupo.tipos.map(tipoValue => {
+                                            const tipoItem = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
+                                            if (!tipoItem) return null;
+                                            return (
+                                                <button
+                                                    key={tipoItem.value}
+                                                    onClick={() => onUpdate({ clasificacion: { ...pkl.clasificacion, tipo_operacion: tipoItem.value } } as any)}
+                                                    className={`block w-full text-left px-3 py-2 text-xs hover:brightness-110 ${tipoItem.color} !text-white`}
+                                                >
+                                                    {tipoItem.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -689,15 +721,13 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
         display: c.nombre_comercial || c.razon_social || key
     }));
 
-    const tiposOperacion = TIPOS_OPERACION_PKL.map(t => {
-        const icons: Record<string, string> = {
-            'ciclo_completo': '🔄', 'produccion_recojo_entrega': '🏭', 'cotizacion_recojo_entrega': '💬🚚',
-            'cotizacion_recojo': '💬🚚', 'recojo_entrega': '🚚📦', 'solo_entrega': '📦',
-            'cotizacion_produccion_motorizado': '💬🏭', 'solo_motorizado': '🛵', 'cotizacion': '💬',
-            'ciclo_completo_instalacion': '🔄🔧', 'feria_evento': '🎪', 'compra_insumo': '🛒',
-        };
-        return { value: t.value, label: `${icons[t.value] || '📋'} ${t.label}`, color: t.color };
-    });
+    const tipoIcons: Record<string, string> = {
+        'ciclo_completo': '🔄', 'produccion_recojo_entrega': '🏭', 'cotizacion_recojo_entrega': '💬🚚',
+        'cotizacion_recojo': '💬🚚', 'recojo_entrega': '🚚📦', 'solo_entrega': '📦',
+        'cotizacion_produccion_motorizado': '💬🏭', 'solo_motorizado': '🛵', 'solo_cotizacion': '💬',
+        'ciclo_completo_instalacion': '🔄🔧', 'feria_evento': '🎪', 'compra_insumo': '🛒',
+        'compra_interna': '🏢', 'movilidad': '🚕', 'produccion': '🏭',
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -976,8 +1006,17 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                 className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
                                 style={{ colorScheme: 'dark' }}
                             >
-                                {tiposOperacion.map(t => (
-                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                {GRUPOS_OPERACION_PKL.map(grupo => (
+                                    <optgroup key={grupo.grupo} label={grupo.grupo}>
+                                        {grupo.tipos.map(tipoValue => {
+                                            const tipoConfig = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
+                                            return tipoConfig ? (
+                                                <option key={tipoValue} value={tipoValue}>
+                                                    {tipoIcons[tipoValue] || '📋'} {tipoConfig.label}
+                                                </option>
+                                            ) : null;
+                                        })}
+                                    </optgroup>
                                 ))}
                             </select>
                         </div>
@@ -1328,6 +1367,12 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
     const { proveedores: proveedoresDB } = useDatabase();
     // Estado local para tasks en Overview
     const [localTasks, setLocalTasks] = useState(pkl.tasks || []);
+
+    // Sincronizar localTasks cuando pkl.tasks cambie
+    useEffect(() => {
+        setLocalTasks(pkl.tasks || []);
+    }, [pkl.tasks]);
+
     const [editingObs, setEditingObs] = useState(false);
     const [obsValue, setObsValue] = useState(pkl.observaciones || '');
 
@@ -1494,27 +1539,55 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             fecha_cotizacion: new Date().toISOString().split('T')[0]
         } : undefined;
 
-        const newProveedor = {
-            proveedor_id: `PROV-${Date.now()}`,
-            nombre: proveedorForm.nombre.trim(),
-            servicio: proveedorForm.servicio.trim(),
-            ubicacion: proveedorForm.ubicacion.trim(),
-            contacto: proveedorForm.contacto.trim(),
-            cotizacion,
-            elegido: proveedorForm.elegido
-        };
-        onUpdate({ proveedores: [...pkl.proveedores, newProveedor] } as any);
+        // Buscar si ya existe un proveedor con el mismo nombre en el PKL
+        const nombreNormalizado = proveedorForm.nombre.trim().toLowerCase();
+        const proveedorExistente = (pkl.proveedores || []).find(
+            p => p.nombre.toLowerCase() === nombreNormalizado
+        );
+
+        if (proveedorExistente && cotizacion) {
+            // Agregar cotización al proveedor existente
+            const cotizacionesActuales = proveedorExistente.cotizaciones ||
+                (proveedorExistente.cotizacion ? [proveedorExistente.cotizacion] : []);
+
+            const proveedoresActualizados = (pkl.proveedores || []).map(p => {
+                if (p.proveedor_id === proveedorExistente.proveedor_id) {
+                    return {
+                        ...p,
+                        cotizaciones: [...cotizacionesActuales, cotizacion],
+                        cotizacion: undefined, // Migrar a cotizaciones[]
+                        elegido: proveedorForm.elegido || p.elegido,
+                        // Actualizar datos si se proporcionaron nuevos
+                        servicio: proveedorForm.servicio.trim() || p.servicio,
+                        ubicacion: proveedorForm.ubicacion.trim() || p.ubicacion,
+                        contacto: proveedorForm.contacto.trim() || p.contacto
+                    };
+                }
+                return p;
+            });
+            onUpdate({ proveedores: proveedoresActualizados } as any);
+            console.log('✅ Cotización agregada a proveedor existente:', proveedorExistente.nombre);
+        } else {
+            // Crear nuevo proveedor
+            const newProveedor = {
+                proveedor_id: `PROV-${Date.now()}`,
+                nombre: proveedorForm.nombre.trim(),
+                servicio: proveedorForm.servicio.trim(),
+                ubicacion: proveedorForm.ubicacion.trim(),
+                contacto: proveedorForm.contacto.trim(),
+                cotizaciones: cotizacion ? [cotizacion] : [],
+                elegido: proveedorForm.elegido
+            };
+            onUpdate({ proveedores: [...(pkl.proveedores || []), newProveedor] } as any);
+        }
 
         // Si el proveedor está elegido y tiene cotización, sincronizar con task de cotización
+        // NOTA: Las cotizaciones NO deben sumarse a costos - esto se maneja en el segundo fix
         if (proveedorForm.elegido && cotizacion && cotizacion.precio_total > 0 && onUpdateTask) {
             const taskCotizacion = localTasks.find(t => t.tipo === 'cotizacion');
             if (taskCotizacion) {
+                // Solo actualizar el proveedor en el task, NO el costo
                 await onUpdateTask(pkl.pkl_id, taskCotizacion.task_id, {
-                    costo: {
-                        monto: cotizacion.precio_total,
-                        moneda: 'PEN',
-                        incluye_igv: cotizacion.incluye_igv
-                    },
                     proveedor: proveedorForm.nombre.trim(),
                     cantidad: cotizacion.cantidad,
                     precioUnitario: cotizacion.precio_unitario,
@@ -1524,12 +1597,11 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                     t.task_id === taskCotizacion.task_id
                         ? {
                             ...t,
-                            costo: { monto: cotizacion.precio_total, moneda: 'PEN', incluye_igv: cotizacion.incluye_igv },
                             proveedor: proveedorForm.nombre.trim()
                         }
                         : t
                 ));
-                console.log('✅ Task de cotización sincronizado con nuevo proveedor elegido:', proveedorForm.nombre, cotizacion.precio_total);
+                console.log('✅ Task de cotización sincronizado con proveedor elegido:', proveedorForm.nombre);
             }
         }
 
@@ -1540,25 +1612,141 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
 
     const handleEditProveedor = (prov: typeof pkl.proveedores[0]) => {
         setEditingProveedorId(prov.proveedor_id);
+
+        // Primero intentar cargar datos de cotizacion del proveedor
+        let cotizacionData = prov.cotizacion;
+
+        // DEBUG: Ver qué datos tiene el proveedor
+        console.log('🔍 handleEditProveedor llamado para:', prov.nombre);
+        console.log('🔍 cotizacion existente:', prov.cotizacion);
+        // Usar pkl.tasks directamente (más fiable que localTasks)
+        const tasksToSearch = pkl.tasks || [];
+        console.log('🔍 pkl.tasks disponibles:', tasksToSearch.length);
+
+        // Si el proveedor no tiene cotización guardada, buscar en los tasks
+        if (!cotizacionData || !cotizacionData.precio_total) {
+            console.log('🔍 No hay cotizacion guardada, buscando en tasks...');
+            // Buscar CUALQUIER task que tenga costo y coincida con el proveedor
+            const provNombreLower = prov.nombre.toLowerCase().trim();
+            // Crear variantes del nombre (Patricia -> Pat, Patty, etc.)
+            const nombreCorto3 = provNombreLower.substring(0, 3); // "pat" para Patricia
+
+            console.log('🔍 Buscando con nombreCorto3:', nombreCorto3);
+
+            // DEBUG: Mostrar todos los tasks con sus costos
+            tasksToSearch.forEach((t, i) => {
+                const taskCosto = getCostoMonto(t.costo);
+                console.log(`🔍 Task[${i}]: "${t.nombre}" - costo: ${taskCosto} - proveedor: "${t.proveedor || 'N/A'}"`);
+            });
+
+            const taskDelProveedor = tasksToSearch.find(t => {
+                // El task debe tener un costo (usar getCostoMonto para consistencia)
+                const taskCosto = getCostoMonto(t.costo);
+                if (taskCosto <= 0) {
+                    console.log(`🔍 Task "${t.nombre}" descartado: costo <= 0 (costo raw:`, t.costo, ')');
+                    return false;
+                }
+
+                // Verificar si el proveedor del task coincide
+                const proveedorTask = t.proveedor?.toLowerCase().trim() || '';
+                if (proveedorTask === provNombreLower) {
+                    console.log(`🔍 Task "${t.nombre}" coincide: proveedor exacto`);
+                    return true;
+                }
+                if (proveedorTask.startsWith(nombreCorto3)) {
+                    console.log(`🔍 Task "${t.nombre}" coincide: proveedor empieza con ${nombreCorto3}`);
+                    return true;
+                }
+                if (provNombreLower.startsWith(proveedorTask.substring(0, 3)) && proveedorTask.length >= 3) {
+                    console.log(`🔍 Task "${t.nombre}" coincide: nombre proveedor empieza con prefijo del task`);
+                    return true;
+                }
+
+                // Verificar si el nombre del task contiene el nombre del proveedor o variantes
+                const nombreTaskLower = t.nombre?.toLowerCase() || '';
+                if (nombreTaskLower.includes(provNombreLower)) {
+                    console.log(`🔍 Task "${t.nombre}" coincide: nombre contiene ${provNombreLower}`);
+                    return true;
+                }
+                if (nombreTaskLower.includes(nombreCorto3)) {
+                    console.log(`🔍 Task "${t.nombre}" coincide: nombre contiene ${nombreCorto3}`);
+                    return true;
+                }
+                // Extraer palabras del nombre del task y ver si alguna coincide
+                const palabrasTask = nombreTaskLower.split(/\s+/);
+                for (const palabra of palabrasTask) {
+                    if (palabra.length >= 3) {
+                        // Si la palabra empieza igual que el proveedor (pat === pat)
+                        if (palabra.startsWith(nombreCorto3)) return true;
+                        if (provNombreLower.startsWith(palabra.substring(0, 3))) return true;
+                    }
+                }
+
+                // Verificar en items_cotizacion si existe
+                if ((t as any).items_cotizacion?.some((item: any) =>
+                    item.descripcion?.toLowerCase().includes(provNombreLower) ||
+                    item.descripcion?.toLowerCase().includes(nombreCorto3)
+                )) return true;
+
+                return false;
+            });
+
+            if (taskDelProveedor) {
+                // Extraer datos del task (usar getCostoMonto para consistencia)
+                const monto = getCostoMonto(taskDelProveedor.costo);
+                console.log('✅ Task encontrado:', taskDelProveedor.nombre, '- monto:', monto);
+
+                // Verificar si tiene items_cotizacion
+                const items = (taskDelProveedor as any).items_cotizacion;
+                if (items && items.length > 0) {
+                    const totalCant = items.reduce((sum: number, i: any) => sum + (i.cantidad || 0), 0);
+                    const totalPrecio = items.reduce((sum: number, i: any) => sum + (i.precio_total || 0), 0);
+                    cotizacionData = {
+                        descripcion: items.map((i: any) => i.descripcion).join(', '),
+                        cantidad: totalCant,
+                        precio_unitario: totalCant > 0 ? totalPrecio / totalCant : undefined,
+                        precio_total: totalPrecio || monto,
+                        incluye_igv: items[0]?.incluye_igv || false,
+                        tiempo_entrega: undefined,
+                        notas: taskDelProveedor.descripcion || undefined
+                    };
+                } else {
+                    cotizacionData = {
+                        descripcion: taskDelProveedor.nombre || '',
+                        cantidad: taskDelProveedor.cantidad,
+                        precio_unitario: taskDelProveedor.precioUnitario,
+                        precio_total: monto,
+                        incluye_igv: taskDelProveedor.incluyeIgv || false,
+                        tiempo_entrega: undefined,
+                        notas: taskDelProveedor.descripcion || undefined
+                    };
+                }
+                console.log('📋 Cargando datos desde task:', taskDelProveedor.nombre, '→', cotizacionData);
+            } else {
+                console.log('❌ No se encontró ningún task que coincida con:', prov.nombre);
+            }
+        }
+
         // Si tiene precio_unitario, usar ese como precio y marcar como unitario
-        const precioUnitario = prov.cotizacion?.precio_unitario?.toString() || '';
-        const precioTotal = prov.cotizacion?.precio_total?.toString() || '';
+        const precioUnitario = cotizacionData?.precio_unitario?.toString() || '';
+        const precioTotal = cotizacionData?.precio_total?.toString() || '';
         setProveedorForm({
             nombre: prov.nombre,
             servicio: prov.servicio || '',
             ubicacion: prov.ubicacion || '',
             contacto: prov.contacto || '',
-            cotizacion_descripcion: prov.cotizacion?.descripcion || '',
-            cotizacion_cantidad: prov.cotizacion?.cantidad?.toString() || '',
+            cotizacion_descripcion: cotizacionData?.descripcion || '',
+            cotizacion_cantidad: cotizacionData?.cantidad?.toString() || '',
             cotizacion_precio: precioUnitario || precioTotal, // Usar unitario si existe, sino total
             cotizacion_es_precio_unitario: !!precioUnitario, // true si tiene unitario
             cotizacion_precio_unitario: precioUnitario,
             cotizacion_precio_total: precioTotal,
-            cotizacion_incluye_igv: prov.cotizacion?.incluye_igv || false,
-            cotizacion_tiempo_entrega: prov.cotizacion?.tiempo_entrega || '',
-            cotizacion_notas: prov.cotizacion?.notas || '',
+            cotizacion_incluye_igv: cotizacionData?.incluye_igv || false,
+            cotizacion_tiempo_entrega: cotizacionData?.tiempo_entrega || '',
+            cotizacion_notas: cotizacionData?.notas || '',
             elegido: prov.elegido || false
         });
+        console.log('📝 Formulario establecido - precioTotal:', precioTotal, 'precioUnitario:', precioUnitario);
     };
 
     const handleSaveProveedor = async () => {
@@ -2195,30 +2383,45 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                         </div>
                                     </div>
 
-                                    {/* Mostrar cotización si existe */}
-                                    {prov.cotizacion && (
-                                        <div className="mt-2 pt-2 border-t border-gray-700/50">
-                                            <div className="text-cyan-400 text-xs font-medium mb-1">💬 Cotización:</div>
-                                            <div className="text-gray-300 text-sm">{prov.cotizacion.descripcion}</div>
-                                            <div className="flex items-center gap-3 mt-1 text-xs">
-                                                {prov.cotizacion.cantidad && prov.cotizacion.precio_unitario && (
-                                                    <span className="text-gray-400">
-                                                        {prov.cotizacion.cantidad} × S/ {prov.cotizacion.precio_unitario.toFixed(2)}
-                                                    </span>
-                                                )}
-                                                <span className="text-amber-400 font-bold">
-                                                    Total: S/ {prov.cotizacion.precio_total.toFixed(2)}
-                                                    {prov.cotizacion.incluye_igv && <span className="text-gray-500 ml-1">(inc. IGV)</span>}
-                                                </span>
-                                                {prov.cotizacion.tiempo_entrega && (
-                                                    <span className="text-gray-500">⏱ {prov.cotizacion.tiempo_entrega}</span>
-                                                )}
+                                    {/* Mostrar cotizaciones (array o singular para backward compat) */}
+                                    {(() => {
+                                        // Obtener todas las cotizaciones (backward compatible)
+                                        const cotizaciones = prov.cotizaciones ||
+                                            (prov.cotizacion ? [prov.cotizacion] : []);
+                                        if (cotizaciones.length === 0) return null;
+
+                                        return (
+                                            <div className="mt-2 pt-2 border-t border-gray-700/50">
+                                                <div className="text-cyan-400 text-xs font-medium mb-1">
+                                                    💬 Cotizaciones ({cotizaciones.length}):
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {cotizaciones.map((cot, idx) => (
+                                                        <div key={idx} className="bg-gray-800/30 rounded p-2">
+                                                            <div className="text-gray-300 text-sm">{cot.descripcion}</div>
+                                                            <div className="flex items-center gap-3 mt-1 text-xs flex-wrap">
+                                                                {cot.cantidad && cot.precio_unitario && (
+                                                                    <span className="text-gray-400">
+                                                                        {cot.cantidad} × S/ {cot.precio_unitario.toFixed(2)}
+                                                                    </span>
+                                                                )}
+                                                                <span className="text-amber-400 font-bold">
+                                                                    Total: S/ {cot.precio_total.toFixed(2)}
+                                                                    {cot.incluye_igv && <span className="text-gray-500 ml-1">(inc. IGV)</span>}
+                                                                </span>
+                                                                {cot.tiempo_entrega && (
+                                                                    <span className="text-gray-500">⏱ {cot.tiempo_entrega}</span>
+                                                                )}
+                                                            </div>
+                                                            {cot.notas && (
+                                                                <div className="text-gray-500 text-xs mt-1 italic">📝 {cot.notas}</div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            {prov.cotizacion.notas && (
-                                                <div className="text-gray-500 text-xs mt-1 italic">📝 {prov.cotizacion.notas}</div>
-                                            )}
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -2286,6 +2489,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
                 {(() => {
                     // Calcular costos de tasks (usa getCostoMonto global)
+                    // NOTA: Incluimos cotizaciones para mostrarlas pero NO se suman al total
                     const costosFromTasks = pkl.tasks
                         ?.filter(t => getCostoMonto(t.costo) > 0)
                         .map(t => ({
@@ -2308,8 +2512,10 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                         ...costosManualDetalle.map(d => ({ ...d, fromTask: false }))
                     ];
 
-                    // Total combinado (sin duplicados)
-                    const totalCombinado = allCostos.reduce((sum, c) => sum + (c.monto || 0), 0);
+                    // Total combinado: EXCLUIR cotizaciones (no son gastos reales)
+                    const totalCombinado = allCostos
+                        .filter(c => (c as any).tipo !== 'cotizacion')
+                        .reduce((sum, c) => sum + (c.monto || 0), 0);
 
                     return (
                         <>
@@ -2402,10 +2608,11 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             <span className="text-gray-400 text-xs">{expandedTaskId === d.task_id ? '▼' : '▶'}</span>
                                         )}
                                         <span className="text-purple-500 text-xs">{esCotizacion ? '💬' : '📋'}</span>
-                                        <span className="text-gray-900 dark:text-white text-sm truncate max-w-[200px]">{d.concepto}</span>
+                                        <span className={`text-sm truncate max-w-[200px] ${esCotizacion ? 'text-gray-500 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>{d.concepto}</span>
                                         <span className="text-purple-400 text-xs">(task)</span>
+                                        {esCotizacion && <span className="text-xs text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded">cotización</span>}
                                     </div>
-                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                    <span className={`font-medium ${esCotizacion ? 'text-gray-400 line-through' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                         S/ {d.monto.toFixed(2)}
                                     </span>
                                 </div>

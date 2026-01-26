@@ -586,7 +586,7 @@ export const TIPOS_RENDICION = [
 // Unidad mínima de ejecución logística end-to-end
 // ============================================
 
-// Tipos de operacion PKL (Ciclos de Operación)
+// Tipos de operacion PKL (Ciclos de Operación) - Organizados por grupos
 export const TIPOS_OPERACION_PKL = [
     { value: 'ciclo_completo', label: 'Ciclo Completo (C+P+R+E)', color: 'bg-emerald-700' },
     { value: 'produccion_recojo_entrega', label: 'Produccion + Recojo + Entrega', color: 'bg-blue-700' },
@@ -603,6 +603,35 @@ export const TIPOS_OPERACION_PKL = [
     { value: 'compra_interna', label: 'Compra Interna', color: 'bg-amber-700' },
     { value: 'movilidad', label: 'Movilidad', color: 'bg-cyan-700' },
     { value: 'produccion', label: 'Produccion', color: 'bg-blue-700' },
+] as const;
+
+// Grupos de operación para mejor visualización en dropdowns
+export const GRUPOS_OPERACION_PKL = [
+    {
+        grupo: 'CICLO COMPLETO',
+        color: 'text-emerald-500',
+        tipos: ['ciclo_completo', 'ciclo_completo_instalacion']
+    },
+    {
+        grupo: 'CON PRODUCCIÓN',
+        color: 'text-blue-500',
+        tipos: ['produccion_recojo_entrega', 'cotizacion_produccion_motorizado', 'produccion']
+    },
+    {
+        grupo: 'CON COTIZACIÓN',
+        color: 'text-yellow-500',
+        tipos: ['cotizacion_recojo_entrega', 'cotizacion_recojo', 'solo_cotizacion']
+    },
+    {
+        grupo: 'LOGÍSTICA',
+        color: 'text-cyan-500',
+        tipos: ['recojo_entrega', 'solo_entrega', 'solo_motorizado', 'movilidad']
+    },
+    {
+        grupo: 'ESPECIALES',
+        color: 'text-orange-500',
+        tipos: ['feria_evento', 'compra_insumo', 'compra_interna']
+    },
 ] as const;
 
 export type TipoOperacionPKL = typeof TIPOS_OPERACION_PKL[number]['value'];
@@ -696,7 +725,9 @@ export interface ProveedorPKL {
     servicio?: string;
     ubicacion?: string;
     contacto?: string;
-    // Cotización
+    // Cotizaciones (múltiples por proveedor)
+    cotizaciones?: CotizacionProveedorPKL[];
+    // Backward compatibility: cotizacion singular (deprecated, usar cotizaciones)
     cotizacion?: CotizacionProveedorPKL;
     // Si este proveedor fue elegido para el trabajo
     elegido?: boolean;

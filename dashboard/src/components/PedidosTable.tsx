@@ -7,7 +7,7 @@ import { ClienteModal } from './ClienteModal';
 import { NuevoPedidoModal } from './NuevoPedidoModal';
 import { CotizacionesModal } from './CotizacionesModal';
 import { ConfirmDialog } from './ConfirmDialog';
-import { TIPOS_OPERACION_PKL, ESTADOS_PKL, type EstadoPKL, type TipoOperacionPKL } from '../types';
+import { TIPOS_OPERACION_PKL, GRUPOS_OPERACION_PKL, ESTADOS_PKL, type EstadoPKL, type TipoOperacionPKL } from '../types';
 
 // Map PKL state to pedido-compatible state for filtering
 function mapPKLStateToTableState(pklState: string): string {
@@ -96,6 +96,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
     const [editingCell, setEditingCell] = useState<{ id: string, field: string } | null>(null);
     const [editValue, setEditValue] = useState('');
+    const [tipoSearchFilter, setTipoSearchFilter] = useState('');
     const [newAdelantoMonto, setNewAdelantoMonto] = useState('');
     const [newAdelantoNota, setNewAdelantoNota] = useState('');
     const [showNuevoPedidoModal, setShowNuevoPedidoModal] = useState(false);
@@ -838,43 +839,115 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 {editingCell?.id === row.id && editingCell?.field === 'tipoOperacion' && dropdownPosition ? (
                                                     createPortal(
                                                         <>
-                                                            {/* Backdrop para cerrar al hacer clic fuera */}
+                                                            {/* Backdrop semi-transparente para cerrar al hacer clic fuera */}
                                                             <div
-                                                                className="fixed inset-0 z-[9998]"
-                                                                onClick={() => { setEditingCell(null); setDropdownPosition(null); }}
-                                                            />
-                                                            {/* Dropdown elegante */}
-                                                            <div
-                                                                className="fixed z-[9999] animate-in fade-in slide-in-from-top-2 duration-150"
                                                                 style={{
-                                                                    top: dropdownPosition.top,
-                                                                    left: dropdownPosition.left,
+                                                                    position: 'fixed',
+                                                                    top: 0,
+                                                                    left: 0,
+                                                                    right: 0,
+                                                                    bottom: 0,
+                                                                    zIndex: 9998,
+                                                                    backgroundColor: 'rgba(0,0,0,0.3)',
                                                                 }}
-                                                                onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setDropdownPosition(null); } }}
+                                                                onClick={() => { setEditingCell(null); setDropdownPosition(null); setTipoSearchFilter(''); }}
+                                                            />
+                                                            {/* Dropdown centrado en pantalla como mini-modal */}
+                                                            <div
+                                                                className="animate-in fade-in zoom-in-95 duration-150"
+                                                                style={{
+                                                                    position: 'fixed',
+                                                                    top: '50%',
+                                                                    left: '50%',
+                                                                    transform: 'translate(-50%, -50%)',
+                                                                    zIndex: 9999,
+                                                                }}
+                                                                onKeyDown={(e) => { if (e.key === 'Escape') { setEditingCell(null); setDropdownPosition(null); setTipoSearchFilter(''); } }}
                                                             >
-                                                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-2xl shadow-black/20 dark:shadow-black/50 overflow-hidden min-w-[220px]">
+                                                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-2xl shadow-black/20 dark:shadow-black/50 overflow-hidden min-w-[280px]">
+                                                                    {/* Header con búsqueda */}
                                                                     <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
-                                                                        <span className="text-xs font-semibold text-gray-700 dark:text-white uppercase tracking-wider">Ciclo de Operación</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={tipoSearchFilter}
+                                                                            onChange={(e) => setTipoSearchFilter(e.target.value)}
+                                                                            placeholder="🔍 Buscar tipo..."
+                                                                            autoFocus
+                                                                            className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                                                                        />
                                                                     </div>
-                                                                    <div className="py-1 max-h-72 overflow-y-auto bg-white dark:bg-gray-800">
-                                                                        {TIPOS_OPERACION_PKL.map(tipo => (
-                                                                            <button
-                                                                                key={tipo.value}
-                                                                                type="button"
-                                                                                onClick={() => {
-                                                                                    updatePKL(row.id, { clasificacion: { tipo_operacion: tipo.value as TipoOperacionPKL } } as any);
-                                                                                    setEditingCell(null);
-                                                                                    setDropdownPosition(null);
-                                                                                }}
-                                                                                className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 ${row.tipoOperacion === tipo.value ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
-                                                                            >
-                                                                                <span className={`w-3 h-3 rounded-full ${tipo.color}`}></span>
-                                                                                <span className="text-gray-800 dark:text-white font-medium">{tipo.label}</span>
-                                                                                {row.tipoOperacion === tipo.value && (
-                                                                                    <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
-                                                                                )}
-                                                                            </button>
-                                                                        ))}
+                                                                    <div className="max-h-72 overflow-y-auto bg-white dark:bg-gray-800">
+                                                                        {(() => {
+                                                                            const searchLower = tipoSearchFilter.toLowerCase().trim();
+                                                                            // Filtrar todos los tipos que coincidan
+                                                                            const tiposFiltrados = TIPOS_OPERACION_PKL.filter(t =>
+                                                                                t.label.toLowerCase().includes(searchLower) ||
+                                                                                t.value.toLowerCase().includes(searchLower)
+                                                                            );
+
+                                                                            if (tiposFiltrados.length === 0) {
+                                                                                return (
+                                                                                    <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                                                        No se encontraron resultados
+                                                                                    </div>
+                                                                                );
+                                                                            }
+
+                                                                            // Si hay búsqueda, mostrar lista plana
+                                                                            if (searchLower) {
+                                                                                return tiposFiltrados.map(tipo => (
+                                                                                    <button
+                                                                                        key={tipo.value}
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            updatePKL(row.id, { clasificacion: { tipo_operacion: tipo.value as TipoOperacionPKL } } as any);
+                                                                                            setEditingCell(null);
+                                                                                            setDropdownPosition(null);
+                                                                                            setTipoSearchFilter('');
+                                                                                        }}
+                                                                                        className={`w-full text-left px-3 py-2.5 text-sm transition-all flex items-center gap-3 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 ${row.tipoOperacion === tipo.value ? 'bg-cyan-50 dark:bg-cyan-900/30' : ''}`}
+                                                                                    >
+                                                                                        <span className={`w-2.5 h-2.5 rounded-full ${tipo.color}`}></span>
+                                                                                        <span className="text-gray-800 dark:text-white text-xs font-medium">{tipo.label}</span>
+                                                                                        {row.tipoOperacion === tipo.value && (
+                                                                                            <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
+                                                                                        )}
+                                                                                    </button>
+                                                                                ));
+                                                                            }
+
+                                                                            // Sin búsqueda, mostrar agrupado
+                                                                            return GRUPOS_OPERACION_PKL.map(grupo => (
+                                                                                <div key={grupo.grupo}>
+                                                                                    <div className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${grupo.color} bg-gray-100 dark:bg-gray-700/80 sticky top-0 border-b border-gray-200 dark:border-gray-600`}>
+                                                                                        {grupo.grupo}
+                                                                                    </div>
+                                                                                    {grupo.tipos.map(tipoValue => {
+                                                                                        const tipo = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
+                                                                                        if (!tipo) return null;
+                                                                                        return (
+                                                                                            <button
+                                                                                                key={tipo.value}
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    updatePKL(row.id, { clasificacion: { tipo_operacion: tipo.value as TipoOperacionPKL } } as any);
+                                                                                                    setEditingCell(null);
+                                                                                                    setDropdownPosition(null);
+                                                                                                    setTipoSearchFilter('');
+                                                                                                }}
+                                                                                                className={`w-full text-left px-3 py-2 text-sm transition-all flex items-center gap-3 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 ${row.tipoOperacion === tipo.value ? 'bg-cyan-50 dark:bg-cyan-900/30' : ''}`}
+                                                                                            >
+                                                                                                <span className={`w-2.5 h-2.5 rounded-full ${tipo.color}`}></span>
+                                                                                                <span className="text-gray-800 dark:text-white text-xs">{tipo.label}</span>
+                                                                                                {row.tipoOperacion === tipo.value && (
+                                                                                                    <span className="ml-auto text-cyan-600 dark:text-cyan-400">✓</span>
+                                                                                                )}
+                                                                                            </button>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            ));
+                                                                        })()}
                                                                     </div>
                                                                 </div>
                                                             </div>

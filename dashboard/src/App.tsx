@@ -634,6 +634,9 @@ function AppContent() {
   const [selectedProveedorId, setSelectedProveedorId] = useState<string | null>(null);
   const [selectedPKLId, setSelectedPKLId] = useState<string | null>(null);
 
+  // Estado para volver a la página anterior desde PKL
+  const [pklReturnTo, setPklReturnTo] = useState<{ page: PageView; date?: string } | null>(null);
+
   // Estado de la sidebar con persistencia en localStorage
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
     const saved = localStorage.getItem('sidebar-expanded');
@@ -743,6 +746,7 @@ function AppContent() {
             onBack={() => setCurrentPage('dashboard')}
             onNavigateToPKL={(pklId) => {
               setSelectedPKLId(pklId);
+              setPklReturnTo({ page: 'cotizaciones' });
               setCurrentPage('pkl');
             }}
           />
@@ -751,15 +755,29 @@ function AppContent() {
         return (
           <DiaADiaPage
             onBack={() => setCurrentPage('dashboard')}
-            onNavigateToPKL={(pklId) => {
+            initialSelectedDate={pklReturnTo?.page === 'dia_a_dia' ? pklReturnTo.date : undefined}
+            onNavigateToPKL={(pklId, currentDate) => {
               setSelectedPKLId(pklId);
+              setPklReturnTo({ page: 'dia_a_dia', date: currentDate });
               setCurrentPage('pkl');
             }}
           />
         );
       case 'pkl':
         return (
-          <PKLPage initialSelectedPKLId={selectedPKLId} />
+          <PKLPage
+            initialSelectedPKLId={selectedPKLId}
+            onBack={pklReturnTo ? () => {
+              const returnPage = pklReturnTo.page;
+              setCurrentPage(returnPage);
+              // No limpiar pklReturnTo aquí para que DiaADiaPage pueda usar la fecha
+            } : undefined}
+            returnToLabel={pklReturnTo?.page === 'dia_a_dia' && pklReturnTo.date
+              ? `← Volver a ${pklReturnTo.date}`
+              : pklReturnTo
+                ? '← Volver'
+                : undefined}
+          />
         );
       case 'costos':
         return (
@@ -772,6 +790,7 @@ function AppContent() {
             onNuevoRequerimiento={() => setShowRequerimientoModal(true)}
             onNavigateToPKL={(pklId) => {
               setSelectedPKLId(pklId);
+              setPklReturnTo({ page: 'dashboard' });
               setCurrentPage('pkl');
             }}
           />

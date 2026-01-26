@@ -17,10 +17,15 @@ export const getCostoMonto = (costo: any): number => {
 
 /**
  * Calcula el costo total de los tasks de un PKL
+ * NOTA: Excluye tasks de tipo 'cotizacion' porque una cotización es solo
+ * un precio de referencia, NO un gasto real. Solo se suman gastos reales
+ * como producción, movilidad, rendiciones, etc.
  */
 export const calcularCostosTasks = (tasks: TaskPKL[] | undefined): number => {
     if (!tasks || tasks.length === 0) return 0;
-    return tasks.reduce((sum, task) => sum + getCostoMonto(task.costo), 0);
+    return tasks
+        .filter(task => task.tipo !== 'cotizacion') // Excluir cotizaciones
+        .reduce((sum, task) => sum + getCostoMonto(task.costo), 0);
 };
 
 /**

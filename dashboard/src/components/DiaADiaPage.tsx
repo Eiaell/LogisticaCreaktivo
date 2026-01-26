@@ -54,7 +54,8 @@ function findPKLForEvent(eventId: string, pkls: PKL[], pedidoId?: string): PKL |
 
 interface DiaADiaPageProps {
     onBack: () => void;
-    onNavigateToPKL?: (pklId: string) => void;
+    onNavigateToPKL?: (pklId: string, currentDate?: string) => void;
+    initialSelectedDate?: string | null;
 }
 
 // Nombres de días y meses en español
@@ -68,6 +69,8 @@ const CATEGORIAS_EVENTO = [
     { value: 'movimiento', label: '🚚 Movimiento', color: 'from-cyan-500 to-blue-500' },
     { value: 'rendicion', label: '💰 Rendición/Pago', color: 'from-orange-500 to-amber-500' },
     { value: 'produccion', label: '🏭 Producción', color: 'from-purple-500 to-pink-500' },
+    { value: 'compra', label: '🛒 Compra', color: 'from-green-500 to-emerald-500' },
+    { value: 'coordinacion', label: '📞 Coordinación', color: 'from-indigo-500 to-violet-500' },
 ];
 
 // Subtipos por categoría
@@ -93,11 +96,33 @@ const SUBTIPOS_EVENTO: Record<string, { value: string; label: string }[]> = {
     ],
     produccion: [
         { value: 'impresion', label: '🖨️ Impresión' },
+        { value: 'serigrafia', label: '🎨 Serigrafía' },
         { value: 'confeccion', label: '👕 Confección' },
         { value: 'bordado', label: '🧵 Bordado' },
         { value: 'sublimacion', label: '🌈 Sublimación' },
         { value: 'corte', label: '✂️ Corte' },
+        { value: 'grabado_laser', label: '⚡ Grabado Láser' },
+        { value: 'vinilado', label: '📄 Vinilado' },
+        { value: 'termoformado', label: '🔥 Termoformado' },
+        { value: 'carpinteria', label: '🪵 Carpintería' },
         { value: 'acabado', label: '✨ Acabado' },
+        { value: 'otro', label: '📦 Otro' },
+    ],
+    compra: [
+        { value: 'compra_material', label: '📦 Compra Material' },
+        { value: 'compra_insumo', label: '🧵 Compra Insumo' },
+        { value: 'compra_herramienta', label: '🔧 Compra Herramienta' },
+        { value: 'compra_equipo', label: '💻 Compra Equipo' },
+        { value: 'compra_oficina', label: '📎 Compra Oficina' },
+        { value: 'compra_personal', label: '👤 Compra Personal' },
+    ],
+    coordinacion: [
+        { value: 'coordinacion_proveedor', label: '🏭 Coordinación Proveedor' },
+        { value: 'coordinacion_cliente', label: '👤 Coordinación Cliente' },
+        { value: 'coordinacion_motorizado', label: '🏍️ Coordinación Motorizado' },
+        { value: 'coordinacion_interna', label: '🏢 Coordinación Interna' },
+        { value: 'llamada', label: '📱 Llamada' },
+        { value: 'mensaje', label: '💬 Mensaje WhatsApp' },
     ],
 };
 
@@ -131,15 +156,58 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
         descripcion: '',
         monto: 0,
         observaciones: '',
+        incluye_igv: false,
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Para cotizaciones con múltiples productos
+    interface ItemCotizacion {
+        descripcion: string;
+        cantidad: number;
+        precio_unitario: number;
+        precio_total: number;
+        incluye_igv: boolean;
+    }
+    const [itemsCotizacion, setItemsCotizacion] = useState<ItemCotizacion[]>([]);
+    const [nuevoItem, setNuevoItem] = useState({ descripcion: '', cantidad: 1, precio: 0, esPrecioUnitario: true, incluye_igv: false });
 
     // Reset form when opening
     useEffect(() => {
         if (isOpen) {
             setFormData(prev => ({ ...prev, fecha }));
+            setItemsCotizacion([]);
+            setNuevoItem({ descripcion: '', cantidad: 1, precio: 0, esPrecioUnitario: true, incluye_igv: false });
         }
     }, [isOpen, fecha]);
+
+    // Agregar item de cotización
+    const handleAgregarItem = () => {
+        if (!nuevoItem.descripcion.trim() || nuevoItem.precio <= 0) return;
+
+        const precio_total = nuevoItem.esPrecioUnitario
+            ? nuevoItem.cantidad * nuevoItem.precio
+            : nuevoItem.precio;
+        const precio_unitario = nuevoItem.esPrecioUnitario
+            ? nuevoItem.precio
+            : nuevoItem.precio / nuevoItem.cantidad;
+
+        setItemsCotizacion(prev => [...prev, {
+            descripcion: nuevoItem.descripcion.trim(),
+            cantidad: nuevoItem.cantidad,
+            precio_unitario,
+            precio_total,
+            incluye_igv: nuevoItem.incluye_igv
+        }]);
+        setNuevoItem({ descripcion: '', cantidad: 1, precio: 0, esPrecioUnitario: true, incluye_igv: false });
+    };
+
+    // Eliminar item de cotización
+    const handleEliminarItem = (index: number) => {
+        setItemsCotizacion(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Total de items de cotización
+    const totalItemsCotizacion = itemsCotizacion.reduce((sum, item) => sum + item.precio_total, 0);
 
     // Update subtipo when categoria changes
     useEffect(() => {
@@ -166,7 +234,17 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
         }
         setIsSubmitting(true);
         try {
-            await onSubmit({ ...formData, categoria, subtipo });
+            // Si es cotización con múltiples items, usar el total de items
+            const montoFinal = categoria === 'cotizacion' && itemsCotizacion.length > 0
+                ? totalItemsCotizacion
+                : formData.monto;
+            await onSubmit({
+                ...formData,
+                monto: montoFinal,
+                categoria,
+                subtipo,
+                itemsCotizacion: categoria === 'cotizacion' ? itemsCotizacion : undefined
+            });
         } finally {
             setIsSubmitting(false);
         }
@@ -273,18 +351,150 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                         />
                     </div>
 
-                    {/* Monto */}
-                    <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monto (S/.)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={formData.monto || ''}
-                            onChange={(e) => setFormData(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
-                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
-                            placeholder="0.00"
-                        />
-                    </div>
+                    {/* Monto o Items de Cotización */}
+                    {categoria === 'cotizacion' ? (
+                        <div className="border border-yellow-500/30 rounded-lg p-3 bg-yellow-500/5">
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">📦 Productos Cotizados</label>
+                                {itemsCotizacion.length > 0 && (
+                                    <span className="text-xs text-amber-500 font-bold">
+                                        Total: S/ {totalItemsCotizacion.toFixed(2)}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Lista de items agregados */}
+                            {itemsCotizacion.length > 0 && (
+                                <div className="space-y-1 mb-3">
+                                    {itemsCotizacion.map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded px-2 py-1.5 text-sm">
+                                            <div className="flex-1 truncate">
+                                                <span className="text-gray-900 dark:text-white">{item.cantidad}x</span>
+                                                <span className="text-gray-600 dark:text-gray-400 ml-1">{item.descripcion}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                                    S/ {item.precio_total.toFixed(2)}
+                                                    {item.incluye_igv && <span className="text-gray-400 text-xs ml-1">(+IGV)</span>}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleEliminarItem(idx)}
+                                                    className="text-red-400 hover:text-red-300 text-xs"
+                                                    title="Eliminar"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Form para nuevo item */}
+                            <div className="space-y-2">
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1">
+                                        <input
+                                            type="text"
+                                            value={nuevoItem.descripcion}
+                                            onChange={(e) => setNuevoItem(prev => ({ ...prev, descripcion: e.target.value }))}
+                                            placeholder="Producto (ej: 50 polos)"
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500"
+                                        />
+                                    </div>
+                                    <div className="w-16">
+                                        <input
+                                            type="number"
+                                            value={nuevoItem.cantidad || ''}
+                                            onChange={(e) => setNuevoItem(prev => ({ ...prev, cantidad: parseInt(e.target.value) || 1 }))}
+                                            placeholder="Cant"
+                                            min="1"
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500 text-center"
+                                        />
+                                    </div>
+                                    <div className="w-20">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={nuevoItem.precio || ''}
+                                            onChange={(e) => setNuevoItem(prev => ({ ...prev, precio: parseFloat(e.target.value) || 0 }))}
+                                            placeholder="S/."
+                                            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500"
+                                        />
+                                    </div>
+                                    <select
+                                        value={nuevoItem.esPrecioUnitario ? 'u' : 't'}
+                                        onChange={(e) => setNuevoItem(prev => ({ ...prev, esPrecioUnitario: e.target.value === 'u' }))}
+                                        className="w-14 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-1 py-1.5 text-gray-900 dark:text-white text-xs outline-none"
+                                    >
+                                        <option value="u">c/u</option>
+                                        <option value="t">total</option>
+                                    </select>
+                                    <button
+                                        onClick={handleAgregarItem}
+                                        disabled={!nuevoItem.descripcion.trim() || nuevoItem.precio <= 0}
+                                        className="px-2 py-1.5 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-400 text-white text-sm rounded font-medium"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <label className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={nuevoItem.incluye_igv}
+                                        onChange={(e) => setNuevoItem(prev => ({ ...prev, incluye_igv: e.target.checked }))}
+                                        className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600"
+                                    />
+                                    Incluye IGV
+                                </label>
+                            </div>
+
+                            {/* Monto simple (opcional si no hay items) */}
+                            {itemsCotizacion.length === 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                    <div className="text-xs text-gray-400 mb-1">O ingresa un monto simple:</div>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.monto || ''}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
+                                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monto (S/.)</label>
+                            <div className="flex gap-2 items-center">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.monto || ''}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
+                                    className="flex-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder="0.00"
+                                />
+                                {categoria === 'compra' && (
+                                    <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.incluye_igv}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, incluye_igv: e.target.checked }))}
+                                            className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                        />
+                                        <span>+IGV</span>
+                                    </label>
+                                )}
+                            </div>
+                            {categoria === 'compra' && formData.incluye_igv && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                    El precio no incluye IGV (18%)
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Observaciones */}
                     <div>
@@ -1547,7 +1757,15 @@ function PKLEventoAcordeon({
                             )}
                         </div>
                         <div className="flex items-center gap-2 mt-2">
-                            <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded text-xs font-mono">
+                            <span
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onNavigateToPKL?.(pkl.pkl_id, selectedDate || undefined);
+                                }}
+                                className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded text-xs font-mono hover:bg-cyan-500/40 hover:text-cyan-300 transition-colors cursor-pointer"
+                                title="Ver PKL completo"
+                                role="link"
+                            >
                                 {pkl.pkl_id}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-xs text-white ${estadoInfo?.color || 'bg-gray-500'}`}>
@@ -1950,7 +2168,7 @@ function PKLEventoAcordeon({
                             Agregar Task
                         </button>
                         <button
-                            onClick={() => onNavigateToPKL?.(pkl.pkl_id)}
+                            onClick={() => onNavigateToPKL?.(pkl.pkl_id, selectedDate || undefined)}
                             className="flex-1 text-center text-xs text-cyan-400 hover:text-cyan-300 py-2 hover:bg-cyan-500/10 rounded transition-colors"
                         >
                             Ver PKL completo →
@@ -3281,7 +3499,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
     );
 }
 
-export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
+export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: DiaADiaPageProps) {
     const {
         movimientosLogisticos, rendiciones, eventosProduccion,
         deleteMovimientoLogistico, deleteRendicion, deleteEventoProduccion,
@@ -3307,7 +3525,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
 
     const { showToast } = useToast();
 
-    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string | null>(initialSelectedDate || null);
     const [filterType, setFilterType] = useState<'all' | 'movimientos' | 'rendiciones' | 'produccion'>('all');
     const [expandedPKLs, setExpandedPKLs] = useState<Set<string>>(new Set());
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: string; id: string; itemType: string } | null>(null);
@@ -4467,6 +4685,21 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                             const maxNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
                             const pklId = `PKL-${year}-${String(maxNum + 1).padStart(4, '0')}`;
                             const taskId = `TASK-${Date.now()}`;
+
+                            // Items de cotización (productos cotizados)
+                            const itemsCot = (data as any).itemsCotizacion || [];
+                            const tieneItems = itemsCot.length > 0;
+
+                            // Crear productos del PKL basados en los items cotizados
+                            const productosPKL = tieneItems
+                                ? itemsCot.map((item: any, idx: number) => ({
+                                    producto_id: `PROD-${Date.now()}-${idx}`,
+                                    nombre: item.descripcion,
+                                    cantidad: item.cantidad,
+                                    descripcion: `${item.cantidad}x ${item.descripcion}`
+                                }))
+                                : [];
+
                             await createPKL({
                                 pkl_id: pklId,
                                 version: '2.0',
@@ -4483,11 +4716,19 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                     descripcion_inicial: data.descripcion,
                                     fecha_solicitud: data.fecha
                                 },
-                                productos: [],
+                                productos: productosPKL,
                                 proveedores: data.proveedor ? [{
                                     proveedor_id: `PROV-${Date.now()}`,
                                     nombre: data.proveedor,
-                                    servicio: data.descripcion
+                                    servicio: data.descripcion,
+                                    cotizaciones: tieneItems ? itemsCot.map((item: any) => ({
+                                        descripcion: item.descripcion,
+                                        cantidad: item.cantidad,
+                                        precio_unitario: item.precio_unitario,
+                                        precio_total: item.precio_total,
+                                        incluye_igv: item.incluye_igv,
+                                        fecha_cotizacion: data.fecha
+                                    })) : undefined
                                 }] : [],
                                 estado: {
                                     actual: 'cotizado',
@@ -4507,7 +4748,16 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                     responsable: 'Huber',
                                     es_happy_path: true,
                                     fecha_completado: data.fecha,
-                                    costo: data.monto ? { monto: data.monto, moneda: 'PEN' } : undefined
+                                    // No guardar costo en task de cotización (cotización ≠ gasto)
+                                    // Guardar items_cotizacion para referencia
+                                    items_cotizacion: tieneItems ? itemsCot.map((item: any) => ({
+                                        item_id: `ITEM-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                        descripcion: item.descripcion,
+                                        cantidad: item.cantidad,
+                                        precio_unitario: item.precio_unitario,
+                                        precio_total: item.precio_total,
+                                        incluye_igv: item.incluye_igv
+                                    })) : undefined
                                 }],
                                 eventos_externos: [],
                                 costos: {
@@ -4525,7 +4775,8 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                 created_at: `${data.fecha}T12:00:00.000Z`,
                                 updated_at: now
                             });
-                            showToast(`📋 Cotización creada: ${pklId}`, 'success');
+                            const numItems = tieneItems ? ` (${itemsCot.length} productos)` : '';
+                            showToast(`📋 Cotización creada: ${pklId}${numItems}`, 'success');
                         } else if (data.categoria === 'movimiento') {
                             // Mapear subtipos a tipos válidos
                             const tipoMovimiento = (['entrega', 'recojo', 'compra', 'traslado', 'solicitud_stock', 'cotizacion', 'coordinacion'].includes(data.subtipo || '')
@@ -4580,6 +4831,96 @@ export function DiaADiaPage({ onBack, onNavigateToPKL }: DiaADiaPageProps) {
                                 updated_at: now
                             } as any);
                             showToast('🏭 Producción creada', 'success');
+                        } else if (data.categoria === 'compra') {
+                            // Compra crea un MovimientoLogistico con tipo='compra'
+                            await createMovimientoLogistico({
+                                id,
+                                fecha: data.fecha,
+                                tipo: 'compra',
+                                cliente: data.cliente,
+                                proveedor: data.proveedor,
+                                detalle: {
+                                    descripcion: data.descripcion,
+                                    subtipo: data.subtipo, // compra_material, compra_insumo, etc.
+                                    incluye_igv: data.incluye_igv || false
+                                },
+                                estado: 'completado',
+                                observaciones: data.observaciones,
+                                costo_movilidad: data.monto || 0,
+                                created_at: now,
+                                updated_at: now
+                            } as any);
+                            const igvNote = data.incluye_igv ? ' (+IGV)' : '';
+                            showToast(`🛒 Compra registrada${igvNote}`, 'success');
+                        } else if (data.categoria === 'coordinacion') {
+                            // Coordinación crea un PKL con tipo de operación según el subtipo
+                            const year = new Date().getFullYear();
+                            const existingNumbers = pkls
+                                .filter(p => p.pkl_id.startsWith(`PKL-${year}-`))
+                                .map(p => parseInt(p.pkl_id.split('-')[2], 10))
+                                .filter(n => !isNaN(n));
+                            const maxNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+                            const pklId = `PKL-${year}-${String(maxNum + 1).padStart(4, '0')}`;
+                            const taskId = `TASK-${Date.now()}`;
+                            await createPKL({
+                                pkl_id: pklId,
+                                version: '2.0',
+                                clasificacion: {
+                                    tipo_operacion: 'movilidad', // Coordinación usa movilidad como base
+                                    area: 'logistica'
+                                },
+                                cliente: {
+                                    nombre: data.cliente || 'Sin cliente',
+                                    contacto: { nombre: '', telefono: '', email: '' }
+                                },
+                                origen: {
+                                    canal: data.subtipo === 'llamada' ? 'telefono' : data.subtipo === 'mensaje' ? 'whatsapp' : 'presencial',
+                                    descripcion_inicial: data.descripcion,
+                                    fecha_solicitud: data.fecha
+                                },
+                                productos: [],
+                                proveedores: data.proveedor ? [{
+                                    proveedor_id: `PROV-${Date.now()}`,
+                                    nombre: data.proveedor,
+                                    servicio: data.descripcion
+                                }] : [],
+                                estado: {
+                                    actual: 'completado',
+                                    historial: [{
+                                        estado: 'completado',
+                                        fecha: now,
+                                        motivo: `Coordinación (${data.subtipo || 'general'}) creada desde Día a Día`
+                                    }]
+                                },
+                                tasks: [{
+                                    task_id: taskId,
+                                    tipo: 'coordinacion',
+                                    nombre: data.descripcion,
+                                    descripcion: data.observaciones || '',
+                                    estado: 'completado',
+                                    orden: 1,
+                                    responsable: 'Huber',
+                                    es_happy_path: false,
+                                    fecha_completado: data.fecha,
+                                    costo: data.monto ? { monto: data.monto, moneda: 'PEN' } : undefined
+                                }],
+                                eventos_externos: [],
+                                costos: {
+                                    detalle: [],
+                                    moneda: 'PEN'
+                                },
+                                cierre: {
+                                    evidencias: []
+                                },
+                                alertas: {
+                                    dias_sin_actividad: 0,
+                                    umbral_pausa_dias: 7
+                                },
+                                observaciones: data.observaciones,
+                                created_at: `${data.fecha}T12:00:00.000Z`,
+                                updated_at: now
+                            });
+                            showToast(`📞 Coordinación creada: ${pklId}`, 'success');
                         }
                         setAddEventoModal(null);
                     }}
