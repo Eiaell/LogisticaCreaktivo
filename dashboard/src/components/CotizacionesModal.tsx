@@ -476,16 +476,19 @@ export function CotizacionesModal({ pedidoId, onClose }: CotizacionesModalProps)
                       {/* Producto Base (OBLIGATORIO - normalizado) */}
                       <div>
                         <label className="text-xs text-gray-500 font-bold block mb-1">Producto Base *</label>
-                        <select
+                        <input
+                          type="text"
+                          list="productos-base-list"
                           value={variante.producto_base}
                           onChange={(e) => actualizarVariante(index, 'producto_base', e.target.value)}
                           className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-cyan-500 outline-none"
-                        >
-                          <option value="">Selecciona producto...</option>
+                          placeholder="Escribe para buscar..."
+                        />
+                        <datalist id="productos-base-list">
                           {PRODUCTOS_BASE.map(p => (
                             <option key={p.id} value={p.id}>{p.nombre}</option>
                           ))}
-                        </select>
+                        </datalist>
                       </div>
 
                       {/* Variante (EDITABLE - diferencias comerciales) */}

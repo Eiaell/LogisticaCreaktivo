@@ -240,14 +240,54 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
     const proveedoresList = Object.keys(proveedores);
 
     const handleSubmit = async () => {
-        if (!formData.descripcion.trim()) {
-            alert('Por favor ingresa una descripción');
-            return;
+        // Validaciones específicas por categoría
+        if (categoria === 'movimiento') {
+            if (!formData.proveedor) {
+                alert('Por favor selecciona quién hace el movimiento (Motorizado/Servicio Externo/Logística)');
+                return;
+            }
+            if (!formData.descripcion.trim()) {
+                alert('Por favor ingresa una descripción del movimiento');
+                return;
+            }
+        } else if (categoria === 'cotizacion') {
+            if (!formData.cliente.trim()) {
+                alert('Por favor indica a quién va dirigida la cotización');
+                return;
+            }
+        } else if (categoria === 'rendicion') {
+            if (!formData.proveedor.trim()) {
+                alert('Por favor indica a quién se le paga');
+                return;
+            }
+            if (!formData.descripcion.trim()) {
+                alert('Por favor describe el pago/rendición');
+                return;
+            }
+        } else if (categoria === 'produccion') {
+            if (!formData.proveedor.trim()) {
+                alert('Por favor indica quién produce');
+                return;
+            }
+            if (!formData.descripcion.trim()) {
+                alert('Por favor describe qué se produce');
+                return;
+            }
+        } else if (categoria === 'compra') {
+            if (!formData.proveedor.trim() && itemsCotizacion.length === 0) {
+                alert('Por favor indica la tienda/proveedor o agrega productos');
+                return;
+            }
+        } else if (categoria === 'coordinacion') {
+            if (!formData.descripcion.trim()) {
+                alert('Por favor describe la coordinación');
+                return;
+            }
         }
         setIsSubmitting(true);
         try {
-            // Si es cotización con múltiples items, usar el total de items
-            const montoFinal = categoria === 'cotizacion' && itemsCotizacion.length > 0
+            // Si es cotización o compra con múltiples items, usar el total de items
+            const montoFinal = (categoria === 'cotizacion' || categoria === 'compra') && itemsCotizacion.length > 0
                 ? totalItemsCotizacion
                 : formData.monto;
             await onSubmit({
@@ -255,8 +295,8 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                 monto: montoFinal,
                 categoria,
                 subtipo,
-                itemsCotizacion: categoria === 'cotizacion' ? itemsCotizacion : undefined
-            });
+                itemsCotizacion: (categoria === 'cotizacion' || categoria === 'compra') ? itemsCotizacion : undefined
+            } as any);
         } finally {
             setIsSubmitting(false);
         }
@@ -319,57 +359,216 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                         </div>
                     )}
 
-                    {/* Cliente y Proveedor */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
-                            <input
-                                type="text"
-                                list="clientes-add-list"
-                                value={formData.cliente}
-                                onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
-                                placeholder="Nombre del cliente"
-                            />
-                            <datalist id="clientes-add-list">
-                                {clientesList.map(c => <option key={c.id} value={c.display} />)}
-                            </datalist>
+                    {/* Campos dinámicos según categoría */}
+
+                    {/* MOVIMIENTO: Cliente + Responsable (motorizado/externo/logística) */}
+                    {categoria === 'movimiento' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
+                                <input
+                                    type="text"
+                                    list="clientes-add-list"
+                                    value={formData.cliente}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder="Para quién es"
+                                />
+                                <datalist id="clientes-add-list">
+                                    {clientesList.map(c => <option key={c.id} value={c.display} />)}
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsable *</label>
+                                <input
+                                    type="text"
+                                    list="responsable-add-list"
+                                    value={formData.proveedor}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none"
+                                    placeholder="Escribe para buscar..."
+                                />
+                                <datalist id="responsable-add-list">
+                                    <option value="MOTORIZADO">🏍️ Motorizado</option>
+                                    <option value="SERVICIO_EXTERNO">🚐 Servicio Externo</option>
+                                    <option value="LOGISTICA_INTERNA">🏢 Logística Interna</option>
+                                </datalist>
+                            </div>
                         </div>
+                    )}
+
+                    {/* COTIZACIÓN: Cliente (requerido) + Proveedor */}
+                    {categoria === 'cotizacion' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente *</label>
+                                <input
+                                    type="text"
+                                    list="clientes-add-list-cot"
+                                    value={formData.cliente}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder="A quién cotizas"
+                                />
+                                <datalist id="clientes-add-list-cot">
+                                    {clientesList.map(c => <option key={c.id} value={c.display} />)}
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Proveedor</label>
+                                <input
+                                    type="text"
+                                    list="proveedores-add-list-cot"
+                                    value={formData.proveedor}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder="De quién cotizas"
+                                />
+                                <datalist id="proveedores-add-list-cot">
+                                    {proveedoresList.map(p => <option key={p} value={p} />)}
+                                </datalist>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* RENDICIÓN: Solo beneficiario (a quién se paga) */}
+                    {categoria === 'rendicion' && (
                         <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Proveedor</label>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Beneficiario *</label>
                             <input
                                 type="text"
-                                list="proveedores-add-list"
+                                list="beneficiarios-add-list"
                                 value={formData.proveedor}
                                 onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
                                 className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
-                                placeholder="Nombre proveedor"
+                                placeholder="A quién se le paga"
                             />
-                            <datalist id="proveedores-add-list">
+                            <datalist id="beneficiarios-add-list">
                                 {proveedoresList.map(p => <option key={p} value={p} />)}
+                                <option value="CAJA CHICA">Caja Chica</option>
+                                <option value="MOTORIZADO">Motorizado</option>
                             </datalist>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Descripción */}
-                    <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Descripción *</label>
-                        <input
-                            type="text"
-                            value={formData.descripcion}
-                            onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
-                            placeholder="Descripción del evento"
-                        />
-                    </div>
+                    {/* PRODUCCIÓN: Cliente + Proveedor (quien produce) */}
+                    {categoria === 'produccion' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
+                                <input
+                                    type="text"
+                                    list="clientes-add-list-prod"
+                                    value={formData.cliente}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder="Para quién es"
+                                />
+                                <datalist id="clientes-add-list-prod">
+                                    {clientesList.map(c => <option key={c.id} value={c.display} />)}
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Proveedor *</label>
+                                <input
+                                    type="text"
+                                    list="proveedores-add-list-prod"
+                                    value={formData.proveedor}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder="Quién produce"
+                                />
+                                <datalist id="proveedores-add-list-prod">
+                                    {proveedoresList.map(p => <option key={p} value={p} />)}
+                                </datalist>
+                            </div>
+                        </div>
+                    )}
 
-                    {/* Monto o Items de Cotización */}
-                    {categoria === 'cotizacion' ? (
-                        <div className="border border-yellow-500/30 rounded-lg p-3 bg-yellow-500/5">
+                    {/* COMPRA: Solo proveedor (dónde compro) */}
+                    {categoria === 'compra' && (
+                        <div>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tienda / Proveedor *</label>
+                            <input
+                                type="text"
+                                list="proveedores-add-list-compra"
+                                value={formData.proveedor}
+                                onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                placeholder="Ej: Promart, Sodimac, Mercado..."
+                            />
+                            <datalist id="proveedores-add-list-compra">
+                                {proveedoresList.map(p => <option key={p} value={p} />)}
+                                <option value="PROMART">Promart</option>
+                                <option value="SODIMAC">Sodimac</option>
+                                <option value="MAESTRO">Maestro</option>
+                                <option value="MERCADO">Mercado</option>
+                            </datalist>
+                        </div>
+                    )}
+
+                    {/* COORDINACIÓN: Depende del subtipo */}
+                    {categoria === 'coordinacion' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                    {subtipo.includes('cliente') ? 'Cliente *' : 'Cliente'}
+                                </label>
+                                <input
+                                    type="text"
+                                    list="clientes-add-list-coord"
+                                    value={formData.cliente}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder="Con quién coordinas"
+                                />
+                                <datalist id="clientes-add-list-coord">
+                                    {clientesList.map(c => <option key={c.id} value={c.display} />)}
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                    {subtipo.includes('proveedor') ? 'Proveedor *' : subtipo.includes('motorizado') ? 'Motorizado' : 'Contacto'}
+                                </label>
+                                <input
+                                    type="text"
+                                    list="contactos-add-list-coord"
+                                    value={formData.proveedor}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    placeholder={subtipo.includes('motorizado') ? 'Nombre del motorizado' : 'Nombre'}
+                                />
+                                <datalist id="contactos-add-list-coord">
+                                    {proveedoresList.map(p => <option key={p} value={p} />)}
+                                    {subtipo.includes('motorizado') && <option value="MOTORIZADO">Motorizado</option>}
+                                </datalist>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Descripción - Ocultar para compras (el proveedor ya es el lugar) */}
+                    {categoria !== 'compra' && (
+                        <div>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Descripción *</label>
+                            <input
+                                type="text"
+                                value={formData.descripcion}
+                                onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
+                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                placeholder="Descripción del evento"
+                            />
+                        </div>
+                    )}
+
+                    {/* Monto o Items de Cotización/Compra */}
+                    {(categoria === 'cotizacion' || categoria === 'compra') ? (
+                        <div className={`border rounded-lg p-3 ${categoria === 'compra' ? 'border-green-500/30 bg-green-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}>
                             <div className="flex items-center justify-between mb-2">
-                                <label className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">📦 Productos Cotizados</label>
+                                <label className={`text-xs font-medium ${categoria === 'compra' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                                    {categoria === 'compra' ? '🛒 Productos Comprados' : '📦 Productos Cotizados'}
+                                </label>
                                 {itemsCotizacion.length > 0 && (
-                                    <span className="text-xs text-amber-500 font-bold">
+                                    <span className={`text-xs font-bold ${categoria === 'compra' ? 'text-green-500' : 'text-amber-500'}`}>
                                         Total: S/ {totalItemsCotizacion.toFixed(2)}
                                     </span>
                                 )}
@@ -410,8 +609,8 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                             type="text"
                                             value={nuevoItem.descripcion}
                                             onChange={(e) => setNuevoItem(prev => ({ ...prev, descripcion: e.target.value }))}
-                                            placeholder="Producto (ej: 50 polos)"
-                                            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500"
+                                            placeholder={categoria === 'compra' ? 'Producto (ej: tornillos, cinta, pintura)' : 'Producto (ej: 50 polos)'}
+                                            className={`w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
                                         />
                                     </div>
                                     <div className="w-16">
@@ -421,7 +620,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                             onChange={(e) => setNuevoItem(prev => ({ ...prev, cantidad: parseInt(e.target.value) || 1 }))}
                                             placeholder="Cant"
                                             min="1"
-                                            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500 text-center"
+                                            className={`w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none text-center ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
                                         />
                                     </div>
                                     <div className="w-20">
@@ -431,7 +630,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                             value={nuevoItem.precio || ''}
                                             onChange={(e) => setNuevoItem(prev => ({ ...prev, precio: parseFloat(e.target.value) || 0 }))}
                                             placeholder="S/."
-                                            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500"
+                                            className={`w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
                                         />
                                     </div>
                                     <select
@@ -445,7 +644,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                     <button
                                         onClick={handleAgregarItem}
                                         disabled={!nuevoItem.descripcion.trim() || nuevoItem.precio <= 0}
-                                        className="px-2 py-1.5 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-400 text-white text-sm rounded font-medium"
+                                        className={`px-2 py-1.5 ${categoria === 'compra' ? 'bg-green-600 hover:bg-green-500' : 'bg-yellow-600 hover:bg-yellow-500'} disabled:bg-gray-400 text-white text-sm rounded font-medium`}
                                     >
                                         +
                                     </button>
@@ -1095,19 +1294,30 @@ function MovimientoCard({ movimiento, onEdit, onEditDirect, onDelete, onSync, cl
     const config = MOVIMIENTO_CONFIG[movimiento.tipo] || MOVIMIENTO_CONFIG.traslado;
     const detalle = movimiento.detalle as any;
 
-    // Construir resumen según tipo
+    // Construir resumen según tipo - PRIORIDAD: descripción > observaciones > items > origen/destino
     let resumen = '';
-    if (detalle?.items && Array.isArray(detalle.items)) {
+
+    // Primero, la descripción del movimiento
+    if (detalle?.descripcion) {
+        resumen = detalle.descripcion;
+    }
+    // Fallback a observaciones (para eventos antiguos)
+    else if (movimiento.observaciones) {
+        resumen = movimiento.observaciones;
+    }
+    // Si tiene items, mostrarlos
+    else if (detalle?.items && Array.isArray(detalle.items) && detalle.items.length > 0) {
         resumen = detalle.items.map((i: any) => {
             const producto = i.producto || '';
             const cantidad = i.cantidad;
-            // Si cantidad es 1 o el producto ya empieza con número, solo mostrar producto
             if (cantidad === 1 || /^\d/.test(producto)) {
                 return producto;
             }
             return `${cantidad} ${producto}`;
         }).join(', ');
-    } else if (detalle?.origen) {
+    }
+    // Si tiene origen/destino
+    else if (detalle?.origen) {
         resumen = `${detalle.origen}${detalle.destino ? ` → ${detalle.destino}` : ''}`;
         if (detalle.item) resumen += ` (${detalle.item})`;
     }
@@ -1200,7 +1410,8 @@ function MovimientoCard({ movimiento, onEdit, onEditDirect, onDelete, onSync, cl
                         <p className="text-gray-400 text-sm mt-1">{resumen}</p>
                     )}
 
-                    {movimiento.observaciones && (
+                    {/* Solo mostrar observaciones si no son el resumen (para evitar duplicar) */}
+                    {movimiento.observaciones && detalle?.descripcion && movimiento.observaciones !== resumen && (
                         <p className="text-gray-500 text-xs mt-2 italic">"{movimiento.observaciones}"</p>
                     )}
 
@@ -1772,7 +1983,7 @@ function PKLEventoAcordeon({
                             <span
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onNavigateToPKL?.(pkl.pkl_id, selectedDate || undefined);
+                                    (onNavigateToPKL as any)?.(pkl.pkl_id, selectedDate || undefined);
                                 }}
                                 className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded text-xs font-mono hover:bg-cyan-500/40 hover:text-cyan-300 transition-colors cursor-pointer"
                                 title="Ver PKL completo"
@@ -2180,7 +2391,7 @@ function PKLEventoAcordeon({
                             Agregar Task
                         </button>
                         <button
-                            onClick={() => onNavigateToPKL?.(pkl.pkl_id, selectedDate || undefined)}
+                            onClick={() => (onNavigateToPKL as any)?.(pkl.pkl_id, selectedDate || undefined)}
                             className="flex-1 text-center text-xs text-cyan-400 hover:text-cyan-300 py-2 hover:bg-cyan-500/10 rounded transition-colors"
                         >
                             Ver PKL completo →
@@ -2666,30 +2877,35 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Cliente</label>
-                            <select
+                            <input
+                                type="text"
+                                list="clientes-pkl-create-list"
                                 value={selectedCliente}
                                 onChange={(e) => setSelectedCliente(e.target.value)}
                                 className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
-                                <option value="">Seleccionar cliente...</option>
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="clientes-pkl-create-list">
                                 {clientesList.map(c => (
                                     <option key={c.id} value={c.id}>{c.display}</option>
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Ciclo de Operación</label>
-                            <select
+                            <input
+                                type="text"
+                                list="tipos-operacion-pkl-list"
                                 value={tipoOperacion}
                                 onChange={(e) => setTipoOperacion(e.target.value)}
                                 className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="tipos-operacion-pkl-list">
                                 {tiposOperacion.map(t => (
                                     <option key={t.value} value={t.value}>{t.label}</option>
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
                     </div>
 
@@ -2925,11 +3141,15 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                             <div className="mt-3 p-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-400 dark:border-purple-500/30 rounded-lg space-y-3">
                                 {/* Fila 1: Tipo y Descripción */}
                                 <div className="flex gap-2">
-                                    <select
+                                    <input
+                                        type="text"
+                                        list="tipos-task-add-list"
                                         value={newTaskTipo}
                                         onChange={(e) => setNewTaskTipo(e.target.value)}
-                                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
-                                    >
+                                        className="w-36 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        placeholder="Tipo..."
+                                    />
+                                    <datalist id="tipos-task-add-list">
                                         <option value="cotizacion">💬 Cotización</option>
                                         <option value="coordinacion_proveedor">📞 Coordinación</option>
                                         <option value="compra_insumo">🛒 Compra Insumo</option>
@@ -2938,7 +3158,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                         <option value="instalacion">🔧 Instalación</option>
                                         <option value="cierre">✅ Cierre</option>
                                         <option value="administrativo">📋 Administrativo</option>
-                                    </select>
+                                    </datalist>
                                     <input
                                         type="text"
                                         value={newTaskDesc}
@@ -4845,6 +5065,23 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                             showToast('🏭 Producción creada', 'success');
                         } else if (data.categoria === 'compra') {
                             // Compra crea un MovimientoLogistico con tipo='compra'
+                            // Convertir items de cotización a formato de items del movimiento
+                            const dataAny = data as any;
+                            const itemsCompra = dataAny.itemsCotizacion && dataAny.itemsCotizacion.length > 0
+                                ? dataAny.itemsCotizacion.map((item: any) => ({
+                                    producto: item.descripcion,
+                                    cantidad: item.cantidad,
+                                    precio_unitario: item.precio_unitario,
+                                    precio_total: item.precio_total,
+                                    incluye_igv: item.incluye_igv
+                                }))
+                                : [];
+
+                            // Generar descripción automática basada en productos o proveedor
+                            const descripcionCompra = itemsCompra.length > 0
+                                ? `Compra: ${itemsCompra.map((i: any) => i.producto).join(', ')}`
+                                : `Compra en ${data.proveedor || 'proveedor'}`;
+
                             await createMovimientoLogistico({
                                 id,
                                 fecha: data.fecha,
@@ -4852,9 +5089,10 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                                 cliente: data.cliente,
                                 proveedor: data.proveedor,
                                 detalle: {
-                                    descripcion: data.descripcion,
+                                    descripcion: descripcionCompra,
                                     subtipo: data.subtipo, // compra_material, compra_insumo, etc.
-                                    incluye_igv: data.incluye_igv || false
+                                    incluye_igv: (data as any).incluye_igv || false,
+                                    items: itemsCompra // Productos comprados
                                 },
                                 estado: 'completado',
                                 observaciones: data.observaciones,
@@ -4862,8 +5100,9 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                                 created_at: now,
                                 updated_at: now
                             } as any);
-                            const igvNote = data.incluye_igv ? ' (+IGV)' : '';
-                            showToast(`🛒 Compra registrada${igvNote}`, 'success');
+                            const igvNote = (data as any).incluye_igv ? ' (+IGV)' : '';
+                            const itemsCount = itemsCompra.length > 0 ? ` (${itemsCompra.length} productos)` : '';
+                            showToast(`🛒 Compra registrada${itemsCount}${igvNote}`, 'success');
                         } else if (data.categoria === 'coordinacion') {
                             // Coordinación crea un PKL con tipo de operación según el subtipo
                             const year = new Date().getFullYear();
@@ -4897,16 +5136,16 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                                     servicio: data.descripcion
                                 }] : [],
                                 estado: {
-                                    actual: 'completado',
+                                    actual: 'cerrado_ok',
                                     historial: [{
-                                        estado: 'completado',
+                                        estado: 'cerrado_ok',
                                         fecha: now,
                                         motivo: `Coordinación (${data.subtipo || 'general'}) creada desde Día a Día`
                                     }]
                                 },
                                 tasks: [{
                                     task_id: taskId,
-                                    tipo: 'coordinacion',
+                                    tipo: 'coordinacion_proveedor',
                                     nombre: data.descripcion,
                                     descripcion: data.observaciones || '',
                                     estado: 'completado',
@@ -5709,16 +5948,20 @@ function EditTaskModal({ isOpen: _isOpen, task, pklId, onClose, onSave }: {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">Estado</label>
-                            <select
+                            <input
+                                type="text"
+                                list="estados-task-modal-list"
                                 value={estado}
                                 onChange={(e) => setEstado(e.target.value as 'pendiente' | 'en_progreso' | 'completado' | 'cancelado')}
                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="estados-task-modal-list">
                                 <option value="pendiente">Pendiente</option>
                                 <option value="en_progreso">En progreso</option>
                                 <option value="completado">Completado</option>
                                 <option value="cancelado">Cancelado</option>
-                            </select>
+                            </datalist>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">Monto (S/.)</label>
@@ -6552,15 +6795,19 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                                 <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
                                     Tipo de Operación
                                 </label>
-                                <select
+                                <input
+                                    type="text"
+                                    list="tipos-operacion-nuevo-pkl-list"
                                     value={nuevoPKL.tipoOperacion}
                                     onChange={(e) => setNuevoPKL(prev => ({ ...prev, tipoOperacion: e.target.value }))}
                                     className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:border-emerald-500 outline-none"
-                                >
+                                    placeholder="Escribe para buscar..."
+                                />
+                                <datalist id="tipos-operacion-nuevo-pkl-list">
                                     {TIPOS_OPERACION_PKL.map(t => (
                                         <option key={t.value} value={t.value}>{t.label}</option>
                                     ))}
-                                </select>
+                                </datalist>
                             </div>
 
                             {/* Fecha (opcional) - auto agrega año a descripción */}

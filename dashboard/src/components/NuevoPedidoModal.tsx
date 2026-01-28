@@ -382,16 +382,20 @@ export function NuevoPedidoModal({ isOpen, onClose }: Props) {
                             <label className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide">
                                 Ejecutiva / Responsable
                             </label>
-                            <select
+                            <input
+                                type="text"
+                                list="ejecutivas-list"
                                 value={vendedora}
                                 onChange={(e) => setVendedora(e.target.value)}
                                 className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none"
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="ejecutivas-list">
                                 <option value="">Sin asignar</option>
                                 {EJECUTIVAS.map(v => (
                                     <option key={v} value={v}>{v}</option>
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
 
                         <div className="space-y-1 relative">

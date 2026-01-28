@@ -90,7 +90,7 @@ interface EditDescripcionModalProps {
     onSave: (descripcion: string, descripcionCorta: string) => void;
 }
 
-function EditDescripcionModal({ isOpen, pedidoId, initialDescripcion, initialDescripcionCorta, isPKL, onClose, onSave }: EditDescripcionModalProps) {
+function EditDescripcionModal({ isOpen, pedidoId: _pedidoId, initialDescripcion, initialDescripcionCorta, isPKL: _isPKL, onClose, onSave }: EditDescripcionModalProps) {
     const [descripcion, setDescripcion] = useState(initialDescripcion);
     const [descripcionCorta, setDescripcionCorta] = useState(initialDescripcionCorta);
 

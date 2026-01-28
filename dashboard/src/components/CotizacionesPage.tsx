@@ -170,7 +170,7 @@ export function CotizacionesPage({ onBack, onNavigateToPKL }: CotizacionesPagePr
         ) ||
         // Buscar en productos del PKL
         c.pkl.productos?.some(prod =>
-          prod.nombre?.toLowerCase().includes(term) ||
+          prod.tipo?.toLowerCase().includes(term) ||
           prod.descripcion?.toLowerCase().includes(term)
         )
       );

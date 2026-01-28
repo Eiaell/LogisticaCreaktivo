@@ -295,14 +295,20 @@ export function ProveedorFichaPage({ proveedorId, onBack }: ProveedorFichaPagePr
                                     <div className="flex-1">
                                         <p className="text-xs text-gray-500">Emite Factura</p>
                                         {isEditingInfo ? (
-                                            <select
-                                                value={editForm.emite_factura ? 'si' : 'no'}
-                                                onChange={(e) => setEditForm({ ...editForm, emite_factura: e.target.value === 'si' })}
-                                                className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-                                            >
-                                                <option value="si">Sí</option>
-                                                <option value="no">No</option>
-                                            </select>
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    list="emite-factura-list"
+                                                    value={editForm.emite_factura ? 'si' : 'no'}
+                                                    onChange={(e) => setEditForm({ ...editForm, emite_factura: e.target.value === 'si' })}
+                                                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
+                                                    placeholder="Escribe para buscar..."
+                                                />
+                                                <datalist id="emite-factura-list">
+                                                    <option value="si">Sí</option>
+                                                    <option value="no">No</option>
+                                                </datalist>
+                                            </>
                                         ) : (
                                             <p className="text-white">{proveedor.emite_factura ? 'Sí' : 'No'}</p>
                                         )}
@@ -314,15 +320,21 @@ export function ProveedorFichaPage({ proveedorId, onBack }: ProveedorFichaPagePr
                                     <div className="flex-1">
                                         <p className="text-xs text-gray-500">Incluye IGV</p>
                                         {isEditingInfo ? (
-                                            <select
-                                                value={editForm.incluye_igv || 'depende'}
-                                                onChange={(e) => setEditForm({ ...editForm, incluye_igv: e.target.value as 'si' | 'no' | 'depende' })}
-                                                className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-                                            >
-                                                <option value="si">Sí</option>
-                                                <option value="no">No</option>
-                                                <option value="depende">Depende</option>
-                                            </select>
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    list="incluye-igv-list"
+                                                    value={editForm.incluye_igv || 'depende'}
+                                                    onChange={(e) => setEditForm({ ...editForm, incluye_igv: e.target.value as 'si' | 'no' | 'depende' })}
+                                                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
+                                                    placeholder="Escribe para buscar..."
+                                                />
+                                                <datalist id="incluye-igv-list">
+                                                    <option value="si">Sí</option>
+                                                    <option value="no">No</option>
+                                                    <option value="depende">Depende</option>
+                                                </datalist>
+                                            </>
                                         ) : (
                                             <p className="text-white capitalize">{proveedor.incluye_igv || 'No especificado'}</p>
                                         )}
@@ -334,19 +346,24 @@ export function ProveedorFichaPage({ proveedorId, onBack }: ProveedorFichaPagePr
                                     <div className="flex-1">
                                         <p className="text-xs text-gray-500">Forma de Pago</p>
                                         {isEditingInfo ? (
-                                            <select
-                                                value={editForm.forma_pago || ''}
-                                                onChange={(e) => setEditForm({ ...editForm, forma_pago: e.target.value })}
-                                                className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-                                            >
-                                                <option value="">Seleccionar...</option>
-                                                <option value="contado">Contado (100%)</option>
-                                                <option value="adelanto_50">50% Adelanto</option>
-                                                <option value="adelanto_70">70% Adelanto</option>
-                                                <option value="contra_entrega">Contra entrega</option>
-                                                <option value="credito">Crédito</option>
-                                                <option value="otro">Otro</option>
-                                            </select>
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    list="forma-pago-proveedor-list"
+                                                    value={editForm.forma_pago || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, forma_pago: e.target.value })}
+                                                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
+                                                    placeholder="Escribe para buscar..."
+                                                />
+                                                <datalist id="forma-pago-proveedor-list">
+                                                    <option value="contado">Contado (100%)</option>
+                                                    <option value="adelanto_50">50% Adelanto</option>
+                                                    <option value="adelanto_70">70% Adelanto</option>
+                                                    <option value="contra_entrega">Contra entrega</option>
+                                                    <option value="credito">Crédito</option>
+                                                    <option value="otro">Otro</option>
+                                                </datalist>
+                                            </>
                                         ) : (
                                             <p className="text-white">{proveedor.forma_pago ? formatFormaPago(proveedor.forma_pago) : 'No especificado'}</p>
                                         )}
@@ -689,16 +706,20 @@ function CotizacionModal({
                         </div>
                         <div>
                             <label className="block text-sm text-gray-400 mb-1">Estado</label>
-                            <select
+                            <input
+                                type="text"
+                                list="estado-cotizacion-list"
                                 value={form.estado || 'pendiente'}
                                 onChange={(e) => setForm({ ...form, estado: e.target.value as Cotizacion['estado'] })}
                                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="estado-cotizacion-list">
                                 <option value="pendiente">Pendiente</option>
                                 <option value="aprobada">Aprobada</option>
                                 <option value="rechazada">Rechazada</option>
                                 <option value="vencida">Vencida</option>
-                            </select>
+                            </datalist>
                         </div>
                     </div>
 
@@ -738,14 +759,18 @@ function CotizacionModal({
                         </div>
                         <div>
                             <label className="block text-sm text-gray-400 mb-1">Moneda</label>
-                            <select
+                            <input
+                                type="text"
+                                list="moneda-cotizacion-list"
                                 value={form.moneda || 'PEN'}
                                 onChange={(e) => setForm({ ...form, moneda: e.target.value as 'PEN' | 'USD' })}
                                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="moneda-cotizacion-list">
                                 <option value="PEN">Soles (S/)</option>
                                 <option value="USD">Dólares ($)</option>
-                            </select>
+                            </datalist>
                         </div>
                     </div>
 
@@ -783,18 +808,22 @@ function CotizacionModal({
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm text-gray-400 mb-1">Forma de Pago</label>
-                            <select
+                            <input
+                                type="text"
+                                list="forma-pago-cotizacion-list"
                                 value={form.forma_pago || 'adelanto_50'}
                                 onChange={(e) => setForm({ ...form, forma_pago: e.target.value as Cotizacion['forma_pago'] })}
                                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="forma-pago-cotizacion-list">
                                 <option value="contado">Contado (100%)</option>
                                 <option value="adelanto_50">50% Adelanto</option>
                                 <option value="adelanto_70">70% Adelanto</option>
                                 <option value="contra_entrega">Contra entrega</option>
                                 <option value="credito">Crédito</option>
                                 <option value="otro">Otro</option>
-                            </select>
+                            </datalist>
                         </div>
                         <div>
                             <label className="block text-sm text-gray-400 mb-1">Vigencia (días)</label>

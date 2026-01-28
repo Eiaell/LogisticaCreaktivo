@@ -162,35 +162,39 @@ export function ProduccionModal({ isOpen, onClose }: ProduccionModalProps) {
               <label className="block text-sm text-gray-400 mb-1">
                 Cliente <span className="text-red-400">*</span>
               </label>
-              <select
+              <input
+                type="text"
+                list="clientes-produccion-list"
                 value={cliente}
                 onChange={(e) => setCliente(e.target.value)}
                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 outline-none"
-                style={{ colorScheme: 'dark' }}
+                placeholder="Escribe para buscar..."
                 required
-              >
-                <option value="">Seleccionar cliente...</option>
+              />
+              <datalist id="clientes-produccion-list">
                 {clientesList.map(c => (
                   <option key={c.id} value={c.id}>{c.display}</option>
                 ))}
-              </select>
+              </datalist>
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">
                 Proveedor <span className="text-red-400">*</span>
               </label>
-              <select
+              <input
+                type="text"
+                list="proveedores-produccion-list"
                 value={proveedor}
                 onChange={(e) => setProveedor(e.target.value)}
                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 outline-none"
-                style={{ colorScheme: 'dark' }}
+                placeholder="Escribe para buscar..."
                 required
-              >
-                <option value="">Seleccionar proveedor...</option>
+              />
+              <datalist id="proveedores-produccion-list">
                 {proveedoresList.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
-              </select>
+              </datalist>
             </div>
           </div>
 
@@ -241,15 +245,18 @@ export function ProduccionModal({ isOpen, onClose }: ProduccionModalProps) {
                   className="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 outline-none"
                   required
                 />
-                <select
+                <input
+                  type="text"
+                  list="precio-tipo-produccion-list"
                   value={esPrecioUnitario ? 'unitario' : 'total'}
                   onChange={(e) => setEsPrecioUnitario(e.target.value === 'unitario')}
                   className="bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-xs focus:border-blue-500 outline-none"
-                  style={{ colorScheme: 'dark' }}
-                >
+                  placeholder="c/u o total"
+                />
+                <datalist id="precio-tipo-produccion-list">
                   <option value="unitario">c/u</option>
                   <option value="total">total</option>
-                </select>
+                </datalist>
               </div>
             </div>
           </div>
@@ -311,19 +318,22 @@ export function ProduccionModal({ isOpen, onClose }: ProduccionModalProps) {
               <label className="block text-sm text-gray-400 mb-1">
                 Vincular a PKL (opcional)
               </label>
-              <select
+              <input
+                type="text"
+                list="pkls-produccion-list"
                 value={pklId}
                 onChange={(e) => setPklId(e.target.value)}
                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 outline-none"
-                style={{ colorScheme: 'dark' }}
-              >
+                placeholder="Escribe para buscar..."
+              />
+              <datalist id="pkls-produccion-list">
                 <option value="">Sin vincular</option>
                 {pklsDelCliente.map(pkl => (
                   <option key={pkl.pkl_id} value={pkl.pkl_id}>
                     {pkl.pkl_id} - {pkl.origen.descripcion_inicial.substring(0, 50)}...
                   </option>
                 ))}
-              </select>
+              </datalist>
             </div>
           )}
 

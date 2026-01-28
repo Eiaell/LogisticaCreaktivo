@@ -215,7 +215,10 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
 
     const addItem = () => {
         const detalle = formData.detalle || {};
-        const items = [...(detalle.items || []), { producto: '', cantidad: 1 }];
+        const newItem = formData.tipo === 'compra'
+            ? { producto: '', cantidad: 1, precio_total: 0 }
+            : { producto: '', cantidad: 1 };
+        const items = [...(detalle.items || []), newItem];
         handleChange('detalle', { ...detalle, items });
     };
 
@@ -255,69 +258,174 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs text-gray-400 mb-0.5">Tipo</label>
-                            <select
+                            <input
+                                type="text"
+                                list="tipos-evento-edit-list"
                                 value={formData.tipo || ''}
                                 onChange={(e) => {
                                     console.log('🔄 Cambiando tipo:', formData.tipo, '->', e.target.value);
                                     handleChange('tipo', e.target.value);
                                 }}
                                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="tipos-evento-edit-list">
                                 {currentConfig.tipos.map(t => (
                                     <option key={t.value} value={t.value}>{t.label}</option>
                                 ))}
-                            </select>
+                            </datalist>
                             {/* Debug: mostrar valor actual */}
                             <span className="text-[10px] text-gray-600">Valor: {formData.tipo}</span>
                         </div>
                         <div>
                             <label className="block text-xs text-gray-400 mb-0.5">Estado</label>
-                            <select
+                            <input
+                                type="text"
+                                list="estados-evento-edit-list"
                                 value={formData.estado || ''}
                                 onChange={(e) => handleChange('estado', e.target.value)}
                                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="estados-evento-edit-list">
                                 {currentConfig.estados.map(e => (
                                     <option key={e} value={e}>{e.replace(/_/g, ' ').toUpperCase()}</option>
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
                     </div>
 
-                    {/* Cliente y Proveedor - Ocultar para caja_diaria */}
-                    {formData.tipo !== 'caja_diaria' && (
-                        <div className="grid grid-cols-2 gap-3">
+                    {/* Campos dinámicos según tipo de evento */}
+                    {formData.tipo !== 'caja_diaria' && tipo === 'movimiento' && (
+                        <>
+                            {/* MOVIMIENTO: Cliente + Responsable */}
+                            {['entrega', 'recojo', 'traslado'].includes(formData.tipo) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-0.5">Cliente</label>
+                                        <input
+                                            type="text"
+                                            list="clientes-edit-mov-list"
+                                            value={formData.cliente || ''}
+                                            onChange={(e) => handleChange('cliente', e.target.value)}
+                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
+                                            placeholder="Escribe para buscar..."
+                                        />
+                                        <datalist id="clientes-edit-mov-list">
+                                            <option value="INTERNO">🏢 Interno</option>
+                                            {clientesList.map(c => (
+                                                <option key={c.id} value={c.display}>{c.display}</option>
+                                            ))}
+                                        </datalist>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-0.5">Responsable</label>
+                                        <input
+                                            type="text"
+                                            list="responsable-edit-list"
+                                            value={formData.proveedor || ''}
+                                            onChange={(e) => handleChange('proveedor', e.target.value)}
+                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
+                                            placeholder="Escribe para buscar..."
+                                        />
+                                        <datalist id="responsable-edit-list">
+                                            <option value="MOTORIZADO">🏍️ Motorizado</option>
+                                            <option value="SERVICIO_EXTERNO">🚐 Servicio Externo</option>
+                                            <option value="LOGISTICA_INTERNA">🏢 Logística Interna</option>
+                                        </datalist>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* COMPRA: Solo Tienda/Proveedor */}
+                            {formData.tipo === 'compra' && (
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-0.5">Tienda / Proveedor</label>
+                                    <input
+                                        type="text"
+                                        list="proveedores-list-edit-compra"
+                                        value={formData.proveedor || ''}
+                                        onChange={(e) => handleChange('proveedor', e.target.value.toUpperCase())}
+                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
+                                        placeholder="Ej: Promart, Sodimac..."
+                                    />
+                                    <datalist id="proveedores-list-edit-compra">
+                                        {proveedoresList.map(p => <option key={p} value={p} />)}
+                                        <option value="PROMART">Promart</option>
+                                        <option value="SODIMAC">Sodimac</option>
+                                        <option value="MAESTRO">Maestro</option>
+                                    </datalist>
+                                </div>
+                            )}
+
+                            {/* Descripción para movimientos */}
                             <div>
-                                <label className="block text-xs text-gray-400 mb-0.5">Cliente</label>
-                                <select
-                                    value={formData.cliente || ''}
-                                    onChange={(e) => handleChange('cliente', e.target.value)}
-                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
-                                    style={{ colorScheme: 'dark' }}
-                                >
-                                    <option value="">Seleccionar cliente...</option>
-                                    <option value="INTERNO">🏢 Interno / Creaktivo</option>
-                                    {clientesList.map(c => (
-                                        <option key={c.id} value={c.display}>{c.display}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs text-gray-400 mb-0.5">Proveedor</label>
+                                <label className="block text-xs text-gray-400 mb-0.5">Descripción</label>
                                 <input
                                     type="text"
-                                    list="proveedores-list-edit"
-                                    value={formData.proveedor || ''}
-                                    onChange={(e) => handleChange('proveedor', e.target.value.toUpperCase())}
+                                    value={formData.detalle?.descripcion || ''}
+                                    onChange={(e) => handleChange('detalle', { ...formData.detalle, descripcion: e.target.value })}
                                     className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
-                                    placeholder="Nombre del proveedor"
+                                    placeholder="Descripción del movimiento"
                                 />
-                                <datalist id="proveedores-list-edit">
+                            </div>
+                        </>
+                    )}
+
+                    {/* Para rendición y producción: mantener campos originales */}
+                    {formData.tipo !== 'caja_diaria' && tipo !== 'movimiento' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-0.5">
+                                    {tipo === 'rendicion' ? 'Beneficiario' : 'Cliente'}
+                                </label>
+                                {tipo === 'rendicion' ? (
+                                    <input
+                                        type="text"
+                                        list="proveedores-list-edit-rend"
+                                        value={formData.proveedor || ''}
+                                        onChange={(e) => handleChange('proveedor', e.target.value)}
+                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
+                                        placeholder="A quién se le paga"
+                                    />
+                                ) : (
+                                    <>
+                                        <input
+                                            type="text"
+                                            list="clientes-edit-prod-list"
+                                            value={formData.cliente || ''}
+                                            onChange={(e) => handleChange('cliente', e.target.value)}
+                                            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
+                                            placeholder="Escribe para buscar..."
+                                        />
+                                        <datalist id="clientes-edit-prod-list">
+                                            <option value="INTERNO">🏢 Interno</option>
+                                            {clientesList.map(c => (
+                                                <option key={c.id} value={c.display}>{c.display}</option>
+                                            ))}
+                                        </datalist>
+                                    </>
+                                )}
+                                <datalist id="proveedores-list-edit-rend">
                                     {proveedoresList.map(p => <option key={p} value={p} />)}
                                 </datalist>
                             </div>
+                            {tipo !== 'rendicion' && (
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-0.5">Proveedor</label>
+                                    <input
+                                        type="text"
+                                        list="proveedores-list-edit"
+                                        value={formData.proveedor || ''}
+                                        onChange={(e) => handleChange('proveedor', e.target.value.toUpperCase())}
+                                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none placeholder-gray-500"
+                                        placeholder="Nombre del proveedor"
+                                    />
+                                    <datalist id="proveedores-list-edit">
+                                        {proveedoresList.map(p => <option key={p} value={p} />)}
+                                    </datalist>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -335,19 +443,21 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                     {/* Campos específicos por tipo */}
                     {tipo === 'movimiento' && (
                         <>
-                            {/* Items del movimiento */}
+                            {/* Items del movimiento - Con precios para compras */}
                             <div>
                                 <div className="flex items-center justify-between mb-1">
-                                    <label className="block text-xs text-gray-400">Items ({formData.detalle?.items?.length || 0})</label>
+                                    <label className="block text-xs text-gray-400">
+                                        {formData.tipo === 'compra' ? '🛒 Productos Comprados' : 'Items'} ({formData.detalle?.items?.length || 0})
+                                    </label>
                                     <button
                                         type="button"
                                         onClick={addItem}
                                         className="text-xs text-orange-400 hover:text-orange-300"
                                     >
-                                        + Agregar Item
+                                        + Agregar {formData.tipo === 'compra' ? 'Producto' : 'Item'}
                                     </button>
                                 </div>
-                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-32 overflow-y-auto">
+                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg max-h-40 overflow-y-auto">
                                     {formData.detalle?.items && formData.detalle.items.length > 0 ? (
                                         <div className="divide-y divide-gray-700/50">
                                             {formData.detalle.items.map((item: any, index: number) => (
@@ -356,7 +466,7 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                                         type="number"
                                                         value={item.cantidad || 1}
                                                         onChange={(e) => handleItemChange(index, 'cantidad', parseInt(e.target.value) || 1)}
-                                                        className="w-14 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-center text-xs"
+                                                        className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-1 text-white text-center text-xs"
                                                         min="1"
                                                     />
                                                     <input
@@ -364,8 +474,18 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                                         value={item.producto || ''}
                                                         onChange={(e) => handleItemChange(index, 'producto', e.target.value)}
                                                         className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs placeholder-gray-500"
-                                                        placeholder="Descripción"
+                                                        placeholder={formData.tipo === 'compra' ? 'Descripción del producto' : 'Descripción'}
                                                     />
+                                                    {formData.tipo === 'compra' && (
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={item.precio_total || item.precio_unitario || ''}
+                                                            onChange={(e) => handleItemChange(index, 'precio_total', parseFloat(e.target.value) || 0)}
+                                                            className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-amber-400 text-xs"
+                                                            placeholder="S/."
+                                                        />
+                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={() => removeItem(index)}
@@ -375,9 +495,20 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                                     </button>
                                                 </div>
                                             ))}
+                                            {/* Total para compras */}
+                                            {formData.tipo === 'compra' && formData.detalle.items.length > 0 && (
+                                                <div className="p-2 bg-gray-900/50 flex justify-between items-center">
+                                                    <span className="text-xs text-gray-400">Total productos:</span>
+                                                    <span className="text-sm text-amber-400 font-bold">
+                                                        S/ {formData.detalle.items.reduce((sum: number, item: any) => sum + (item.precio_total || 0), 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
-                                        <p className="text-gray-500 text-xs italic py-3 text-center">No hay items</p>
+                                        <p className="text-gray-500 text-xs italic py-3 text-center">
+                                            {formData.tipo === 'compra' ? 'No hay productos' : 'No hay items'}
+                                        </p>
                                     )}
                                 </div>
                             </div>
@@ -453,15 +584,18 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                                     </div>
                                     <div>
                                         <label className="block text-xs text-gray-400 mb-0.5">Moneda</label>
-                                        <select
+                                        <input
+                                            type="text"
+                                            list="moneda-edit-list"
                                             value={formData.moneda || 'PEN'}
                                             onChange={(e) => handleChange('moneda', e.target.value)}
                                             className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-orange-500 outline-none"
-                                            style={{ colorScheme: 'dark' }}
-                                        >
+                                            placeholder="PEN o USD"
+                                        />
+                                        <datalist id="moneda-edit-list">
                                             <option value="PEN">PEN (Soles)</option>
                                             <option value="USD">USD (Dólares)</option>
-                                        </select>
+                                        </datalist>
                                     </div>
                                 </div>
                             )}
@@ -565,15 +699,19 @@ export function EditarEventoModal({ isOpen, onClose, tipo, eventoId }: Props) {
                         {showAddTask && (
                             <div className="mt-2 p-2 bg-gray-800/80 border border-orange-500/30 rounded-lg space-y-2">
                                 <div className="flex gap-2">
-                                    <select
+                                    <input
+                                        type="text"
+                                        list="tipos-task-edit-list"
                                         value={newTaskTipo}
                                         onChange={(e) => setNewTaskTipo(e.target.value)}
-                                        className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs outline-none"
-                                    >
+                                        className="w-28 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs outline-none"
+                                        placeholder="Tipo..."
+                                    />
+                                    <datalist id="tipos-task-edit-list">
                                         {TIPOS_TASK_PKL.map(t => (
                                             <option key={t.value} value={t.value}>{t.label}</option>
                                         ))}
-                                    </select>
+                                    </datalist>
                                     <input
                                         type="text"
                                         value={newTaskNombre}

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Video Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.25rem;
+      background: linear-gradient(90deg, #ff3b30, #ff6b5b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: #888; margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+    /* Layout dos columnas */
+    .main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 800px) { .main-layout { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: #111;
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid #333;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      color: #ccc;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Toolbar de formato */
+    .format-toolbar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .format-btn {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #1a1a1a;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .format-btn:hover { background: #2a2a2a; border-color: #666; }
+    .format-btn.bold { font-weight: bold; }
+    .format-btn.underline { text-decoration: underline; }
+
+    .format-btn svg { width: 16px; height: 16px; }
+
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 0.75rem;
+      border: 2px solid #333;
+      border-radius: 8px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 1rem;
+      resize: vertical;
+      font-family: inherit;
+    }
+    textarea:focus { outline: none; border-color: #ff3b30; }
+
+    .word-count { color: #666; font-size: 0.8rem; margin-top: 0.5rem; }
+
+    /* Settings compactos */
+    .settings-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    @media (max-width: 600px) { .settings-row { grid-template-columns: repeat(3, 1fr); } }
+
+    .setting-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .setting-item label { font-size: 0.75rem; color: #888; }
+    .setting-item input {
+      padding: 0.4rem;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #222;
+      color: #fff;
+      font-size: 0.9rem;
+    }
+    .setting-item input[type="color"] { height: 32px; padding: 2px; cursor: pointer; }
+
+    /* Formato de video */
+    .format-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .format-opt {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #1a1a1a;
+      color: #888;
+      cursor: pointer;
+      text-align: center;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    .format-opt:hover { border-color: #555; }
+    .format-opt.active { border-color: #ff3b30; color: #fff; }
+
+    /* Preview panel */
+    .preview-container {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-container video {
+      max-width: 100%;
+      max-height: 400px;
+    }
+
+    .preview-placeholder {
+      color: #444;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-preview {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+    }
+    .btn-preview:hover { background: #444; }
+
+    .btn-generate {
+      background: linear-gradient(90deg, #ff3b30, #ff6b5b);
+      color: #fff;
+    }
+    .btn-generate:hover { transform: translateY(-1px); box-shadow: 0 5px 20px rgba(255,59,48,0.3); }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    /* Status */
+    .status {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+      font-size: 0.9rem;
+    }
+    .status.loading { display: block; background: #1a1a2e; border: 1px solid #3b3b5c; }
+    .status.success { display: block; background: #1a2e1a; border: 1px solid #3b5c3b; }
+    .status.error { display: block; background: #2e1a1a; border: 1px solid #5c3b3b; }
+
+    .download-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.5rem 1.5rem;
+      background: #32d74b;
+      color: #000;
+      font-weight: 600;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #fff3;
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Ayuda */
+    .help-box {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: #1a1a2a;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+    .help-box code {
+      background: #2a2a3a;
+      padding: 0.15rem 0.3rem;
+      border-radius: 3px;
+      color: #ff6b5b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Focus Video Generator</h1>
+    <p class="subtitle">Videos RSVP con letra de enfoque - Exporta como MP4</p>
+
+    <div class="main-layout">
+      <!-- Panel izquierdo: Editor -->
+      <div class="panel">
+        <div class="panel-title">Editor de texto</div>
+
+        <!-- Toolbar de formato -->
+        <div class="format-toolbar">
+          <button class="format-btn bold" onclick="wrapSelection('*', '*')" title="Negrita">
+            <strong>B</strong> Bold
+          </button>
+          <button class="format-btn underline" onclick="wrapSelection('_', '_')" title="Subrayado">
+            <u>U</u> Subrayado
+          </button>
+          <button class="format-btn" onclick="insertAtCursor('...')" title="Pausa corta">
+            ... Pausa
+          </button>
+          <button class="format-btn" onclick="insertAtCursor('||')" title="Pausa larga">
+            || Pausa larga
+          </button>
+        </div>
+
+        <textarea id="textInput" placeholder="Escribe o pega tu texto aqui...
+
+Selecciona palabras y usa los botones de arriba para:
+- Bold: texto en negrita
+- Subrayado: texto subrayado
+- Pausas: agregar pausas despues de palabras"></textarea>
+
+        <p class="word-count"><span id="wordCount">0</span> palabras | ~<span id="duration">0</span>s</p>
+
+        <div class="settings-row">
+          <div class="setting-item">
+            <label>WPM</label>
+            <input type="number" id="wpm" value="300" min="60" max="900" step="10">
+          </div>
+          <div class="setting-item">
+            <label>Fondo</label>
+            <input type="color" id="bgColor" value="#000000">
+          </div>
+          <div class="setting-item">
+            <label>Texto</label>
+            <input type="color" id="textColor" value="#ffffff">
+          </div>
+          <div class="setting-item">
+            <label>Enfoque</label>
+            <input type="color" id="focusColor" value="#ff3b30">
+          </div>
+          <div class="setting-item">
+            <label>Fuente</label>
+            <input type="number" id="fontSize" value="120" min="40" max="200" step="10">
+          </div>
+        </div>
+
+        <div class="format-row">
+          <button class="format-opt active" data-w="1080" data-h="1920">9:16 Vertical</button>
+          <button class="format-opt" data-w="1920" data-h="1080">16:9 Horizontal</button>
+          <button class="format-opt" data-w="1080" data-h="1080">1:1 Cuadrado</button>
+        </div>
+
+        <div class="help-box">
+          <strong>Sintaxis:</strong>
+          <code>*palabra*</code> = bold |
+          <code>*varias palabras*</code> = rango bold |
+          <code>_palabra_</code> = subrayado |
+          <code>_varias palabras_</code> = rango subrayado |
+          <code>...</code> = pausa |
+          <code>||</code> = pausa larga
+        </div>
+      </div>
+
+      <!-- Panel derecho: Preview -->
+      <div class="panel">
+        <div class="panel-title">
+          Vista Previa
+          <span style="font-size: 0.75rem; color: #666;">Primeras 25 palabras</span>
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+          <div class="preview-placeholder">
+            Escribe texto y presiona<br>"Ver Preview" para generar
+          </div>
+        </div>
+
+        <div class="preview-actions">
+          <button class="btn btn-preview" id="previewBtn">Ver Preview</button>
+          <button class="btn btn-generate" id="generateBtn">Generar MP4</button>
+        </div>
+
+        <div class="status" id="status">
+          <span id="statusText"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const textInput = document.getElementById('textInput');
+    const wordCountEl = document.getElementById('wordCount');
+    const durationEl = document.getElementById('duration');
+    const wpmInput = document.getElementById('wpm');
+    const bgColorInput = document.getElementById('bgColor');
+    const textColorInput = document.getElementById('textColor');
+    const focusColorInput = document.getElementById('focusColor');
+    const fontSizeInput = document.getElementById('fontSize');
+    const previewBtn = document.getElementById('previewBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const previewContainer = document.getElementById('previewContainer');
+    const statusDiv = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    const formatOpts = document.querySelectorAll('.format-opt');
+
+    let videoWidth = 1080;
+    let videoHeight = 1920;
+
+    // Funciones de formato
+    function wrapSelection(before, after) {
+      const start = textInput.selectionStart;
+      const end = textInput.selectionEnd;
+      const text = textInput.value;
+      const selected = text.substring(start, end);
+
+      if (selected) {
+        const wrapped = before + selected + after;
+        textInput.value = text.substring(0, start) + wrapped + text.substring(end);
+        textInput.selectionStart = start;
+        textInput.selectionEnd = start + wrapped.length;
+      } else {
+        // Si no hay seleccion, insertar placeholder
+        const placeholder = before + 'texto' + after;
+        textInput.value = text.substring(0, start) + placeholder + text.substring(end);
+        textInput.selectionStart = start + before.length;
+        textInput.selectionEnd = start + before.length + 5;
+      }
+      textInput.focus();
+      updateWordCount();
+    }
+
+    function insertAtCursor(text) {
+      const start = textInput.selectionStart;
+      const end = textInput.selectionEnd;
+      const value = textInput.value;
+
+      // Insertar antes del espacio si estamos al final de una palabra
+      let insertPos = start;
+      if (start > 0 && value[start - 1] !== ' ' && (start === value.length || value[start] === ' ')) {
+        // Estamos justo despues de una palabra
+        textInput.value = value.substring(0, start) + text + value.substring(end);
+        textInput.selectionStart = textInput.selectionEnd = start + text.length;
+      } else {
+        textInput.value = value.substring(0, start) + text + value.substring(end);
+        textInput.selectionStart = textInput.selectionEnd = start + text.length;
+      }
+      textInput.focus();
+      updateWordCount();
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+      ] : [0, 0, 0];
+    }
+
+    function updateWordCount() {
+      const words = textInput.value.trim().split(/\s+/).filter(w => w);
+      const count = words.length;
+      const wpm = parseInt(wpmInput.value) || 300;
+
+      let totalTime = 0;
+      const baseTime = 60 / wpm;
+      words.forEach(word => {
+        if (word.includes('||')) totalTime += baseTime * 4;
+        else if (word.includes('...')) totalTime += baseTime * 2;
+        else totalTime += baseTime;
+      });
+
+      wordCountEl.textContent = count;
+      durationEl.textContent = Math.ceil(totalTime);
+    }
+
+    formatOpts.forEach(opt => {
+      opt.addEventListener('click', () => {
+        formatOpts.forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        videoWidth = parseInt(opt.dataset.w);
+        videoHeight = parseInt(opt.dataset.h);
+      });
+    });
+
+    textInput.addEventListener('input', updateWordCount);
+    wpmInput.addEventListener('input', updateWordCount);
+
+    function getConfig() {
+      return {
+        text: textInput.value.trim(),
+        wpm: parseInt(wpmInput.value) || 300,
+        width: videoWidth,
+        height: videoHeight,
+        fontSize: parseInt(fontSizeInput.value) || 120,
+        bgColor: hexToRgb(bgColorInput.value),
+        textColor: hexToRgb(textColorInput.value),
+        focusColor: hexToRgb(focusColorInput.value)
+      };
+    }
+
+    // Preview
+    previewBtn.addEventListener('click', async () => {
+      const config = getConfig();
+      if (!config.text) {
+        alert('Escribe algo primero');
+        return;
+      }
+
+      previewBtn.disabled = true;
+      previewBtn.textContent = 'Generando...';
+      previewContainer.innerHTML = '<div class="preview-placeholder"><span class="spinner"></span> Generando preview...</div>';
+
+      try {
+        const response = await fetch('/preview-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...config, maxWords: 25 })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.previewUrl) {
+          previewContainer.innerHTML = `
+            <video controls autoplay loop muted playsinline>
+              <source src="${result.previewUrl}" type="video/webm">
+              <source src="${result.previewUrl.replace('.webm', '.mp4')}" type="video/mp4">
+            </video>
+          `;
+        } else {
+          throw new Error(result.error || 'Error generando preview');
+        }
+      } catch (err) {
+        previewContainer.innerHTML = `<div class="preview-placeholder" style="color:#ff6b5b;">Error: ${err.message}</div>`;
+      }
+
+      previewBtn.disabled = false;
+      previewBtn.textContent = 'Ver Preview';
+    });
+
+    // Generate
+    generateBtn.addEventListener('click', async () => {
+      const config = getConfig();
+      if (!config.text) {
+        alert('Escribe algo primero');
+        return;
+      }
+
+      generateBtn.disabled = true;
+      previewBtn.disabled = true;
+      statusDiv.className = 'status loading';
+      statusText.innerHTML = '<span class="spinner"></span> Generando video completo...';
+
+      try {
+        const response = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          statusDiv.className = 'status success';
+          statusText.innerHTML = `Video listo!<br><a class="download-link" href="${result.downloadUrl}" download>Descargar MP4</a>`;
+        } else {
+          throw new Error(result.error || 'Error');
+        }
+      } catch (err) {
+        statusDiv.className = 'status error';
+        statusText.textContent = 'Error: ' + err.message;
+      }
+
+      generateBtn.disabled = false;
+      previewBtn.disabled = false;
+    });
+
+    updateWordCount();
+  </script>
+</body>
+</html>

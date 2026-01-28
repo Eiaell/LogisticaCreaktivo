@@ -355,8 +355,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
     const pklsDisponibles = useMemo(() => {
         return pkls.filter(p =>
             p.pkl_id !== pkl.pkl_id &&
-            !p.parent_pkl_id &&
-            p.estado.actual !== 'cerrado_cancelado'
+            !p.parent_pkl_id
         );
     }, [pkls, pkl.pkl_id]);
 

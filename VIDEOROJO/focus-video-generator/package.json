@@ -1,0 +1,9 @@
+{
+  "name": "focus-video-generator",
+  "version": "1.0.0",
+  "description": "Genera videos RSVP con letra de enfoque resaltada",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

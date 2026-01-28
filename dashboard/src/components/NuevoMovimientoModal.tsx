@@ -169,29 +169,35 @@ export function NuevoMovimientoModal({ isOpen, onClose }: Props) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1.5">Tipo de Movimiento</label>
-                            <select
+                            <input
+                                type="text"
+                                list="tipos-movimiento-list"
                                 value={tipo}
                                 onChange={(e) => setTipo(e.target.value as TipoMovimientoLogistico)}
                                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:border-emerald-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="tipos-movimiento-list">
                                 {TIPOS_MOVIMIENTO.map(t => (
                                     <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1.5">Estado</label>
-                            <select
+                            <input
+                                type="text"
+                                list="estados-movimiento-list"
                                 value={estado}
                                 onChange={(e) => setEstado(e.target.value as typeof estado)}
                                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:border-emerald-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="estados-movimiento-list">
                                 <option value="pendiente">Pendiente</option>
                                 <option value="en_proceso">En Proceso</option>
                                 <option value="completado">Completado</option>
-                            </select>
+                            </datalist>
                         </div>
                     </div>
 
@@ -199,18 +205,20 @@ export function NuevoMovimientoModal({ isOpen, onClose }: Props) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1.5">Cliente</label>
-                            <select
+                            <input
+                                type="text"
+                                list="clientes-movimiento-list"
                                 value={cliente}
                                 onChange={(e) => setCliente(e.target.value)}
                                 className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:border-emerald-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
-                                <option value="">Seleccionar cliente...</option>
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="clientes-movimiento-list">
                                 <option value="INTERNO">🏢 Interno / Creaktivo</option>
                                 {clientesList.map(c => (
                                     <option key={c.id} value={c.id}>{c.display}</option>
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1.5">Proveedor (opcional)</label>
@@ -342,19 +350,22 @@ export function NuevoMovimientoModal({ isOpen, onClose }: Props) {
                     {/* Vincular a PKL (opcional) */}
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1.5">Vincular a PKL (opcional)</label>
-                        <select
+                        <input
+                            type="text"
+                            list="pkls-movimiento-list"
                             value={pklVinculado}
                             onChange={(e) => setPklVinculado(e.target.value)}
                             className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:border-emerald-500 outline-none"
-                            style={{ colorScheme: 'dark' }}
-                        >
+                            placeholder="Escribe para buscar..."
+                        />
+                        <datalist id="pkls-movimiento-list">
                             <option value="">Sin vincular</option>
                             {pkls.map(pkl => (
                                 <option key={pkl.pkl_id} value={pkl.pkl_id}>
                                     {pkl.pkl_id} - {pkl.cliente.nombre} - {pkl.clasificacion.tipo_operacion}
                                 </option>
                             ))}
-                        </select>
+                        </datalist>
                     </div>
 
                     {/* Observaciones */}

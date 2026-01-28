@@ -270,41 +270,50 @@ export function CostosPage({ onBack }: Props) {
 
         {/* Filtros */}
         <div className="flex gap-3">
-          <select
+          <input
+            type="text"
+            list="rango-fecha-list"
             value={rangoFecha}
             onChange={(e) => setRangoFecha(e.target.value as any)}
             className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-cyan-500 outline-none"
-            style={{ colorScheme: 'dark' }}
-          >
+            placeholder="Escribe para buscar..."
+          />
+          <datalist id="rango-fecha-list">
             <option value="7dias">Últimos 7 días</option>
             <option value="30dias">Últimos 30 días</option>
             <option value="90dias">Últimos 90 días</option>
             <option value="mes_actual">Mes actual</option>
-          </select>
+          </datalist>
 
-          <select
+          <input
+            type="text"
+            list="clientes-costos-list"
             value={filtroCliente}
             onChange={(e) => setFiltroCliente(e.target.value)}
             className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-cyan-500 outline-none"
-            style={{ colorScheme: 'dark' }}
-          >
+            placeholder="Escribe para buscar..."
+          />
+          <datalist id="clientes-costos-list">
             <option value="">Todos los clientes</option>
             {clientesUnicos.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
-          </select>
+          </datalist>
 
-          <select
+          <input
+            type="text"
+            list="tipos-rendicion-list"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value as any)}
             className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-cyan-500 outline-none"
-            style={{ colorScheme: 'dark' }}
-          >
+            placeholder="Escribe para buscar..."
+          />
+          <datalist id="tipos-rendicion-list">
             <option value="">Todos los tipos</option>
             {TIPOS_RENDICION.map(t => (
               <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
             ))}
-          </select>
+          </datalist>
         </div>
       </div>
 
