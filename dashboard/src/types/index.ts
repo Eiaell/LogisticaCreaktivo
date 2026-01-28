@@ -688,6 +688,7 @@ export interface OrigenPKL {
     solicitado_por?: string;
     fecha_solicitud: string;
     descripcion_inicial: string;
+    descripcion_corta?: string; // Título corto para mostrar en tabla
     evento_origen_id?: string; // ID del evento del Día a Día que originó este PKL
 }
 

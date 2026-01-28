@@ -65,11 +65,11 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Nuevo PKL form
+    // Nuevo PKL form - sin valores por defecto
     const [nuevoPKL, setNuevoPKL] = useState({
         descripcion: '',
-        tipoOperacion: 'ciclo_completo' as TipoOperacionPKL,
-        estado: 'recibido' as EstadoPKL
+        tipoOperacion: '' as TipoOperacionPKL,
+        estado: '' as EstadoPKL
     });
 
     // Filtrar PKLs por cliente del evento
@@ -131,21 +131,21 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
     // Configuración visual por tipo
     const config = {
         movimiento: {
-            title: 'Sincronizar Movimiento',
+            title: 'Crear PKL o Sincronizar',
             icon: '🚚',
             color: 'from-blue-500 to-cyan-600',
             accion: 'Este movimiento se agregará como task al PKL',
             taskTipo: 'movilidad' as const
         },
         rendicion: {
-            title: 'Sincronizar Rendición',
+            title: 'Crear PKL o Sincronizar',
             icon: '💰',
             color: 'from-orange-500 to-amber-600',
             accion: 'Esta rendición se registrará como pago en el PKL',
             taskTipo: 'pago' as const
         },
         produccion: {
-            title: 'Sincronizar Producción',
+            title: 'Crear PKL o Sincronizar',
             icon: '🏭',
             color: 'from-indigo-500 to-purple-600',
             accion: 'Este evento se vinculará como task de producción al PKL',
@@ -216,58 +216,95 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                 }
             }
 
-            // Si es modo crear, primero crear el PKL
+            // Si es modo crear, primero crear el PKL con retry para claves duplicadas
             if (mode === 'crear') {
-                const newPklId = generatePKLId(pkls);
+                let newPklId = generatePKLId(pkls);
+                let retryCount = 0;
+                const maxRetries = 10;
+                let created = false;
 
-                const newPKL: PKL = {
-                    pkl_id: newPklId,
-                    version: '2.0',
-                    created_at: now,
-                    updated_at: now,
-                    origen: {
-                        canal: 'otro',
-                        fecha_solicitud: now,
-                        descripcion_inicial: nuevoPKL.descripcion || getEventoDescripcion(),
-                        evento_origen_id: evento.id, // Referencia al evento del Día a Día que originó este PKL
-                    },
-                    cliente: {
-                        nombre: clienteEvento || 'Sin cliente',
-                    },
-                    clasificacion: {
-                        tipo_operacion: nuevoPKL.tipoOperacion,
-                        area: 'logistica',
-                    },
-                    productos: [],
-                    proveedores: [],
-                    estado: {
-                        actual: nuevoPKL.estado,
-                        historial: [{
-                            estado: nuevoPKL.estado,
-                            fecha: now,
-                            motivo: 'PKL creado desde Día a Día',
-                        }],
-                    },
-                    tasks: [],
-                    eventos_externos: [],
-                    costos: {
-                        total: 0,
-                        detalle: [],
-                        moneda: 'PEN',
-                    },
-                    cierre: {
-                        evidencias: [],
-                    },
-                    alertas: {
-                        dias_sin_actividad: 0,
-                        umbral_pausa_dias: 3,
-                    },
-                };
+                // Usar la fecha del evento original, NO la fecha actual del sistema
+                const fechaEvento = evento.fecha || now.split('T')[0];
+                const fechaEventoISO = fechaEvento.includes('T') ? fechaEvento : `${fechaEvento}T12:00:00.000Z`;
 
-                await createPKL(newPKL);
-                pklId = newPklId;
-                pklIdCreado = newPklId; // Guardar para posible rollback
-                console.log('✅ Nuevo PKL creado:', pklId);
+                while (!created && retryCount < maxRetries) {
+                    const newPKL: PKL = {
+                        pkl_id: newPklId,
+                        version: '2.0',
+                        created_at: fechaEventoISO,
+                        updated_at: now,
+                        origen: {
+                            canal: 'otro',
+                            fecha_solicitud: fechaEventoISO,
+                            descripcion_inicial: nuevoPKL.descripcion || getEventoDescripcion(),
+                            evento_origen_id: evento.id, // Referencia al evento del Día a Día que originó este PKL
+                        },
+                        cliente: {
+                            nombre: clienteEvento || 'Sin cliente',
+                        },
+                        clasificacion: {
+                            tipo_operacion: nuevoPKL.tipoOperacion,
+                            area: 'logistica',
+                        },
+                        productos: [],
+                        proveedores: [],
+                        estado: {
+                            actual: nuevoPKL.estado,
+                            historial: [{
+                                estado: nuevoPKL.estado,
+                                fecha: now,
+                                motivo: 'PKL creado desde Día a Día',
+                            }],
+                        },
+                        tasks: [],
+                        eventos_externos: [],
+                        costos: {
+                            total: 0,
+                            detalle: [],
+                            moneda: 'PEN',
+                        },
+                        cierre: {
+                            evidencias: [],
+                        },
+                        alertas: {
+                            dias_sin_actividad: 0,
+                            umbral_pausa_dias: 3,
+                        },
+                    };
+
+                    try {
+                        await createPKL(newPKL);
+                        created = true;
+                        pklId = newPklId;
+                        pklIdCreado = newPklId;
+                        console.log('✅ Nuevo PKL creado:', pklId);
+                    } catch (createError: any) {
+                        const errorMsg = createError?.message?.toLowerCase() || '';
+                        const errorCode = createError?.code;
+                        // Detectar error de clave duplicada (varios formatos posibles)
+                        const isDuplicateError =
+                            errorMsg.includes('duplicate') ||
+                            errorMsg.includes('unique') ||
+                            errorMsg.includes('already exists') ||
+                            errorMsg.includes('pkey') ||
+                            errorCode === '23505';
+
+                        if (isDuplicateError) {
+                            retryCount++;
+                            const year = new Date().getFullYear();
+                            const currentNum = parseInt(newPklId.replace(`PKL-${year}-`, ''), 10);
+                            newPklId = `PKL-${year}-${String(currentNum + 1).padStart(4, '0')}`;
+                            console.log(`⚠️ PKL duplicado, reintentando con ${newPklId} (intento ${retryCount})`);
+                        } else {
+                            // Otro tipo de error, propagar
+                            throw createError;
+                        }
+                    }
+                }
+
+                if (!created) {
+                    throw new Error('No se pudo crear el PKL después de varios intentos');
+                }
             }
 
             if (!pklId) {
@@ -525,27 +562,35 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Tipo de Operación</label>
-                                    <select
+                                    <input
+                                        type="text"
+                                        list="tipos-operacion-sync-list"
                                         value={nuevoPKL.tipoOperacion}
                                         onChange={(e) => setNuevoPKL(prev => ({ ...prev, tipoOperacion: e.target.value as TipoOperacionPKL }))}
                                         className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-cyan-500 outline-none"
-                                    >
+                                        placeholder="Escribe para buscar..."
+                                    />
+                                    <datalist id="tipos-operacion-sync-list">
                                         {TIPOS_OPERACION_PKL.map(t => (
                                             <option key={t.value} value={t.value}>{t.label}</option>
                                         ))}
-                                    </select>
+                                    </datalist>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Estado Inicial</label>
-                                    <select
+                                    <input
+                                        type="text"
+                                        list="estados-pkl-sync-list"
                                         value={nuevoPKL.estado}
                                         onChange={(e) => setNuevoPKL(prev => ({ ...prev, estado: e.target.value as EstadoPKL }))}
                                         className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-cyan-500 outline-none"
-                                    >
+                                        placeholder="Escribe para buscar..."
+                                    />
+                                    <datalist id="estados-pkl-sync-list">
                                         {ESTADOS_PKL.map(e => (
                                             <option key={e.value} value={e.value}>{e.label}</option>
                                         ))}
-                                    </select>
+                                    </datalist>
                                 </div>
                             </div>
                             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">

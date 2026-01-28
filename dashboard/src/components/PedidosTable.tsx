@@ -78,6 +78,109 @@ interface PedidosTableProps {
     onNavigateToPKL?: (pklId: string) => void;
 }
 
+// Componente separado para el modal de edición de descripción
+// Esto evita re-renders del componente padre cuando se escribe
+interface EditDescripcionModalProps {
+    isOpen: boolean;
+    pedidoId: string;
+    initialDescripcion: string;
+    initialDescripcionCorta: string;
+    isPKL: boolean;
+    onClose: () => void;
+    onSave: (descripcion: string, descripcionCorta: string) => void;
+}
+
+function EditDescripcionModal({ isOpen, pedidoId, initialDescripcion, initialDescripcionCorta, isPKL, onClose, onSave }: EditDescripcionModalProps) {
+    const [descripcion, setDescripcion] = useState(initialDescripcion);
+    const [descripcionCorta, setDescripcionCorta] = useState(initialDescripcionCorta);
+
+    // Reset values when modal opens with new data
+    useEffect(() => {
+        if (isOpen) {
+            setDescripcion(initialDescripcion);
+            setDescripcionCorta(initialDescripcionCorta);
+        }
+    }, [isOpen, initialDescripcion, initialDescripcionCorta]);
+
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+        >
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span className="text-xl">📝</span>
+                        Editar Descripción
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-5 space-y-4">
+                    {/* Título corto (opcional) */}
+                    <div className="space-y-2">
+                        <label className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide flex items-center gap-2">
+                            Título corto
+                            <span className="text-gray-500 dark:text-gray-600 font-normal normal-case">(opcional - se muestra en tabla)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={descripcionCorta}
+                            onChange={(e) => setDescripcionCorta(e.target.value.toUpperCase())}
+                            placeholder="Ej: LANYARDS EVENTO, POLOS CAMPAÑA..."
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none transition-colors"
+                            autoFocus
+                        />
+                        <p className="text-[10px] text-gray-500 dark:text-gray-600">
+                            Si lo dejas vacío, se mostrará la descripción completa truncada
+                        </p>
+                    </div>
+
+                    {/* Descripción completa */}
+                    <div className="space-y-2">
+                        <label className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide">
+                            Descripción completa
+                        </label>
+                        <textarea
+                            value={descripcion}
+                            onChange={(e) => setDescripcion(e.target.value.toUpperCase())}
+                            rows={4}
+                            placeholder="Descripción detallada..."
+                            className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none transition-colors resize-none"
+                        />
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end gap-3 p-5 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={() => onSave(descripcion, descripcionCorta)}
+                        className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold transition-colors"
+                    >
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
 export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
     // Get shared state
     const pedidos = usePedidos();
@@ -305,9 +408,9 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
         return Array.from(set).sort();
     }, [pedidos]);
 
-    // Convert PKLs to unified table rows
+    // Convert PKLs to unified table rows (excluir PKLs vinculados a otro PKL)
     const pklRows: TableRow[] = useMemo(() => {
-        return pkls.map(pkl => {
+        return pkls.filter(pkl => !pkl.parent_pkl_id).map(pkl => {
             const tipoOp = TIPOS_OPERACION_PKL.find(t => t.value === pkl.clasificacion.tipo_operacion);
             return {
                 id: pkl.pkl_id,
@@ -315,7 +418,7 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                 created_at: pkl.created_at,
                 cliente: pkl.cliente.nombre,
                 descripcion: pkl.origen.descripcion_inicial,
-                descripcion_corta: pkl.origen.descripcion_inicial?.slice(0, 50) || pkl.productos[0]?.descripcion?.slice(0, 30),
+                descripcion_corta: pkl.origen.descripcion_corta || pkl.origen.descripcion_inicial?.slice(0, 50) || pkl.productos[0]?.descripcion?.slice(0, 30),
                 vendedora: pkl.cliente.ejecutiva_asignada || '',
                 estado: mapPKLStateToTableState(pkl.estado.actual),
                 estadoOriginal: pkl.estado.actual,
@@ -532,27 +635,35 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                 </div>
 
                 {/* Client Select */}
-                <select
+                <input
+                    type="text"
+                    list="filter-cliente-pedidos-list"
                     value={filterCliente}
                     onChange={(e) => setFilterCliente(e.target.value)}
                     className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-sm min-w-[200px] ${filterCliente ? 'bg-blue-100 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-200' : 'bg-white dark:bg-gray-950 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}
-                >
-                    <option value="" className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">Todos los Clientes</option>
+                    placeholder="Escribe para buscar..."
+                />
+                <datalist id="filter-cliente-pedidos-list">
+                    <option value="">Todos los Clientes</option>
                     {clientesList.map(c => (
-                        <option key={c.razonSocial} value={c.razonSocial} className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">{c.displayName}</option>
+                        <option key={c.razonSocial} value={c.razonSocial}>{c.displayName}</option>
                     ))}
-                </select>
+                </datalist>
 
-                <select
+                <input
+                    type="text"
+                    list="filter-estado-pedidos-list"
                     value={filterEstado}
                     onChange={(e) => setFilterEstado(e.target.value)}
                     className="px-4 py-2 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-sm text-gray-700 dark:text-gray-300"
-                >
-                    <option value="" className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">Todos los Estados</option>
+                    placeholder="Escribe para buscar..."
+                />
+                <datalist id="filter-estado-pedidos-list">
+                    <option value="">Todos los Estados</option>
                     {estados.map(estado => (
-                        <option key={estado} value={estado} className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300">{estado}</option>
+                        <option key={estado} value={estado}>{estado}</option>
                     ))}
-                </select>
+                </datalist>
             </div>
 
             {/* Table */}
@@ -1596,101 +1707,34 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                 );
             })()}
 
-            {/* Modal Editar Descripción */}
-            {descripcionModalPedidoId && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-                    onKeyDown={(e) => { if (e.key === 'Escape') setDescripcionModalPedidoId(null); }}
-                    tabIndex={0}
-                    ref={(el) => el?.focus()}
-                >
-                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-800">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span className="text-xl">📝</span>
-                                Editar Descripción
-                            </h2>
-                            <button
-                                onClick={() => setDescripcionModalPedidoId(null)}
-                                className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-5 space-y-4">
-                            {/* Título corto (opcional) */}
-                            <div className="space-y-2">
-                                <label className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide flex items-center gap-2">
-                                    Título corto
-                                    <span className="text-gray-500 dark:text-gray-600 font-normal normal-case">(opcional - se muestra en tabla)</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={descripcionCortaModalValue}
-                                    onChange={(e) => setDescripcionCortaModalValue(e.target.value.toUpperCase())}
-                                    placeholder="Ej: LANYARDS EVENTO, POLOS CAMPAÑA..."
-                                    className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none transition-colors"
-                                    autoFocus
-                                />
-                                <p className="text-[10px] text-gray-500 dark:text-gray-600">
-                                    Si lo dejas vacío, se mostrará la descripción completa truncada
-                                </p>
-                            </div>
-
-                            {/* Descripción completa */}
-                            <div className="space-y-2">
-                                <label className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide">
-                                    Descripción completa
-                                </label>
-                                <textarea
-                                    value={descripcionModalValue}
-                                    onChange={(e) => setDescripcionModalValue(e.target.value.toUpperCase())}
-                                    rows={4}
-                                    placeholder="Descripción detallada del pedido..."
-                                    className="w-full bg-gray-100 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-gray-900 dark:text-white focus:border-cyan-500 outline-none transition-colors resize-none"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex justify-end gap-3 p-5 border-t border-gray-200 dark:border-gray-800">
-                            <button
-                                onClick={() => setDescripcionModalPedidoId(null)}
-                                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (descripcionModalPedidoId) {
-                                        const isPKLEdit = descripcionModalPedidoId.startsWith('PKL-');
-                                        if (isPKLEdit) {
-                                            // PKL: update origen.descripcion_inicial
-                                            // Use 'as any' since updatePKL handles partial merges
-                                            updatePKL(descripcionModalPedidoId, {
-                                                origen: { descripcion_inicial: descripcionModalValue }
-                                            } as any);
-                                        } else {
-                                            // Pedido: update descripcion and descripcion_corta
-                                            updatePedido(descripcionModalPedidoId, {
-                                                descripcion: descripcionModalValue,
-                                                descripcion_corta: descripcionCortaModalValue || undefined
-                                            });
-                                        }
-                                        setDescripcionModalPedidoId(null);
-                                    }
-                                }}
-                                className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold transition-colors"
-                            >
-                                Guardar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Modal Editar Descripción - Componente separado para evitar re-renders */}
+            <EditDescripcionModal
+                isOpen={!!descripcionModalPedidoId}
+                pedidoId={descripcionModalPedidoId || ''}
+                initialDescripcion={descripcionModalValue}
+                initialDescripcionCorta={descripcionCortaModalValue}
+                isPKL={descripcionModalPedidoId?.startsWith('PKL-') || false}
+                onClose={() => setDescripcionModalPedidoId(null)}
+                onSave={(descripcion, descripcionCorta) => {
+                    if (descripcionModalPedidoId) {
+                        const isPKLEdit = descripcionModalPedidoId.startsWith('PKL-');
+                        if (isPKLEdit) {
+                            updatePKL(descripcionModalPedidoId, {
+                                origen: {
+                                    descripcion_inicial: descripcion,
+                                    descripcion_corta: descripcionCorta || undefined
+                                }
+                            } as any);
+                        } else {
+                            updatePedido(descripcionModalPedidoId, {
+                                descripcion: descripcion,
+                                descripcion_corta: descripcionCorta || undefined
+                            });
+                        }
+                        setDescripcionModalPedidoId(null);
+                    }
+                }}
+            />
         </div>
     );
 }

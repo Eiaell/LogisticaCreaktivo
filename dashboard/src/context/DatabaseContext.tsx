@@ -553,8 +553,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
             if (pklError) {
                 console.error('❌ Error creating PKL in Supabase:', pklError);
-                alert(`Error creando PKL: ${pklError.message}`);
-                return;
+                // Lanzar error para que el caller pueda manejarlo (retry para duplicados, etc.)
+                const error = new Error(pklError.message || 'Error creando PKL');
+                (error as any).code = pklError.code;
+                (error as any).details = pklError.details;
+                throw error;
             }
 
             // Then create the tasks
@@ -590,7 +593,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             console.log('✅ PKL created in Supabase:', pkl.pkl_id);
         } catch (err) {
             console.error('❌ Error creating PKL:', err);
-            alert(`Error inesperado: ${err}`);
+            // Re-lanzar el error para que el caller pueda manejarlo (ej: retry para duplicados)
+            throw err;
         }
     };
 
@@ -684,6 +688,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         // Handle parent_pkl_id changes (direct replace - for linking PKLs)
         if (changes.parent_pkl_id !== undefined) {
             updated.parent_pkl_id = changes.parent_pkl_id;
+            console.log('📎 updatePKL: Asignando parent_pkl_id =', changes.parent_pkl_id, 'a PKL', id);
         }
 
         // Update state
@@ -745,8 +750,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const updatedTask: TaskPKL = { ...currentTask, ...changes };
 
         // If estado changed to completado, set fecha_completado
+        // Usar la fecha del PKL como fallback, NO la fecha actual del sistema
         if (changes.estado === 'completado' && !currentTask.fecha_completado) {
-            updatedTask.fecha_completado = now.split('T')[0];
+            const pklFecha = currentPkl.origen?.fecha_solicitud || currentPkl.created_at;
+            const fechaFallback = pklFecha ? pklFecha.split('T')[0] : now.split('T')[0];
+            updatedTask.fecha_completado = fechaFallback;
         }
 
         // Update state
@@ -861,7 +869,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 costo: costoJsonb,
                 ruta: newTask.ruta,
                 items_cotizacion: newTask.items_cotizacion || null,
-                fecha_completado: newTask.fecha_completado || (newTask.estado === 'completado' ? now.split('T')[0] : null),
+                // Usar fecha del PKL como fallback, NO la fecha actual del sistema
+                fecha_completado: newTask.fecha_completado || (newTask.estado === 'completado'
+                    ? (currentPkl.origen?.fecha_solicitud || currentPkl.created_at || now).split('T')[0]
+                    : null),
                 evento_origen_id: (newTask as any).evento_origen_id || null,
                 created_at: now,
                 updated_at: now,

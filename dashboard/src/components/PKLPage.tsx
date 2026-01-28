@@ -140,35 +140,41 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
                     onChange={e => setSearchTerm(e.target.value)}
                     className="flex-1 min-w-[200px] px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
                 />
-                <select
+                <input
+                    type="text"
+                    list="filter-estado-pkl-list"
                     value={filterEstado}
                     onChange={e => setFilterEstado(e.target.value as EstadoPKL | 'todos')}
                     className="px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
-                >
+                    placeholder="Escribe para buscar..."
+                />
+                <datalist id="filter-estado-pkl-list">
                     <option value="todos">Todos los estados</option>
                     {ESTADOS_PKL.map(e => (
                         <option key={e.value} value={e.value}>{e.label}</option>
                     ))}
-                </select>
-                <select
+                </datalist>
+                <input
+                    type="text"
+                    list="filter-tipo-pkl-list"
                     value={filterTipo}
                     onChange={e => setFilterTipo(e.target.value as TipoOperacionPKL | 'todos')}
                     className="px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
-                >
+                    placeholder="Escribe para buscar..."
+                />
+                <datalist id="filter-tipo-pkl-list">
                     <option value="todos">Todos los tipos</option>
                     {GRUPOS_OPERACION_PKL.map(grupo => (
-                        <optgroup key={grupo.grupo} label={grupo.grupo}>
-                            {grupo.tipos.map(tipoValue => {
-                                const tipoConfig = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
-                                return tipoConfig ? (
-                                    <option key={tipoValue} value={tipoValue}>
-                                        {tipoConfig.label}
-                                    </option>
-                                ) : null;
-                            })}
-                        </optgroup>
+                        grupo.tipos.map(tipoValue => {
+                            const tipoConfig = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
+                            return tipoConfig ? (
+                                <option key={tipoValue} value={tipoValue}>
+                                    {tipoConfig.label}
+                                </option>
+                            ) : null;
+                        })
                     ))}
-                </select>
+                </datalist>
             </div>
 
             {/* Main Content */}
@@ -335,11 +341,106 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
     onDelete: () => void;
     initialTab?: 'overview' | 'tasks' | 'eventos';
 }) {
-    const { clientes, createPKLTask, deletePKLTask } = useDatabase();
+    const { clientes, createPKLTask, deletePKLTask, pkls, updatePKL } = useDatabase();
     const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'eventos'>(initialTab || 'overview');
     const [editingField, setEditingField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
     const [showEditModal, setShowEditModal] = useState(false);
+
+    // Estado para vincular a otro PKL
+    const [showVincularDropdown, setShowVincularDropdown] = useState(false);
+    const [vincularSearchTerm, setVincularSearchTerm] = useState('');
+
+    // PKLs disponibles para vincular (excluir el actual, cerrados_cancelados, y los que ya tienen parent)
+    const pklsDisponibles = useMemo(() => {
+        return pkls.filter(p =>
+            p.pkl_id !== pkl.pkl_id &&
+            !p.parent_pkl_id &&
+            p.estado.actual !== 'cerrado_cancelado'
+        );
+    }, [pkls, pkl.pkl_id]);
+
+    // Filtrar PKLs por búsqueda
+    const pklsFiltrados = useMemo(() => {
+        if (!vincularSearchTerm) return pklsDisponibles.slice(0, 10);
+        const search = vincularSearchTerm.toLowerCase();
+        // Si es solo un número, buscar por el número del PKL
+        if (/^\d+$/.test(vincularSearchTerm)) {
+            const numBuscado = vincularSearchTerm.padStart(4, '0');
+            return pklsDisponibles.filter(p =>
+                p.pkl_id.includes(numBuscado) ||
+                p.cliente.nombre.toLowerCase().includes(search) ||
+                p.origen.descripcion_inicial.toLowerCase().includes(search)
+            ).slice(0, 10);
+        }
+        return pklsDisponibles.filter(p =>
+            p.pkl_id.toLowerCase().includes(search) ||
+            p.cliente.nombre.toLowerCase().includes(search) ||
+            p.origen.descripcion_inicial.toLowerCase().includes(search)
+        ).slice(0, 10);
+    }, [pklsDisponibles, vincularSearchTerm]);
+
+    // Función para vincular este PKL a otro PKL destino
+    const handleVincularAPKL = async (targetPKLId: string) => {
+        const targetPKL = pkls.find(p => p.pkl_id === targetPKLId);
+        if (!targetPKL) return;
+
+        if (!confirm(`¿Vincular "${pkl.origen.descripcion_inicial}" como task de ${targetPKLId}?\n\nEste PKL se cerrará y aparecerá como task en el PKL destino.`)) {
+            return;
+        }
+
+        try {
+            // Crear un task en el PKL destino con los datos de este PKL
+            const taskId = `TASK-${Date.now()}`;
+            const tipoOp = pkl.clasificacion?.tipo_operacion || 'produccion';
+            const tipoTask = tipoOp.includes('cotizacion') ? 'cotizacion' :
+                            tipoOp.includes('produccion') ? 'produccion' : 'logistica';
+
+            // Calcular monto total de los tasks del PKL origen
+            const montoTotal = (pkl.tasks || []).reduce((sum, t) => {
+                const monto = t.costo ? (typeof t.costo === 'number' ? t.costo : t.costo.monto || 0) : 0;
+                return sum + monto;
+            }, 0);
+
+            const fechaVinculacion = pkl.origen?.fecha_solicitud?.split('T')[0] || new Date().toISOString().split('T')[0];
+
+            await createPKLTask(targetPKLId, {
+                task_id: taskId,
+                tipo: tipoTask as any,
+                nombre: `📎 ${pkl.origen.descripcion_inicial}`,
+                descripcion: `Vinculado desde ${pkl.pkl_id} - Cliente: ${pkl.cliente.nombre}`,
+                estado: 'completado',
+                orden: (targetPKL.tasks || []).length + 1,
+                responsable: 'Huber',
+                es_happy_path: false,
+                fecha_completado: fechaVinculacion,
+                costo: montoTotal > 0 ? { monto: montoTotal, moneda: 'PEN' } : undefined,
+                pkl_origen_id: pkl.pkl_id
+            } as any);
+
+            // Cerrar este PKL como vinculado
+            const updateData = {
+                estado: {
+                    ...pkl.estado,
+                    actual: 'cerrado_ok',
+                    historial: [
+                        ...pkl.estado.historial,
+                        { estado: 'cerrado_ok', fecha: new Date().toISOString(), motivo: `Vinculado a ${targetPKLId}` }
+                    ]
+                },
+                parent_pkl_id: targetPKLId
+            };
+            console.log('📎 Vinculando PKL - datos a guardar:', updateData);
+            await updatePKL(pkl.pkl_id, updateData as any);
+            console.log('📎 PKL actualizado con parent_pkl_id:', targetPKLId);
+
+            setShowVincularDropdown(false);
+            setVincularSearchTerm('');
+            alert(`✅ Vinculado exitosamente a ${targetPKLId}`);
+        } catch (error) {
+            alert(`Error al vincular: ${error}`);
+        }
+    };
 
     const estadoConfig = getEstadoConfig(pkl.estado.actual);
     const tipoConfig = getTipoOperacionConfig(pkl.clasificacion.tipo_operacion);
@@ -502,6 +603,70 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         >
                             ✏️ Editar
                         </button>
+                        {/* Vincular a otro PKL Button */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowVincularDropdown(!showVincularDropdown)}
+                                className="px-4 py-2 bg-indigo-700 hover:bg-indigo-600 !text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                                title="Vincular a otro PKL"
+                            >
+                                🔗 Vincular
+                            </button>
+                            {showVincularDropdown && (
+                                <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 border-2 border-indigo-400 rounded-xl shadow-2xl z-[100] overflow-hidden">
+                                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 border-b border-indigo-200 dark:border-indigo-700">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">🔗 Vincular a otro PKL</span>
+                                            <button
+                                                onClick={() => {
+                                                    setShowVincularDropdown(false);
+                                                    setVincularSearchTerm('');
+                                                }}
+                                                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={vincularSearchTerm}
+                                            onChange={(e) => setVincularSearchTerm(e.target.value)}
+                                            placeholder="Buscar por ID, cliente..."
+                                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:border-indigo-500"
+                                            autoFocus
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Escribe un número para buscar PKL-YYYY-000X</p>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto">
+                                        {pklsFiltrados.length === 0 ? (
+                                            <div className="p-4 text-center text-gray-500 text-sm">
+                                                No se encontraron PKLs
+                                            </div>
+                                        ) : (
+                                            pklsFiltrados.map(p => {
+                                                const estadoConfig = getEstadoConfig(p.estado.actual);
+                                                return (
+                                                    <button
+                                                        key={p.pkl_id}
+                                                        onClick={() => handleVincularAPKL(p.pkl_id)}
+                                                        className="w-full text-left p-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="font-mono text-indigo-600 dark:text-indigo-400 text-sm">{p.pkl_id}</span>
+                                                            <span className={`px-2 py-0.5 text-xs rounded ${estadoConfig.color} !text-white`}>
+                                                                {estadoConfig.label}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-gray-800 dark:text-gray-200 font-medium text-sm mt-1">{p.cliente.nombre}</div>
+                                                        <div className="text-gray-500 dark:text-gray-400 text-xs line-clamp-1">{p.origen.descripcion_inicial}</div>
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <button
                             onClick={onDelete}
                             className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -629,6 +794,12 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
     const [tipoOperacion, setTipoOperacion] = useState<string>(pkl.clasificacion?.tipo_operacion || 'produccion');
     const [isSaving, setIsSaving] = useState(false);
 
+    // Estado para la fecha del PKL (fecha_solicitud)
+    const [pklFecha, setPklFecha] = useState(() => {
+        const fecha = pkl.origen?.fecha_solicitud || pkl.created_at;
+        return fecha ? fecha.split('T')[0] : new Date().toISOString().split('T')[0];
+    });
+
     // Estado local de tasks para reflejar cambios inmediatamente
     const [localTasks, setLocalTasks] = useState(pkl.tasks || []);
 
@@ -638,6 +809,11 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
     const [newTaskDesc, setNewTaskDesc] = useState('');
     const [newTaskMonto, setNewTaskMonto] = useState('');
     const [newTaskProveedor, setNewTaskProveedor] = useState('');
+    const [newTaskFecha, setNewTaskFecha] = useState(() => {
+        // Por defecto, usar la fecha del PKL
+        const fecha = pkl.origen?.fecha_solicitud || pkl.created_at;
+        return fecha ? fecha.split('T')[0] : new Date().toISOString().split('T')[0];
+    });
     // Para cotización - múltiples ítems
     const [newTaskItems, setNewTaskItems] = useState<Array<{
         id: string;
@@ -736,10 +912,14 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                 ? (clientes[selectedCliente]?.nombre_comercial || clientes[selectedCliente]?.razon_social || selectedCliente)
                 : pkl.cliente?.nombre || 'Sin cliente';
 
+            // Construir la nueva fecha con hora (mediodía para evitar problemas de timezone)
+            const nuevaFechaSolicitud = `${pklFecha}T12:00:00.000Z`;
+
             await onUpdate({
-                origen: { ...pkl.origen, descripcion_inicial: pklNombre },
+                origen: { ...pkl.origen, descripcion_inicial: pklNombre, fecha_solicitud: nuevaFechaSolicitud },
                 cliente: { ...pkl.cliente, nombre: clienteNombre },
                 clasificacion: { ...pkl.clasificacion, tipo_operacion: tipoOperacion as any },
+                created_at: nuevaFechaSolicitud, // También actualizar created_at para consistencia
             } as any);
 
             onClose();
@@ -790,6 +970,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
             responsable: 'Huber',
             es_happy_path: false,
             items_cotizacion: itemsCotizacion,
+            fecha_completado: newTaskFecha, // Fecha del task para Día a Día
         };
 
         // Agregar al estado local inmediatamente
@@ -986,40 +1167,55 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Cliente</label>
-                            <select
+                            <input
+                                type="text"
+                                list="cliente-rendicion-list"
                                 value={selectedCliente}
                                 onChange={(e) => setSelectedCliente(e.target.value)}
                                 className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
-                                <option value="">Seleccionar cliente...</option>
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="cliente-rendicion-list">
                                 {clientesList.map(c => (
                                     <option key={c.id} value={c.id}>{c.display}</option>
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Ciclo de Operación</label>
-                            <select
+                            <input
+                                type="text"
+                                list="tipo-operacion-rendicion-list"
                                 value={tipoOperacion}
                                 onChange={(e) => setTipoOperacion(e.target.value)}
                                 className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
-                            >
+                                placeholder="Escribe para buscar..."
+                            />
+                            <datalist id="tipo-operacion-rendicion-list">
                                 {GRUPOS_OPERACION_PKL.map(grupo => (
-                                    <optgroup key={grupo.grupo} label={grupo.grupo}>
-                                        {grupo.tipos.map(tipoValue => {
-                                            const tipoConfig = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
-                                            return tipoConfig ? (
-                                                <option key={tipoValue} value={tipoValue}>
-                                                    {tipoIcons[tipoValue] || '📋'} {tipoConfig.label}
-                                                </option>
-                                            ) : null;
-                                        })}
-                                    </optgroup>
+                                    grupo.tipos.map(tipoValue => {
+                                        const tipoConfig = TIPOS_OPERACION_PKL.find(t => t.value === tipoValue);
+                                        return tipoConfig ? (
+                                            <option key={tipoValue} value={tipoValue}>
+                                                {tipoIcons[tipoValue] || '📋'} {tipoConfig.label}
+                                            </option>
+                                        ) : null;
+                                    })
                                 ))}
-                            </select>
+                            </datalist>
                         </div>
+                    </div>
+
+                    {/* Fecha del PKL */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-1">📅 Fecha del PKL</label>
+                        <input
+                            type="date"
+                            value={pklFecha}
+                            onChange={(e) => setPklFecha(e.target.value)}
+                            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-purple-500 outline-none"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Esta fecha determina en qué día aparece el PKL en "Día a Día"</p>
                     </div>
 
                     {/* Tasks */}
@@ -1049,11 +1245,15 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                             <div className="space-y-3 p-2 bg-purple-900/20 rounded-lg">
                                                 {/* Fila 1: Tipo y Nombre */}
                                                 <div className="flex gap-2">
-                                                    <select
+                                                    <input
+                                                        type="text"
+                                                        list="edit-task-tipo-list"
                                                         value={editTaskTipo}
                                                         onChange={(e) => setEditTaskTipo(e.target.value as import('../types').TipoTaskPKL)}
                                                         className="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none"
-                                                    >
+                                                        placeholder="Escribe para buscar..."
+                                                    />
+                                                    <datalist id="edit-task-tipo-list">
                                                         <option value="cotizacion">💬 Cotización</option>
                                                         <option value="coordinacion_proveedor">📞 Coordinación</option>
                                                         <option value="compra_insumo">🛒 Compra</option>
@@ -1062,7 +1262,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                                         <option value="instalacion">🔧 Instalación</option>
                                                         <option value="cierre">✅ Cierre</option>
                                                         <option value="administrativo">📋 Admin</option>
-                                                    </select>
+                                                    </datalist>
                                                     <input
                                                         type="text"
                                                         value={editTaskNombre}
@@ -1198,11 +1398,15 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                             <div className="mt-3 p-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-400 dark:border-purple-500/30 rounded-lg space-y-3">
                                 {/* Fila 1: Tipo y Descripción */}
                                 <div className="flex gap-2">
-                                    <select
+                                    <input
+                                        type="text"
+                                        list="new-task-tipo-list"
                                         value={newTaskTipo}
                                         onChange={(e) => setNewTaskTipo(e.target.value)}
                                         className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
-                                    >
+                                        placeholder="Escribe para buscar..."
+                                    />
+                                    <datalist id="new-task-tipo-list">
                                         <option value="cotizacion">💬 Cotización</option>
                                         <option value="coordinacion_proveedor">📞 Coordinación</option>
                                         <option value="compra_insumo">🛒 Compra Insumo</option>
@@ -1211,7 +1415,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         <option value="instalacion">🔧 Instalación</option>
                                         <option value="cierre">✅ Cierre</option>
                                         <option value="administrativo">📋 Administrativo</option>
-                                    </select>
+                                    </datalist>
                                     <input
                                         type="text"
                                         value={newTaskDesc}
@@ -1221,14 +1425,26 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                     />
                                 </div>
 
-                                {/* Fila 2: Proveedor */}
-                                <input
-                                    type="text"
-                                    value={newTaskProveedor}
-                                    onChange={(e) => setNewTaskProveedor(e.target.value)}
-                                    placeholder="Proveedor (opcional)"
-                                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
-                                />
+                                {/* Fila 2: Proveedor y Fecha */}
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newTaskProveedor}
+                                        onChange={(e) => setNewTaskProveedor(e.target.value)}
+                                        placeholder="Proveedor (opcional)"
+                                        className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    />
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-gray-500 dark:text-gray-400 text-sm">📅</span>
+                                        <input
+                                            type="date"
+                                            value={newTaskFecha}
+                                            onChange={(e) => setNewTaskFecha(e.target.value)}
+                                            className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                            title="Fecha del task (para Día a Día)"
+                                        />
+                                    </div>
+                                </div>
 
                                 {/* Fila 3: Precio - cambia según tipo */}
                                 {newTaskTipo === 'cotizacion' ? (
@@ -2773,8 +2989,13 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
     const [showNewTask, setShowNewTask] = useState(false);
     const [newTaskName, setNewTaskName] = useState('');
     const [newTaskDesc, setNewTaskDesc] = useState('');
-    const [newTaskTipo, setNewTaskTipo] = useState<TipoTaskPKL>('coordinacion_proveedor');
+    const [newTaskTipo, setNewTaskTipo] = useState<TipoTaskPKL | ''>(''); // Vacío por defecto
     const [newTaskResponsable, setNewTaskResponsable] = useState('Huber');
+    const [newTaskFecha, setNewTaskFecha] = useState(() => {
+        // Por defecto, usar la fecha del PKL
+        const fecha = pkl.origen?.fecha_solicitud || pkl.created_at;
+        return fecha ? fecha.split('T')[0] : new Date().toISOString().split('T')[0];
+    });
 
     const handleCreateTask = () => {
         if (!newTaskName.trim()) return;
@@ -2782,14 +3003,15 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
             orden: (pkl.tasks || []).length + 1,
             nombre: newTaskName.trim(),
             descripcion: newTaskDesc.trim() || undefined,
-            tipo: newTaskTipo,
+            tipo: (newTaskTipo || 'coordinacion_proveedor') as TipoTaskPKL, // Default si está vacío
             responsable: newTaskResponsable,
             estado: 'pendiente',
             es_happy_path: false,
+            fecha_completado: newTaskFecha, // Fecha del task para Día a Día
         });
         setNewTaskName('');
         setNewTaskDesc('');
-        setNewTaskTipo('coordinacion_proveedor');
+        setNewTaskTipo(''); // Reset a vacío
         setShowNewTask(false);
     };
 
@@ -2852,15 +3074,19 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                         <div className="flex gap-3">
                             <div className="flex-1">
                                 <label className="block text-gray-400 text-xs mb-1">Tipo</label>
-                                <select
+                                <input
+                                    type="text"
+                                    list="task-tipo-modal-list"
                                     value={newTaskTipo}
                                     onChange={e => setNewTaskTipo(e.target.value as TipoTaskPKL)}
                                     className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white outline-none focus:border-cyan-500"
-                                >
+                                    placeholder="Escribe para buscar..."
+                                />
+                                <datalist id="task-tipo-modal-list">
                                     {TIPOS_TASK_PKL.map(t => (
                                         <option key={t.value} value={t.value}>{t.label}</option>
                                     ))}
-                                </select>
+                                </datalist>
                             </div>
                             <div className="flex-1">
                                 <label className="block text-gray-400 text-xs mb-1">Responsable</label>
@@ -2869,6 +3095,16 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                     onChange={e => setNewTaskResponsable(e.target.value)}
                                     placeholder="Nombre"
                                     className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-cyan-500"
+                                />
+                            </div>
+                            <div className="w-40">
+                                <label className="block text-gray-400 text-xs mb-1">📅 Fecha</label>
+                                <input
+                                    type="date"
+                                    value={newTaskFecha}
+                                    onChange={e => setNewTaskFecha(e.target.value)}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white outline-none focus:border-cyan-500"
+                                    title="Fecha del task (para Día a Día)"
                                 />
                             </div>
                         </div>
