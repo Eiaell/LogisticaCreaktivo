@@ -2217,52 +2217,99 @@ function PKLEventoAcordeon({
                         // Función para renderizar un task
                         const renderTask = (task: TaskPKL, isVinculado: boolean = false) => {
                             const tipoEmojis: Record<string, string> = {
-                                cotizacion: '📋', coordinacion_proveedor: '🤝', compra_insumo: '🛒',
-                                pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📄'
+                                cotizacion: '💬', coordinacion_proveedor: '🤝', compra_insumo: '🛒',
+                                pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📄',
+                                movimiento: '🚚', rendicion: '💰', orden_produccion: '🏭', produccion: '🏭',
+                                entrega: '📦', recojo: '🚚', intervencion: '🛠️', supervision: '👁️',
+                                mantenimiento: '⚙️', compra: '🛒', cotizacion_nueva: '📋', coordinacion: '📞'
+                            };
+                            const tipoColors: Record<string, string> = {
+                                cotizacion: 'text-yellow-400', entrega: 'text-green-400', recojo: 'text-cyan-400',
+                                compra: 'text-emerald-400', compra_insumo: 'text-emerald-400',
+                                produccion: 'text-indigo-400', orden_produccion: 'text-indigo-400',
+                                movimiento: 'text-cyan-400', rendicion: 'text-orange-400', pago: 'text-orange-400',
+                                instalacion: 'text-rose-400', intervencion: 'text-orange-400',
+                                supervision: 'text-sky-400', mantenimiento: 'text-slate-400',
+                                coordinacion_proveedor: 'text-blue-400', coordinacion: 'text-indigo-400',
+                                movilidad: 'text-purple-400', cierre: 'text-green-400', administrativo: 'text-gray-400'
+                            };
+                            const tipoBgColors: Record<string, string> = {
+                                cotizacion: 'bg-yellow-500/20 border-yellow-500/30',
+                                entrega: 'bg-green-500/20 border-green-500/30',
+                                recojo: 'bg-cyan-500/20 border-cyan-500/30',
+                                compra: 'bg-emerald-500/20 border-emerald-500/30',
+                                compra_insumo: 'bg-emerald-500/20 border-emerald-500/30',
+                                produccion: 'bg-indigo-500/20 border-indigo-500/30',
+                                orden_produccion: 'bg-indigo-500/20 border-indigo-500/30',
+                                instalacion: 'bg-rose-500/20 border-rose-500/30',
+                                intervencion: 'bg-orange-500/20 border-orange-500/30',
+                                pago: 'bg-orange-500/20 border-orange-500/30',
+                                movilidad: 'bg-purple-500/20 border-purple-500/30',
                             };
                             const emoji = tipoEmojis[task.tipo] || '📋';
+                            const tipoColor = tipoColors[task.tipo] || 'text-gray-400';
+                            const bgColor = tipoBgColors[task.tipo] || 'bg-gray-500/10 border-gray-500/30';
                             const monto = task.costo ? (typeof task.costo === 'number' ? task.costo : task.costo.monto) : 0;
                             const vinculadoA = (task as any).vinculado_a_task_id;
                             const taskPadre = vinculadoA ? tasksDelDia.find(t => t.task_id === vinculadoA) : null;
+                            const taskData = task as any;
 
                             return (
                                 <div
                                     key={task.task_id}
-                                    className={`flex items-start gap-2 p-2 rounded border group hover:border-cyan-500/30 ${
+                                    className={`rounded-xl p-4 border group hover:border-cyan-500/30 transition-all ${
                                         isVinculado
                                             ? 'ml-6 bg-purple-100 dark:bg-purple-900/20 border-purple-500/30 border-l-2 border-l-purple-500'
-                                            : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/50'
+                                            : bgColor
                                     }`}
                                 >
-                                    <span className="text-lg">{isVinculado ? '↳' : emoji}</span>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className={`text-sm ${isVinculado ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-white'}`}>
-                                                {isVinculado ? `💸 ${task.nombre}` : task.nombre}
-                                            </span>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                                task.estado === 'completado' ? 'bg-green-500/20 text-green-400' :
-                                                task.estado === 'en_progreso' ? 'bg-blue-500/20 text-blue-400' :
-                                                task.estado === 'cancelado' ? 'bg-red-500/20 text-red-400' :
-                                                'bg-gray-500/20 text-gray-400'
-                                            }`}>
-                                                {task.estado}
-                                            </span>
-                                            {isVinculado && taskPadre && (
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
-                                                    → {taskPadre.nombre.substring(0, 20)}...
+                                    <div className="flex items-start gap-3">
+                                        <div className="text-2xl">{isVinculado ? '↳' : emoji}</div>
+                                        <div className="flex-1 min-w-0">
+                                            {/* Tipo + Estado */}
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`font-bold uppercase text-sm ${tipoColor}`}>
+                                                    {task.tipo.replace(/_/g, ' ')}
                                                 </span>
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                                    task.estado === 'completado' ? 'bg-green-500/30 text-green-400' :
+                                                    task.estado === 'en_progreso' ? 'bg-blue-500/30 text-blue-400' :
+                                                    task.estado === 'cancelado' ? 'bg-red-500/30 text-red-400' :
+                                                    'bg-yellow-500/30 text-yellow-400'
+                                                }`}>
+                                                    {task.estado}
+                                                </span>
+                                                {isVinculado && taskPadre && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                                                        → {taskPadre.nombre.substring(0, 20)}...
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Nombre del task */}
+                                            <p className={`font-medium ${isVinculado ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-white'}`}>
+                                                {isVinculado ? `💸 ${task.nombre}` : task.nombre}
+                                            </p>
+
+                                            {/* Proveedor */}
+                                            {taskData.proveedor && (
+                                                <p className="text-blue-400 text-sm mt-0.5">
+                                                    <span className="text-gray-500">Prov:</span> {taskData.proveedor}
+                                                </p>
+                                            )}
+
+                                            {/* Descripción */}
+                                            {task.descripcion && task.descripcion !== task.nombre && !task.descripcion.startsWith('[Costo transferido') && (
+                                                <p className="text-gray-400 text-sm mt-1">{task.descripcion}</p>
+                                            )}
+
+                                            {/* Monto */}
+                                            {monto > 0 && (
+                                                <p className="text-amber-400 font-mono text-sm mt-2 font-bold">
+                                                    S/. {monto.toFixed(2)}
+                                                </p>
                                             )}
                                         </div>
-                                        {task.descripcion && task.descripcion !== task.nombre && !task.descripcion.startsWith('[Costo transferido') && (
-                                            <p className="text-gray-500 text-xs mt-0.5">{task.descripcion}</p>
-                                        )}
-                                    </div>
-                                    {monto > 0 && (
-                                        <span className="text-amber-400 font-mono text-xs whitespace-nowrap">
-                                            S/. {monto.toFixed(2)}
-                                        </span>
-                                    )}
                                     {/* Botones de acción - solo para tasks principales con monto */}
                                     {!isVinculado && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
@@ -2327,6 +2374,7 @@ function PKLEventoAcordeon({
                                             </button>
                                         </div>
                                     )}
+                                    </div>
                                 </div>
                             );
                         };
@@ -4010,6 +4058,17 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
             totalMonto: 0
           }
         : null;
+
+    // Auto-expandir todos los PKLs del día seleccionado
+    useEffect(() => {
+        if (diaSeleccionado?.pklsDelDia && diaSeleccionado.pklsDelDia.length > 0) {
+            setExpandedPKLs(prev => {
+                const next = new Set(prev);
+                diaSeleccionado.pklsDelDia.forEach(pkl => next.add(pkl.pkl_id));
+                return next;
+            });
+        }
+    }, [selectedDate, diaSeleccionado?.pklsDelDia]);
 
     // Toggle selección de evento
     const toggleEventoSelection = (id: string) => {

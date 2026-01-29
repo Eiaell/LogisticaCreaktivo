@@ -1,0 +1,97 @@
+{
+  "fecha": "2026-01-28",
+  "eventos_dia": [
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "TYC",
+      "proveedor": "Ideas de Armando",
+      "producto": "Ruleta promocional",
+      "cantidad": 1,
+      "estado": "en_produccion",
+      "detalle": {
+        "precio_unitario": 150.00,
+        "moneda": "PEN",
+        "especificaciones": {
+          "forma": "Circulo 35x35 cm",
+          "alto": "43 cm",
+          "ancho": "30 cm",
+          "flecha": "Acrilico blanco con cabeza naranja"
+        },
+        "prueba_color_aprobada": true,
+        "fecha_aprobacion_color": "2026-01-27"
+      },
+      "observaciones": "Ideas de Armando - Pedido confirmado con colores elegidos por el cliente. Prueba de color aprobada el 27.01. Precio S/.150, aun no pagado."
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "Experiencia Creativa",
+      "proveedor": "Don Juan",
+      "estado": "en_proceso",
+      "detalle": {
+        "producto": "Cajas imantadas",
+        "cantidad": 25,
+        "medidas": "20x18x15 cm",
+        "material": "Carton rigido forrado con papel rojo",
+        "precio_unitario": 40.00,
+        "moneda": "PEN",
+        "tiempo_produccion": "12 dias"
+      },
+      "observaciones": "Don Juan - Cotizacion 25 cajas imantadas 20x18x15cm carton rigido forrado papel rojo: S/.40 por unidad, 12 dias de produccion. Ejecutiva: Natalia."
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "compra",
+      "cliente": "Grupo Lar",
+      "estado": "completado",
+      "detalle": {
+        "items": [
+          { "producto": "Botellas San Mateo", "cantidad": 6 },
+          { "producto": "Botellas Coca Cola 600ml", "cantidad": 6 }
+        ],
+        "origen": "Plaza Vea",
+        "destino": "Proyecto ELANT - Grupo Lar",
+        "costo_total": 38.00,
+        "moneda": "PEN"
+      },
+      "costo_movilidad": 38.00,
+      "observaciones": "Plaza Vea - Compra de 6 botellas San Mateo y 6 Coca Cola 600ml para proyecto ELANT. Total S/.38."
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Lar",
+      "estado": "completado",
+      "detalle": {
+        "items": [
+          { "producto": "Folders proyecto Elant", "cantidad": 1 },
+          { "producto": "Folders proyecto Hara", "cantidad": 1 },
+          { "producto": "Folders proyecto Zendai", "cantidad": 1 },
+          { "producto": "Folders proyecto D34", "cantidad": 1 },
+          { "producto": "Brochures proyectos", "cantidad": 1 }
+        ],
+        "origen": "Oficina principal Grupo Lar",
+        "destino": "Oficina Creaactivo"
+      },
+      "observaciones": "Oficina principal Grupo Lar - Recojo de folders y brochures para proyectos Elant, Hara, Zendai y D34."
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "TYC",
+      "estado": "en_proceso",
+      "detalle": {
+        "concepto": "Merchandising promocional - cotizacion de materiales",
+        "items": [
+          { "producto": "Pelotas naranjas", "cantidad": 2000 },
+          { "producto": "Mini libretas", "cantidad": 2000 },
+          { "producto": "Lapiceros blancos", "cantidad": 2000 },
+          { "producto": "Bolsas de tocuyo ecofriendly", "cantidad": 500 },
+          { "producto": "Bolsas de tocuyo ecofriendly", "cantidad": 1000 }
+        ]
+      },
+      "observaciones": "TYC - Cotizacion merchandising: 2000 pelotas naranjas, 2000 mini libretas, 2000 lapiceros blancos, 500 y 1000 bolsas tocuyo ecofriendly. Precios de materiales listos, falta cotizar serigrafia para personalizar."
+    }
+  ]
+}
