@@ -130,10 +130,9 @@ export function ProduccionModal({ isOpen, onClose }: ProduccionModalProps) {
   }, [cliente, proveedor, descripcion, pkls]);
 
   return createPortal(
-    <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4">
       <div
         className="liquid-glass liquid-glass-blue rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 rounded-t-2xl">

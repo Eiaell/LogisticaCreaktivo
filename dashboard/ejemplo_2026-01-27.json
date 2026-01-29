@@ -1,0 +1,73 @@
+{
+  "fecha": "2026-01-27",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "DHL",
+      "estado": "en_proceso",
+      "detalle": {
+        "concepto": "Uniformes corporativos",
+        "ubicacion": "Gamarra"
+      },
+      "observaciones": "Gamarra - Visita a campo para evaluacion de proveedores y precios de uniformes"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "DHL",
+      "proveedor": "Heladeria Zacatecas",
+      "estado": "en_proceso",
+      "detalle": {
+        "concepto": "Helados para activacion / evento"
+      },
+      "observaciones": "Heladeria Zacatecas - Reunion presencial para cotizacion de helados"
+    },
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "TYC",
+      "proveedor": "Ideas de Armando",
+      "producto": "Ruleta promocional",
+      "cantidad": 1,
+      "estado": "en_produccion",
+      "detalle": {
+        "precio_unitario": 150.00,
+        "moneda": "PEN",
+        "incluye_prueba_color": true,
+        "costo_prueba_color": 10.00,
+        "especificaciones": "Ruleta con flecha naranja"
+      },
+      "observaciones": "Precio acordado S/.150 incluye S/.10 de prueba de color. Aun no pagado."
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "Depa Inteligente",
+      "proveedor": "All Mats",
+      "estado": "en_proceso",
+      "detalle": {
+        "producto": "Felpudos",
+        "medidas": "70x50 cm",
+        "precio_unitario_sin_igv": 160.00,
+        "moneda": "PEN"
+      },
+      "observaciones": "All Mats - Cotizacion felpudos 70x50cm: S/.160 por unidad sin IGV"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "TYC",
+      "proveedor": "Ideas de Armando",
+      "estado": "completado",
+      "detalle": {
+        "items": [
+          { "producto": "Prueba de color ruleta", "cantidad": 1 }
+        ],
+        "origen": "Centro de Lima - Ideas de Armando",
+        "destino": "Cliente TYC - Proyecto TREE TREE"
+      },
+      "observaciones": "Recojo de prueba de color y entrega directa al cliente"
+    }
+  ]
+}

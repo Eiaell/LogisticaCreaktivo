@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDatabase } from '../context/DatabaseContext';
 import { useToast } from '../context/ToastContext';
-import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL, TaskPKL } from '../types';
+import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL, TaskPKL, TipoMovimientoLogistico } from '../types';
 import { TIPOS_OPERACION_PKL, ESTADOS_PKL } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
 import { SincronizarEventoModal } from './SincronizarEventoModal';
@@ -84,7 +84,9 @@ const SUBTIPOS_EVENTO: Record<string, { value: string; label: string }[]> = {
         { value: 'entrega', label: '📦 Entrega' },
         { value: 'recojo', label: '📥 Recojo' },
         { value: 'instalacion', label: '🔧 Instalación' },
+        { value: 'intervencion', label: '🛠️ Intervención en Sitio' },
         { value: 'supervision', label: '👁️ Supervisión' },
+        { value: 'mantenimiento', label: '⚙️ Mantenimiento' },
     ],
     rendicion: [
         { value: 'pago_proveedor', label: '💵 Pago Proveedor' },
@@ -1230,6 +1232,10 @@ const MOVIMIENTO_CONFIG: Record<string, { icon: string; color: string; bgColor: 
     solicitud_stock: { icon: '📋', color: 'text-cyan-400', bgColor: 'bg-cyan-500/20 border-cyan-500/30' },
     cotizacion: { icon: '💬', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20 border-yellow-500/30' },
     coordinacion: { icon: '📞', color: 'text-indigo-400', bgColor: 'bg-indigo-500/20 border-indigo-500/30' },
+    instalacion: { icon: '🔧', color: 'text-rose-400', bgColor: 'bg-rose-500/20 border-rose-500/30' },
+    supervision: { icon: '👁️', color: 'text-sky-400', bgColor: 'bg-sky-500/20 border-sky-500/30' },
+    intervencion: { icon: '🛠️', color: 'text-orange-400', bgColor: 'bg-orange-500/20 border-orange-500/30' },
+    mantenimiento: { icon: '⚙️', color: 'text-slate-400', bgColor: 'bg-slate-500/20 border-slate-500/30' },
 };
 
 // Iconos y colores por tipo de rendición
@@ -1404,6 +1410,36 @@ function MovimientoCard({ movimiento, onEdit, onEditDirect, onDelete, onSync, cl
                             <ClienteLogo logoUrl={clienteLogo} nombre={movimiento.cliente} size="sm" />
                             <span className="text-white font-medium">{movimiento.cliente}</span>
                         </div>
+                    )}
+
+                    {/* Proveedor (visible en cotizaciones, recojos, etc.) */}
+                    {movimiento.proveedor && (
+                        <p className="text-blue-400 text-sm mt-0.5">
+                            <span className="text-gray-500 dark:text-gray-500">Prov:</span> {movimiento.proveedor}
+                        </p>
+                    )}
+
+                    {/* Detalle adicional (concepto, producto, ubicación, precio) */}
+                    {detalle?.concepto && (
+                        <p className="text-gray-300 dark:text-gray-300 text-sm mt-0.5">{detalle.concepto}</p>
+                    )}
+                    {detalle?.producto && (
+                        <p className="text-gray-300 dark:text-gray-300 text-sm mt-0.5">
+                            {detalle.producto}{detalle.medidas ? ` (${detalle.medidas})` : ''}
+                        </p>
+                    )}
+                    {detalle?.ubicacion && (
+                        <p className="text-gray-500 text-xs mt-0.5">📍 {detalle.ubicacion}</p>
+                    )}
+                    {detalle?.precio_unitario_sin_igv && (
+                        <p className="text-amber-400 text-sm mt-0.5">
+                            S/. {Number(detalle.precio_unitario_sin_igv).toFixed(2)} por unidad (sin IGV)
+                        </p>
+                    )}
+                    {detalle?.precio_unitario && !detalle?.precio_unitario_sin_igv && (
+                        <p className="text-amber-400 text-sm mt-0.5">
+                            S/. {Number(detalle.precio_unitario).toFixed(2)} por unidad
+                        </p>
                     )}
 
                     {resumen && (
@@ -1623,7 +1659,10 @@ function ProduccionCard({ evento, onEdit, onDelete, onSync, clienteLogo, isSelec
     linkedPKL?: PKL | null;
     onDecouple?: (pklId: string, eventId: string) => void;
 }) {
-    const especificaciones = evento.especificaciones as Record<string, any> || {};
+    const rawEspec = evento.especificaciones;
+    const especificaciones: Record<string, any> = (rawEspec && typeof rawEspec === 'object' && !Array.isArray(rawEspec))
+        ? rawEspec as Record<string, any>
+        : (typeof rawEspec === 'string' ? { descripcion: rawEspec } : {});
 
     return (
         <div className={`border rounded-xl p-4 bg-indigo-500/20 border-indigo-500/30 group relative cursor-pointer hover:border-indigo-500/50 transition-all ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-500' : ''}`} onClick={onEdit}>
@@ -5011,9 +5050,10 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                             showToast(`📋 Cotización creada: ${pklId}${numItems}`, 'success');
                         } else if (data.categoria === 'movimiento') {
                             // Mapear subtipos a tipos válidos
-                            const tipoMovimiento = (['entrega', 'recojo', 'compra', 'traslado', 'solicitud_stock', 'cotizacion', 'coordinacion'].includes(data.subtipo || '')
+                            const tiposMovimientoValidos = ['entrega', 'recojo', 'compra', 'traslado', 'solicitud_stock', 'cotizacion', 'coordinacion', 'instalacion', 'supervision', 'intervencion', 'mantenimiento'];
+                            const tipoMovimiento = (tiposMovimientoValidos.includes(data.subtipo || '')
                                 ? data.subtipo
-                                : 'traslado') as 'entrega' | 'recojo' | 'compra' | 'traslado' | 'solicitud_stock' | 'cotizacion' | 'coordinacion';
+                                : 'traslado') as TipoMovimientoLogistico;
                             await createMovimientoLogistico({
                                 id,
                                 fecha: data.fecha,
@@ -5192,7 +5232,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
             {showCalendar && (
                 <div
                     className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-                    onClick={(e) => { if (e.target === e.currentTarget) setShowCalendar(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setShowCalendar(false); }}
                 >
                     <div className="relative animate-in fade-in zoom-in duration-200">
                         {/* Botón cerrar */}

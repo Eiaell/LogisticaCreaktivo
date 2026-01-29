@@ -972,42 +972,63 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             // IMPORTANTE: Primero limpiar referencias huérfanas en eventos (#3)
             // Esto evita que movimientos/rendiciones/producciones apunten a un PKL inexistente
 
-            // Limpiar movimientos_logisticos que apuntan a este PKL
+            // Limpiar movimientos_logisticos que apuntan a este PKL (pedido_id y pkl_id)
             const { error: movError } = await supabase
                 .from('movimientos_logisticos')
                 .update({ pedido_id: null })
                 .eq('pedido_id', id);
             if (movError) {
-                console.warn('Advertencia limpiando movimientos:', movError);
+                console.warn('Advertencia limpiando movimientos (pedido_id):', movError);
+            }
+            const { error: movError2 } = await supabase
+                .from('movimientos_logisticos')
+                .update({ pkl_id: null })
+                .eq('pkl_id', id);
+            if (movError2) {
+                console.warn('Advertencia limpiando movimientos (pkl_id):', movError2);
             }
 
-            // Limpiar rendiciones que apuntan a este PKL
+            // Limpiar rendiciones que apuntan a este PKL (pedido_id y pkl_id)
             const { error: rendError } = await supabase
                 .from('rendiciones')
                 .update({ pedido_id: null })
                 .eq('pedido_id', id);
             if (rendError) {
-                console.warn('Advertencia limpiando rendiciones:', rendError);
+                console.warn('Advertencia limpiando rendiciones (pedido_id):', rendError);
+            }
+            const { error: rendError2 } = await supabase
+                .from('rendiciones')
+                .update({ pkl_id: null })
+                .eq('pkl_id', id);
+            if (rendError2) {
+                console.warn('Advertencia limpiando rendiciones (pkl_id):', rendError2);
             }
 
-            // Limpiar eventos_produccion que apuntan a este PKL
+            // Limpiar eventos_produccion que apuntan a este PKL (pedido_id y pkl_id)
             const { error: prodError } = await supabase
                 .from('eventos_produccion')
                 .update({ pedido_id: null })
                 .eq('pedido_id', id);
             if (prodError) {
-                console.warn('Advertencia limpiando producciones:', prodError);
+                console.warn('Advertencia limpiando producciones (pedido_id):', prodError);
+            }
+            const { error: prodError2 } = await supabase
+                .from('eventos_produccion')
+                .update({ pkl_id: null })
+                .eq('pkl_id', id);
+            if (prodError2) {
+                console.warn('Advertencia limpiando producciones (pkl_id):', prodError2);
             }
 
             // Actualizar estado local para reflejar la limpieza
             setMovimientosLogisticos(prev =>
-                prev.map(m => m.pedido_id === id ? { ...m, pedido_id: undefined } : m)
+                prev.map(m => (m.pedido_id === id || m.pkl_id === id) ? { ...m, pedido_id: undefined, pkl_id: undefined } : m)
             );
             setRendiciones(prev =>
-                prev.map(r => r.pedido_id === id ? { ...r, pedido_id: undefined } : r)
+                prev.map(r => (r.pedido_id === id || r.pkl_id === id) ? { ...r, pedido_id: undefined, pkl_id: undefined } : r)
             );
             setEventosProduccion(prev =>
-                prev.map(e => e.pedido_id === id ? { ...e, pedido_id: undefined } : e)
+                prev.map(e => (e.pedido_id === id || e.pkl_id === id) ? { ...e, pedido_id: undefined, pkl_id: undefined } : e)
             );
 
             // Ahora eliminar los tasks asociados
@@ -1219,8 +1240,13 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 prev.map(e => secondaryIds.includes(e.pedido_id || '') ? { ...e, pedido_id: primaryId } : e)
             );
 
-            // Delete secondary PKLs and their tasks
+            // Delete secondary PKLs: clean FK references, then tasks, then PKL
             for (const secondaryId of secondaryIds) {
+                // Limpiar referencias pkl_id en tablas dependientes
+                await supabase.from('movimientos_logisticos').update({ pkl_id: null }).eq('pkl_id', secondaryId);
+                await supabase.from('rendiciones').update({ pkl_id: null }).eq('pkl_id', secondaryId);
+                await supabase.from('eventos_produccion').update({ pkl_id: null }).eq('pkl_id', secondaryId);
+                // Luego eliminar tasks y PKL
                 await supabase.from('pkl_tasks').delete().eq('pkl_id', secondaryId);
                 await supabase.from('pkls').delete().eq('pkl_id', secondaryId);
             }

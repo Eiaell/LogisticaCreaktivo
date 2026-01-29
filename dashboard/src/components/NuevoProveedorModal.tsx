@@ -145,7 +145,7 @@ export function NuevoProveedorModal({ isOpen, onClose }: NuevoProveedorModalProp
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
             {/* Modal */}
             <div className="relative w-full max-w-2xl mx-4 max-h-[90vh] animate-in zoom-in-95 fade-in duration-200">

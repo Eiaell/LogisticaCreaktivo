@@ -1124,10 +1124,9 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
             <div
                 className="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-t-2xl">

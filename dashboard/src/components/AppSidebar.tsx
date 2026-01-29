@@ -592,7 +592,6 @@ export function AppSidebar({
             {renamingPedido && (
                 <div
                     className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]"
-                    onClick={() => !isProcessing && setRenamingPedido(null)}
                 >
                     <div
                         className="rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
@@ -600,7 +599,6 @@ export function AppSidebar({
                             backgroundColor: 'var(--bg-card)',
                             border: '1px solid var(--border-color)'
                         }}
-                        onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                             Renombrar Pedido
@@ -660,7 +658,6 @@ export function AppSidebar({
             {deleteConfirmation && (
                 <div
                     className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]"
-                    onClick={() => !isProcessing && setDeleteConfirmation(null)}
                 >
                     <div
                         className="rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
@@ -668,7 +665,6 @@ export function AppSidebar({
                             backgroundColor: 'var(--bg-card)',
                             border: '1px solid var(--border-color)'
                         }}
-                        onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-start gap-3 mb-4">
                             <div className="flex-shrink-0 text-2xl">⚠️</div>

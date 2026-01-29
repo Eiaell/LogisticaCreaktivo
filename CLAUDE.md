@@ -91,6 +91,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   ```
 - Razón: Mayor flexibilidad para el usuario, permite valores nuevos, más rápido que navegar dropdowns largos
 
+### 8. Errores pasados - NO repetir
+- **Click fuera del modal cierra la ventana**: Claude agregó patrones de cierre por click en el overlay en **10 archivos**. Se corrigió en TODOS. Los patrones prohibidos son:
+  1. `onClick={(e) => e.target === e.currentTarget && handleClose()}` en el div overlay
+  2. `onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}` en el div overlay
+  3. `onClick={onClose}` en el div overlay (con `stopPropagation` en el contenido)
+  4. `onClick={handleClose}` en un div backdrop separado (`<div className="absolute inset-0 ..." onClick={handleClose} />`)
+  5. `onClick={() => setStateFalse()}` en el div overlay
+  - **Archivos corregidos**: `ImportarJSONModal.tsx`, `NuevoRequerimientoModal.tsx`, `GemeloDigitalStatus.tsx`, `NuevoProveedorModal.tsx`, `AppSidebar.tsx` (2 modales), `App.tsx`, `NuevoMovimientoModal.tsx`, `ProduccionModal.tsx`, `PKLPage.tsx`, `DiaADiaPage.tsx`
+  - **Regla**: `onClick` en overlays SOLO debe estar en **botones** (X, Cancelar), **NUNCA** en el div de fondo/overlay
+  - **Verificación**: Buscar `e.target === e.currentTarget` en todo el proyecto. Debe dar 0 resultados.
+
 ---
 
 ## ⚠️ MODELO DE DATOS FUNDAMENTAL (LEER PRIMERO)

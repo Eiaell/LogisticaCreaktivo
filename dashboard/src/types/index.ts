@@ -391,7 +391,7 @@ export type EstadoEvento = 'completado' | 'pendiente' | 'registrado' | 'pagado' 
 // ============================================
 // MOVIMIENTOS LOGÍSTICOS
 // ============================================
-export type TipoMovimientoLogistico = 'entrega' | 'recojo' | 'compra' | 'traslado' | 'solicitud_stock' | 'cotizacion' | 'coordinacion';
+export type TipoMovimientoLogistico = 'entrega' | 'recojo' | 'compra' | 'traslado' | 'solicitud_stock' | 'cotizacion' | 'coordinacion' | 'instalacion' | 'supervision' | 'intervencion' | 'mantenimiento';
 
 export interface ItemMovimiento {
     producto: string;
@@ -456,7 +456,7 @@ export interface MovimientoLogistico {
 // ============================================
 // RENDICIONES Y PAGOS
 // ============================================
-export type TipoRendicion = 'movilidad' | 'adelanto_produccion' | 'pago_saldo' | 'gasto_extra' | 'compra_material' | 'caja_diaria';
+export type TipoRendicion = 'movilidad' | 'adelanto_produccion' | 'pago_saldo' | 'gasto_extra' | 'compra_material' | 'caja_diaria' | 'viaticos' | 'caja_chica';
 
 export interface DetalleRendicionMovilidad {
     concepto: string;

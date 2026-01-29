@@ -1,0 +1,73 @@
+{
+  "fecha": "2026-01-22",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "intervencion",
+      "cliente": "Grupo Lar",
+      "estado": "completado",
+      "detalle": {
+        "proyecto": "D34",
+        "lugares_intervenidos": [
+          { "tipo": "Departamento piloto", "cantidad": 1 },
+          { "tipo": "Oficina", "cantidad": 1 }
+        ],
+        "tareas": [
+          "Retiro de tags antiguos",
+          "Limpieza de superficie con thinner",
+          "Colocacion de nuevos tags"
+        ],
+        "cantidad_aproximada_tags_por_departamento": 25
+      },
+      "observaciones": "Cambio de tags decorativos en dos espacios del proyecto"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "intervencion",
+      "cliente": "Grupo Lar",
+      "estado": "completado",
+      "detalle": {
+        "proyecto": "Eland",
+        "lugares_intervenidos": [
+          { "tipo": "Departamento", "cantidad": 1 }
+        ],
+        "tareas": [
+          "Retiro de tags antiguos",
+          "Limpieza de superficie con thinner",
+          "Colocacion de nuevos tags"
+        ],
+        "cantidad_aproximada_tags_por_departamento": 25
+      },
+      "observaciones": "Intervencion estandar de cambio de tags"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "intervencion",
+      "cliente": "Grupo Lar",
+      "estado": "completado",
+      "detalle": {
+        "proyecto": "Cantua",
+        "lugares_intervenidos": [
+          { "tipo": "Departamento", "cantidad": 2 }
+        ],
+        "tareas": [
+          "Retiro de tags antiguos",
+          "Limpieza de superficie con thinner",
+          "Colocacion de nuevos tags"
+        ]
+      },
+      "observaciones": "Cambio de tags en dos departamentos del proyecto"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "coordinacion",
+      "cliente": "Interno",
+      "estado": "completado",
+      "detalle": {
+        "modalidad": "Remota",
+        "ubicacion": "Casa"
+      },
+      "observaciones": "Tareas administrativas realizadas despues de las intervenciones en campo"
+    }
+  ]
+}

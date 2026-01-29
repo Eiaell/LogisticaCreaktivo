@@ -185,8 +185,8 @@ function PagoRendicionModal({ isOpen, onClose }: PagoRendicionModalProps) {
   }, [formData.cliente, formData.proveedor, formData.fecha, formData.descripcion, pkls]);
 
   return createPortal(
-    <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="liquid-glass liquid-glass-pink rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4">
+      <div className="liquid-glass liquid-glass-pink rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 rounded-t-2xl">
           <div className="flex items-center justify-between">

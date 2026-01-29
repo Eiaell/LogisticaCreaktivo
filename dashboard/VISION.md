@@ -1,431 +1,348 @@
 # VISION.md - Creaactivo Logistics Intelligence System
 
-## Hacia un Sistema de Process Intelligence para Logística
+## De Registro Operativo a Knowledge Graph Predictivo
 
 ---
 
-## 1. INSPIRACIÓN: ¿Qué es Salonus/Celonis?
+## 1. NORTE: Que estamos construyendo?
 
-Salonus (Celonis) es una plataforma de **Process Intelligence (PI)** que:
+Un sistema que transforma el caos diario de operaciones logisticas (entregas, compras, producciones, pagos, intervenciones) en un **Knowledge Graph** que:
 
-1. **Crea un "Digital Twin" vivo del negocio** - Una representación digital en tiempo real de cómo funcionan los procesos reales
-2. **Process Mining** - Analiza datos de sistemas para descubrir cómo realmente funcionan los procesos (vs cómo deberían funcionar)
-3. **AI Agents con contexto de negocio** - Agentes de IA que entienden TU negocio específico, no respuestas genéricas
-4. **Integración multi-sistema** - Conecta ERP, CRM, TMS, WMS y más en una vista unificada
-5. **Knowledge Models** - KPIs, benchmarks, reglas de negocio codificadas
-6. **Orchestration Engine** - Coordina workflows entre humanos, IA y automatizaciones
-7. **Solution Suites** - Paquetes pre-construidos para dominios específicos (supply chain, finance, etc.)
+1. **Registra** todo lo que pasa cada dia (hoy)
+2. **Conecta** clientes, proveedores, productos, costos y tiempos en relaciones navegables (proximo paso)
+3. **Detecta patrones** - que proveedor se retrasa, que cliente cuesta mas, que ruta es ineficiente
+4. **Predice riesgos** - "este PKL tiene 80% de probabilidad de retraso basado en el proveedor y tipo de trabajo"
+5. **Recomienda acciones** - "usa proveedor B, entrega 2 dias mas rapido para este tipo de producto"
 
-### La frase clave de Salonus:
-> "No hay AI sin PI (Process Intelligence)" - La IA necesita el contexto de cómo tu negocio funciona únicamente para ser relevante y efectiva.
+### Inspiracion
+
+- **Celonis/Salonus**: Process Mining - descubrir como realmente funcionan tus procesos vs como deberian funcionar
+- **Neo4j Supply Chain (Katrina Nestit)**: Knowledge Graphs donde las relaciones entre entidades ya existen y se consultan en segundos, no se reconstruyen con JOINs cada vez. Risk scoring combinado: riesgo_ruta = riesgo_proveedor + riesgo_producto + riesgo_tiempo
+
+### La frase clave:
+> "En tablas no tenemos verbos entre los datos. En grafos, las relaciones SON los datos."
+> -- Katrina Nestit, Supply Chain Risk Prediction with Graph Data Technology
 
 ---
 
-## 2. ESTADO ACTUAL: ¿Qué tenemos hoy?
+## 2. ESTADO ACTUAL
 
-### 2.1 Arquitectura Actual
+### 2.1 Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CREAACTIVO LOGISTICS INTELLIGENCE                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────┐ │
-│  │   WhatsApp   │───▶│   Whisper    │───▶│   Claude     │───▶│  Supabase  │ │
-│  │  (Captura)   │    │ (Transcribe) │    │ (Extracción) │    │  (Storage) │ │
-│  └──────────────┘    └──────────────┘    └──────────────┘    └────────────┘ │
-│         │                                                           │        │
-│         │                                                           ▼        │
-│         │            ┌──────────────────────────────────────────────────┐   │
-│         │            │              DASHBOARD REACT                      │   │
-│         │            │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │   │
-│         │            │  │Día a Día│ │  PKLs   │ │ Costos  │ │Clientes │ │   │
-│         │            │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ │   │
-│         │            └──────────────────────────────────────────────────┘   │
-│         │                                                                    │
-│         ▼                                                                    │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                    EVENT LOGGER (Celonis-Style)                       │   │
-│  │  - JSONL traces con: caseId, activity, timestamp, resource            │   │
-│  │  - Process states siguiendo Happy Path                                │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+WhatsApp (voz/texto)
+       |
+       v
+  Whisper + Claude --> Supabase (PostgreSQL)
+                            |
+                            v
+                    Dashboard React
+                    - Dia a Dia (calendario + eventos)
+                    - PKLs (procesos logisticos)
+                    - Costos, Clientes, Proveedores
+                    - Movimientos, Rendiciones, Produccion
+                    - Importacion JSON (resumen diario)
 ```
 
-### 2.2 Módulos Implementados
+### 2.2 Modulos Implementados
 
-#### A) Captura de Datos (WhatsApp Bot)
-- **Input**: Mensajes de voz y texto vía WhatsApp
-- **Transcripción**: Whisper local (faster-whisper)
-- **Correcciones**: Sistema de correcciones específicas del negocio (tic→TYC, etc.)
-- **Extracción**: Claude API para extraer entidades estructuradas
-- **Clasificación**: Tipos de mensaje (acuerdo_produccion, movimiento_movilidad, etc.)
+| Modulo | Estado | Que hace |
+|--------|--------|----------|
+| Dia a Dia | Completo | Vista diaria de todos los eventos con calendario |
+| PKLs | Completo | Proceso logistico completo con tasks, costos, proveedores |
+| Movimientos | Completo | Entregas, recojos, traslados, instalaciones, intervenciones |
+| Rendiciones | Completo | Gastos, pagos, movilidad, compras de materiales |
+| Produccion | Completo | Ordenes de produccion con proveedor |
+| Clientes | Basico | Gestion de clientes con fichas |
+| Proveedores | Basico | Gestion con cotizaciones |
+| Importacion JSON | Completo | Importar resumen diario completo en un paso |
+| Event Logger | Basico | Trazas JSONL estilo Celonis |
+| Process Graph | Basico | Visualizacion NetworkX + PyVis |
 
-#### B) Dashboard Web (React + Tailwind)
-| Módulo | Estado | Descripción |
-|--------|--------|-------------|
-| **Día a Día** | ✅ Completo | Vista diaria de eventos con calendario interactivo |
-| **PKLs** | ✅ Completo | Gestión de procesos logísticos con tasks, costos, proveedores |
-| **Costos** | ✅ Básico | Visualización de gastos por PKL |
-| **Clientes** | ✅ Básico | Gestión de clientes |
-| **Proveedores** | ✅ Básico | Gestión de proveedores con cotizaciones |
-| **Movimientos** | ✅ Completo | Entregas, recojos, traslados |
-| **Rendiciones** | ✅ Completo | Gastos, pagos, adelantos |
-| **Producciones** | ✅ Completo | Órdenes de producción |
-| **Compras** | ✅ Nuevo | Registro de compras con IGV |
+### 2.3 Modelo de Datos (PKL v2.0)
 
-#### C) Modelo de Datos (PKL v2.0)
-```typescript
-PKL = {
-    pkl_id: "PKL-2026-0001",
-    clasificacion: { tipo_operacion, area },
-    cliente: { nombre, contacto },
-    origen: { canal, descripcion_inicial, fecha_solicitud },
-    productos: [],
-    proveedores: [{ nombre, cotizaciones[], elegido }],
-    estado: { actual, historial[] },
-    tasks: [{ tipo, nombre, estado, costo, fecha_completado }],
-    costos: { detalle[], moneda },
-    alertas: { dias_sin_actividad },
-    cierre: { evidencias[] }
-}
+```
+DIA (fecha)
+  |
+  +-- EVENTO (PKL-2026-0024)
+  |     |-- cliente: "Grupo Lar"
+  |     |-- tipo: intervencion / entrega / produccion / ...
+  |     +-- TASKS:
+  |           |-- [movimiento] Entrega volantes
+  |           |-- [rendicion] Taxi S/.12
+  |           +-- [produccion] Impresion banners
+  |
+  +-- EVENTO (PKL-2026-0025)
+        |-- cliente: "TYC"
+        +-- TASKS: ...
 ```
 
-#### D) Event Logger (Celonis-Style)
-- **Formato**: JSONL con ontología Celonis
-- **Campos**: caseId, activity, timestamp, resource, processState
-- **Session Continuity**: 30 minutos de ventana
-- **Happy Path**: Cotización → Aprobado → Producción → Listo → Entregado → Cerrado
+### 2.4 Tipos de Eventos Capturados
 
-#### E) Process Graph (NetworkX + PyVis)
-- **Nodos**: Estados (amarillo), Casos (azul), Recursos (verde), Clientes (púrpura)
-- **Visualización**: HTML interactivo
-- **Layout**: Jerárquico Left-to-Right
-
-### 2.3 Tipos de Eventos Capturados
-
-| Categoría | Subtipos | Datos Capturados |
-|-----------|----------|------------------|
-| **Cotización** | Nueva, Revisión | Cliente, proveedor, productos[], precio, IGV |
-| **Movimiento** | Traslado, Entrega, Recojo, Instalación | Origen, destino, costo_movilidad |
-| **Rendición** | Pago proveedor, Adelanto, Movilidad, Viáticos | Monto, comprobante |
-| **Producción** | Impresión, Serigrafía, Confección, Bordado, etc. | Proveedor, producto, estado |
-| **Compra** | Material, Insumo, Herramienta, Equipo, Oficina | Monto, IGV |
-| **Coordinación** | Proveedor, Cliente, Motorizado, Llamada | Descripción |
+| Seccion | Tipos | Datos |
+|---------|-------|-------|
+| MOVIMIENTO_LOGISTICO | entrega, recojo, compra, traslado, instalacion, intervencion, supervision, mantenimiento, coordinacion | Cliente, proveedor, items, costo_movilidad |
+| RENDICION_PAGO | movilidad, compra_material, adelanto_produccion, pago_saldo, gasto_extra, viaticos, caja_chica, caja_diaria | Monto, moneda, comprobante |
+| PRODUCCION | orden_produccion | Proveedor, producto, cantidad, precio, especificaciones |
 
 ---
 
-## 3. GAP ANALYSIS: ¿Qué nos falta para ser como Salonus?
+## 3. DONDE ESTAMOS vs DONDE QUEREMOS IR
 
-### 3.1 Matriz de Comparación
+### El viaje de datos a inteligencia
 
-| Capacidad Salonus | Tenemos | Falta | Prioridad |
-|-------------------|---------|-------|-----------|
-| Data Ingestion multi-sistema | ⚠️ Solo WhatsApp | Conectores ERP, Excel, APIs | ALTA |
-| Process Intelligence Graph | ⚠️ Básico | Relaciones complejas, KPIs dinámicos | ALTA |
-| AI Agents con contexto | ⚠️ Claude extrae | Agentes que ACTÚAN, no solo extraen | ALTA |
-| Process Mining | ⚠️ Visualización básica | Detección de cuellos de botella, variantes | MEDIA |
-| Knowledge Models | ❌ No | Reglas de negocio, benchmarks | MEDIA |
-| Process Query Language | ❌ No | Lenguaje para consultas de proceso | MEDIA |
-| Orchestration Engine | ❌ No | Automatización de workflows | BAJA |
-| Solution Suites | ⚠️ Ad-hoc | Paquetes pre-configurados | BAJA |
-| Multi-tenant / Enterprise | ❌ No | Múltiples usuarios/empresas | FUTURA |
-
-### 3.2 Gaps Críticos Detallados
-
-#### GAP 1: Data Ingestion Limitado
-**Actual**: Solo WhatsApp como entrada
-**Necesario**:
-- Importación de Excel/CSV (cotizaciones de proveedores)
-- Conexión a sistemas de facturación
-- APIs de proveedores de transporte
-- Scraping de emails de confirmación
-
-#### GAP 2: Process Intelligence Superficial
-**Actual**: Grafo de proceso básico con nodos y estados
-**Necesario**:
-- **Object-Centric Process Mining**: No solo "casos", sino objetos que interactúan (Pedido ↔ Proveedor ↔ Producción)
-- **Conformance Checking**: ¿Mis procesos siguen el modelo ideal?
-- **Variant Analysis**: ¿Cuántas variantes de mi proceso existen?
-- **Bottleneck Detection**: ¿Dónde se atoran los procesos?
-
-#### GAP 3: AI que Actúa vs AI que Extrae
-**Actual**: Claude extrae información de mensajes
-**Necesario**:
-- AI Agent que PREDICE: "Este PKL tiene 80% de riesgo de retraso"
-- AI Agent que RECOMIENDA: "Contacta a proveedor X, tiene mejor tiempo de entrega"
-- AI Agent que AUTOMATIZA: "Envié recordatorio automático al proveedor"
-
-#### GAP 4: Knowledge Models Inexistentes
-**Actual**: Lógica hardcodeada en el código
-**Necesario**:
-- **KPIs Definidos**: Tiempo promedio cotización→producción, costo por PKL, etc.
-- **Benchmarks**: ¿Cómo me comparo con mis propios históricos?
-- **Reglas de Negocio**: "Si cotización > S/5000, requiere aprobación"
-- **SLAs**: "Entrega debe ser máximo 48h después de producción lista"
-
-#### GAP 5: Sin Alertas Proactivas
-**Actual**: Usuario debe revisar el dashboard
-**Necesario**:
-- Alertas push: "PKL-2026-0045 lleva 3 días sin actividad"
-- Predicciones: "5 PKLs tienen riesgo de no cumplir fecha de entrega"
-- Anomalías: "Proveedor X está tardando 40% más que su promedio"
-
----
-
-## 4. ROADMAP DE EVOLUCIÓN
-
-### FASE 1: Foundations (Q1 2026) - "Data Completeness"
-
-#### 1.1 Multi-Channel Data Ingestion
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    DATA INGESTION LAYER                          │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌───────┐ │
-│  │WhatsApp │  │  Excel  │  │  Email  │  │  API    │  │Manual │ │
-│  │  Bot    │  │ Import  │  │ Parser  │  │Providers│  │ Entry │ │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  └───┬───┘ │
-│       │            │            │            │            │     │
-│       └────────────┴────────────┴────────────┴────────────┘     │
-│                              │                                   │
-│                              ▼                                   │
-│                    ┌─────────────────┐                          │
-│                    │  UNIFIED EVENT  │                          │
-│                    │     STREAM      │                          │
-│                    └─────────────────┘                          │
-└─────────────────────────────────────────────────────────────────┘
+NIVEL 1: REGISTRO          <-- ESTAMOS AQUI
+  "Hoy entregue volantes a Grupo Lar"
+
+NIVEL 2: CONEXION           <-- PROXIMO PASO
+  "Grupo Lar tiene 12 PKLs, usa 3 proveedores, gasto total S/.15,000"
+
+NIVEL 3: PATRONES           <-- 30+ dias de data
+  "Proveedor Dennis tarda en promedio 5 dias, vs Arteck que tarda 3"
+  "Los lunes se gasta 40% mas en movilidad"
+
+NIVEL 4: PREDICCION         <-- 90+ dias de data
+  "Este PKL tiene 75% probabilidad de retrasarse"
+  "Si usas proveedor B ahorras S/.200 y 2 dias"
+
+NIVEL 5: AUTOMATIZACION     <-- 6+ meses de data
+  "Envie recordatorio automatico al proveedor que lleva 3 dias sin responder"
+  "Generé ruta optima para las 4 entregas de mañana"
 ```
 
-**Entregables**:
-- [ ] Importador de Excel para cotizaciones masivas
-- [ ] Parser de emails de confirmación de proveedores
-- [ ] Formulario web para entrada manual rápida
-- [ ] API REST para integraciones futuras
+### Gap Analysis Actualizado
 
-#### 1.2 Enhanced Process Graph
-**Entregables**:
-- [ ] Relaciones bidireccionales PKL ↔ Proveedor ↔ Cliente
-- [ ] Timeline visual de eventos por PKL
-- [ ] Cálculo automático de duraciones entre estados
-- [ ] Exportación de métricas a CSV
-
----
-
-### FASE 2: Intelligence (Q2 2026) - "Process Mining Real"
-
-#### 2.1 Process Mining Features
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    PROCESS MINING ENGINE                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │   Process    │    │  Conformance │    │  Bottleneck  │      │
-│  │  Discovery   │    │   Checking   │    │  Detection   │      │
-│  │              │    │              │    │              │      │
-│  │ "Descubre    │    │ "Compara     │    │ "Encuentra   │      │
-│  │  cómo fluyen │    │  real vs     │    │  donde se    │      │
-│  │  realmente"  │    │  ideal"      │    │  atoran"     │      │
-│  └──────────────┘    └──────────────┘    └──────────────┘      │
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
-│  │   Variant    │    │    Root      │    │    KPI       │      │
-│  │   Analysis   │    │    Cause     │    │  Calculator  │      │
-│  │              │    │   Analysis   │    │              │      │
-│  │ "Cuántas     │    │ "Por qué     │    │ "Métricas    │      │
-│  │  formas hay" │    │  falló"      │    │  en tiempo   │      │
-│  │              │    │              │    │  real"       │      │
-│  └──────────────┘    └──────────────┘    └──────────────┘      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Entregables**:
-- [ ] Descubrimiento automático de variantes de proceso
-- [ ] Mapa de calor de tiempos entre estados
-- [ ] Detección de loops y retrocesos
-- [ ] Dashboard de KPIs en tiempo real
-
-#### 2.2 Knowledge Models
-**Entregables**:
-- [ ] Definición de KPIs configurables por usuario
-- [ ] Sistema de SLAs con alertas
-- [ ] Benchmarks históricos automáticos
-- [ ] Reglas de negocio editables (sin código)
+| Capacidad | Tenemos | Falta | Impacto |
+|-----------|---------|-------|---------|
+| Registro diario de eventos | SI | Consistencia (llenar 30 dias) | CRITICO |
+| Knowledge Graph (relaciones) | NO | Grafo Cliente-PKL-Proveedor-Costo | ALTO |
+| Analytics basicos | NO | Gasto por cliente, tiempo por proveedor | ALTO |
+| Risk scoring | NO | Puntaje de riesgo por PKL/proveedor | MEDIO |
+| Alertas proactivas | NO | "PKL sin actividad en 3 dias" | MEDIO |
+| Prediccion de retrasos | NO | Modelo basado en historico | FUTURO |
+| Recomendacion de proveedores | NO | Ranking por tiempo/costo/calidad | FUTURO |
+| Rutas alternativas | NO | Si proveedor X falla, usar Y | FUTURO |
 
 ---
 
-### FASE 3: AI Agents (Q3 2026) - "Inteligencia Activa"
+## 4. ROADMAP (SIN FECHAS - POR LOGRO)
 
-#### 3.1 Predictive Analytics
+### FASE 1: "DATA COMPLETENESS" - Llenar el grafo
+
+**Prerequisito para todo lo demas. Sin datos, no hay inteligencia.**
+
+**Objetivo**: 30 dias consecutivos de operacion registrados.
+
+Entregables:
+- [x] Sistema de importacion JSON para resumen diario
+- [x] Guia completa para generar JSON correcto (GUIA_IMPORTAR_JSON.md)
+- [x] Tipos expandidos (intervencion, instalacion, supervision, mantenimiento)
+- [ ] Importar los ultimos 30 dias de operacion
+- [ ] Validar que cada dia tenga: movimientos + rendiciones + produccion completos
+- [ ] Template de importacion rapida (llenar datos crudos, sistema formatea)
+
+**Metrica de exito**: 30 dias con data completa en Supabase.
+
+---
+
+### FASE 2: "KNOWLEDGE GRAPH" - Conectar los datos
+
+**Inspirado en**: Katrina Nestit - las relaciones entre entidades ya deben existir, no reconstruirse con queries.
+
+**Objetivo**: Dashboard que muestre relaciones y metricas basicas.
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    AI AGENT LAYER                                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    PREDICTION ENGINE                      │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │  │
-│  │  │ Delay Risk  │  │ Cost Risk   │  │ Quality     │      │  │
-│  │  │ Predictor   │  │ Predictor   │  │ Predictor   │      │  │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘      │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                  RECOMMENDATION ENGINE                    │  │
-│  │  "Basado en histórico, el Proveedor A entrega 2 días     │  │
-│  │   más rápido para este tipo de trabajo"                  │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    ACTION ENGINE                          │  │
-│  │  - Enviar recordatorios automáticos                      │  │
-│  │  - Escalar PKLs en riesgo                                │  │
-│  │  - Generar reportes automáticos                          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+KNOWLEDGE GRAPH LOGISTICO:
+
+  [CLIENTE] --solicita--> [PKL] --produce--> [PROVEEDOR]
+      |                     |                     |
+      |                     |                     |
+  gasto_total          costo_total         tiempo_promedio
+  entregas_count       estado              retrasos_count
+  pkls_activos         risk_score          calidad_score
 ```
 
-**Entregables**:
-- [ ] Modelo de predicción de retrasos
-- [ ] Sistema de recomendación de proveedores
-- [ ] Chatbot interno con contexto de todos los PKLs
-- [ ] Alertas predictivas vía WhatsApp
+Entregables:
+- [ ] Vista "Analytics" en el dashboard con:
+  - Gasto total por cliente (top 5)
+  - Gasto en movilidad por semana/mes
+  - Proveedores mas usados y su tiempo promedio
+  - PKLs activos vs cerrados por mes
+  - Costo promedio por tipo de operacion
+- [ ] Ficha de cliente mejorada: historial completo, gasto acumulado, proveedores asociados
+- [ ] Ficha de proveedor mejorada: tiempo promedio, PKLs atendidos, ranking
+- [ ] Calculo automatico de Lead Time por PKL (fecha_solicitud -> fecha_cierre)
 
-#### 3.2 Process Copilot
-**Entregables**:
-- [ ] Asistente que responde: "¿Cuáles PKLs están en riesgo?"
-- [ ] Generación automática de reportes semanales
-- [ ] Sugerencias de optimización de rutas/costos
-- [ ] Detección de anomalías en gastos
-
----
-
-### FASE 4: Automation (Q4 2026) - "Orchestration"
-
-#### 4.1 Workflow Automation
-**Entregables**:
-- [ ] Workflows configurables (ej: "Si producción lista → notificar cliente")
-- [ ] Integración con calendarios (Google Calendar)
-- [ ] Automatización de seguimientos
-- [ ] Escalamiento automático de issues
-
-#### 4.2 Solution Suite: Logística Perú
-**Entregables**:
-- [ ] Templates pre-configurados para tipos de trabajo comunes
-- [ ] Catálogo de proveedores con ratings automáticos
-- [ ] Cálculo automático de IGV y documentos tributarios
-- [ ] Reportes de cumplimiento SUNAT-ready
+**Metrica de exito**: Puedes responder "cuanto me cuesta Grupo Lar al mes?" y "quien es mi proveedor mas rapido?" mirando el dashboard.
 
 ---
 
-## 5. MÉTRICAS DE ÉXITO
+### FASE 3: "RISK INTELLIGENCE" - Detectar y predecir
 
-### KPIs del Sistema
-| Métrica | Actual | Meta Q4 2026 |
-|---------|--------|--------------|
-| Tiempo captura evento | 2 min (manual) | 10 seg (voz) |
-| PKLs gestionados/mes | ~50 | 200+ |
-| % eventos con costo registrado | 60% | 95% |
-| Tiempo promedio cotización→entrega | No medido | Dashboard en tiempo real |
-| Alertas proactivas | 0 | 10+/semana |
-| Predicciones de riesgo | 0 | Modelo funcional |
+**Inspirado en**: Risk scoring combinado de Katrina. Combinar multiples factores para un score unico.
 
-### KPIs de Negocio (que el sistema debe medir)
-- **Lead Time**: Tiempo desde solicitud hasta entrega
-- **On-Time Delivery Rate**: % de entregas a tiempo
-- **Cost per PKL**: Costo promedio por proceso
-- **Supplier Performance**: Rating de proveedores por tiempo/calidad/costo
-- **Process Conformance**: % de PKLs que siguen el happy path
+**Objetivo**: Cada PKL abierto tiene un risk score visible.
 
----
+```
+RISK SCORE de un PKL:
 
-## 6. PRINCIPIOS DE DISEÑO
+  risk_score = risk_proveedor     (historial de retrasos: 0-100)
+             + risk_complejidad   (num productos, num proveedores: 0-100)
+             + risk_tiempo        (dias sin actividad vs promedio: 0-100)
+             + risk_costo         (costo actual vs presupuesto: 0-100)
+             ___________
+             / 4 = SCORE FINAL (0-100)
 
-### 6.1 "No AI sin PI"
-Antes de agregar más IA, debemos tener datos de proceso completos y limpios.
+  0-25:  BAJO     (verde)
+  25-50: MEDIO    (amarillo)
+  50-75: ALTO     (naranja)
+  75-100: CRITICO (rojo)
+```
 
-### 6.2 "Voice-First pero no Voice-Only"
-WhatsApp/voz es la entrada principal, pero no la única. El dashboard es igualmente importante.
+Entregables:
+- [ ] Risk score calculado automaticamente para cada PKL abierto
+- [ ] Alertas: "PKL-0045 lleva 5 dias sin actividad" (push o en dashboard)
+- [ ] Patron detection: "Los pedidos de impresion con Proveedor X tardan 40% mas que el promedio"
+- [ ] Vista de "PKLs en riesgo" ordenados por score
+- [ ] Historial de riesgo: como evoluciono el risk score de cada PKL
 
-### 6.3 "Contexto es Rey"
-Toda funcionalidad de IA debe tener acceso al contexto completo del negocio:
-- Historial del cliente
-- Performance del proveedor
-- Patrones estacionales
-- Costos históricos
-
-### 6.4 "Actionable Insights"
-No basta con mostrar datos. Cada insight debe venir con una acción recomendada.
-
-### 6.5 "Progressive Disclosure"
-- Usuario básico: Vista simple del día
-- Usuario avanzado: Analytics profundos
-- Admin: Configuración de reglas y modelos
+**Metrica de exito**: Ves un PKL en rojo y actuas ANTES de que se retrase, no despues.
 
 ---
 
-## 7. STACK TECNOLÓGICO PROPUESTO
+### FASE 4: "DECISION ENGINE" - Recomendar y actuar
+
+**Objetivo**: El sistema no solo muestra datos, te dice que hacer.
+
+```
+MOTOR DE DECISIONES:
+
+  Situacion: Nuevo pedido de impresion para Grupo Lar, 5000 volantes A5
+
+  Sistema dice:
+  +--------------------------------------------------+
+  | RECOMENDACIONES:                                  |
+  |                                                    |
+  | Proveedor A (Dennis):                             |
+  |   - Precio: S/.105/millar | Total: S/.525         |
+  |   - Tiempo estimado: 3 dias                       |
+  |   - Confiabilidad: 85% (retraso 1 vez en 7)      |
+  |                                                    |
+  | Proveedor B (Imprenta Cuche):                     |
+  |   - Precio: S/.95/millar | Total: S/.475          |
+  |   - Tiempo estimado: 5 dias                       |
+  |   - Confiabilidad: 70% (retraso 3 veces en 10)   |
+  |                                                    |
+  | >> RECOMENDADO: Dennis (mejor balance             |
+  |    tiempo/confiabilidad para este cliente)         |
+  +--------------------------------------------------+
+```
+
+Entregables:
+- [ ] Recomendacion de proveedor basada en historial (tiempo, costo, confiabilidad)
+- [ ] Estimacion de costo total de un PKL antes de empezar
+- [ ] Estimacion de tiempo de entrega basada en historicos
+- [ ] Deteccion de anomalias: "Este gasto es 3x mas alto que el promedio para este tipo"
+- [ ] Rutas alternativas: "Si proveedor X no puede, estos son tus Plan B y C"
+
+**Metrica de exito**: Antes de crear un PKL, ya sabes cuanto va a costar y cuanto va a tardar.
+
+---
+
+### FASE 5: "AUTOMATION" - El sistema actua solo
+
+**Objetivo**: Reducir trabajo manual, el sistema hace seguimiento por ti.
+
+Entregables:
+- [ ] Recordatorios automaticos a proveedores (via WhatsApp) si no responden en X dias
+- [ ] Generacion automatica de reporte semanal (costos, PKLs cerrados, pendientes, riesgos)
+- [ ] Escalamiento automatico: PKL en rojo notifica al responsable
+- [ ] Workflows configurables: "Si produccion lista -> notificar cliente -> programar entrega"
+- [ ] Integracion calendario (Google Calendar) para entregas programadas
+
+**Metrica de exito**: Pasas menos de 30 min al dia en tareas administrativas de seguimiento.
+
+---
+
+## 5. METRICAS CLAVE DEL SISTEMA
+
+### Lo que debe medir (KPIs de negocio)
+
+| Metrica | Que mide | Por que importa |
+|---------|----------|-----------------|
+| Lead Time | Dias desde solicitud hasta entrega | Velocidad del servicio |
+| On-Time Delivery Rate | % entregas a tiempo | Confiabilidad |
+| Costo por PKL | Gasto total por proceso | Rentabilidad |
+| Supplier Performance | Tiempo/costo/retrasos por proveedor | Elegir mejor proveedor |
+| Movilidad mensual | Gasto total en transporte | Control de costos |
+| PKLs en riesgo | Cuantos PKLs tienen score > 50 | Proactividad |
+| Process Conformance | % PKLs que siguen el happy path | Eficiencia del proceso |
+
+### Lo que nos mide a nosotros (KPIs del sistema)
+
+| Metrica | Hoy | Meta |
+|---------|-----|------|
+| Dias con data completa | ~5 | 30+ consecutivos |
+| PKLs gestionados | ~15 | 50+ activos |
+| % eventos con costo registrado | ~60% | 95% |
+| Tiempo registrar un dia | 15+ min | 5 min (JSON import) |
+| Alertas proactivas | 0 | 5+/semana |
+| Predicciones de riesgo | 0 | Score en cada PKL |
+
+---
+
+## 6. PRINCIPIOS DE DISENO
+
+### "Primero datos, despues inteligencia"
+Sin 30 dias de data limpia, cualquier analytics es humo. Prioridad #1: llenar datos consistentemente.
+
+### "Las relaciones son los datos" (Knowledge Graph)
+No basta registrar eventos sueltos. El valor esta en las CONEXIONES: cliente-PKL-proveedor-costo-tiempo. Modelar como grafo, no como tablas aisladas.
+
+### "Risk scoring combinado"
+Nunca un solo factor. Siempre combinar: proveedor + complejidad + tiempo + costo = risk score. Como en supply chain: riesgo_ruta = riesgo_puerto_origen + riesgo_puerto_destino + probabilidad_disrupcion.
+
+### "Rutas alternativas siempre"
+Ante cualquier riesgo, el sistema debe tener pre-calculado el Plan B. Proveedor alternativo, ruta alternativa, fecha alternativa.
+
+### "Actionable, no informativo"
+No mostrar "el proveedor tardo 5 dias". Mostrar "el proveedor tardo 5 dias, **2 mas que su promedio. Considerar alternativa para proxima vez.**"
+
+### "Voice-first pero no voice-only"
+WhatsApp/voz es una entrada mas. El dashboard web y la importacion JSON son igualmente importantes.
+
+---
+
+## 7. STACK TECNOLOGICO
 
 ### Actual
 - **Frontend**: React + Tailwind + Vite
 - **Backend**: Supabase (PostgreSQL + Auth + Realtime)
-- **AI**: Claude API (extracción)
-- **Voice**: Whisper local
-- **Graphs**: NetworkX + PyVis
+- **AI**: Claude API (extraccion de entidades)
+- **Voice**: Whisper local (faster-whisper)
+- **Graphs**: NetworkX + PyVis (basico)
 
-### Evolución Propuesta
-| Capa | Actual | Propuesto |
-|------|--------|-----------|
-| Process Mining | PyVis básico | PM4Py + Custom engine |
-| ML/Predictions | - | Python (scikit-learn) → Supabase Edge Functions |
-| Orchestration | - | Temporal.io o n8n |
-| Alertas | - | Supabase Realtime + WhatsApp API |
-| Knowledge Base | Hardcoded | Supabase + Vector embeddings |
+### Evolucion Propuesta (por fase)
 
----
-
-## 8. PRÓXIMOS PASOS INMEDIATOS
-
-### Esta Semana
-1. [ ] Definir los 5 KPIs más importantes para el negocio
-2. [ ] Documentar el "Happy Path" ideal de un PKL
-3. [ ] Identificar los 3 cuellos de botella más frecuentes
-
-### Este Mes
-1. [ ] Implementar cálculo automático de Lead Time por PKL
-2. [ ] Agregar alertas de "PKL sin actividad en X días"
-3. [ ] Crear dashboard de KPIs básicos
-
-### Este Trimestre
-1. [ ] Importador de Excel para cotizaciones
-2. [ ] Sistema de SLAs configurable
-3. [ ] Primer modelo predictivo (riesgo de retraso)
+| Capa | Fase 1 | Fase 2-3 | Fase 4-5 |
+|------|--------|----------|----------|
+| Data | Supabase | + Views/Functions | + Edge Functions |
+| Analytics | - | Queries SQL + charts | + ML predictions |
+| Graphs | PyVis basico | D3.js / React Flow | Neo4j (si escala) |
+| Alertas | - | Dashboard badges | WhatsApp Bot + Push |
+| AI | Claude (extraccion) | + Claude (analisis) | + Claude (agentes) |
 
 ---
 
-## 9. CONCLUSIÓN
+## 8. PROXIMO PASO INMEDIATO
 
-El sistema actual es una **base sólida** para captura de eventos logísticos. Tenemos:
-- ✅ Captura voice-first funcional
-- ✅ Modelo de datos flexible (PKL v2.0)
-- ✅ Dashboard operativo
-- ✅ Event logging estilo Celonis
+**Llenar 30 dias de data.**
 
-Para convertirnos en una plataforma de **Process Intelligence** como Salonus, necesitamos:
-1. **Más fuentes de datos** (no solo WhatsApp)
-2. **Process Mining real** (variantes, cuellos de botella, conformance)
-3. **Knowledge Models** (KPIs, SLAs, reglas de negocio)
-4. **AI que actúa** (predicciones, recomendaciones, automatización)
-5. **Alertas proactivas** (no esperar que el usuario revise)
-
-La clave es que **PI (Process Intelligence) habilita la AI**. Sin entender cómo funciona tu proceso, la IA no puede ayudarte de forma específica.
+Todo lo demas depende de esto. Usar la guia (GUIA_IMPORTAR_JSON.md) para importar cada dia. Una vez completo, el sistema tendra suficiente informacion para empezar Fase 2 (analytics y knowledge graph).
 
 ---
 
 *Documento creado: 2026-01-25*
-*Última actualización: 2026-01-25*
-*Versión: 1.0*
+*Ultima actualizacion: 2026-01-28*
+*Version: 2.0 - Incorpora insights de Knowledge Graphs y Supply Chain Risk Prediction*

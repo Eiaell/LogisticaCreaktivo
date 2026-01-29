@@ -172,10 +172,26 @@ function detectarSeccionYTipo(evento: Record<string, unknown>): { seccion: Secci
         return { seccion: 'RENDICION_PAGO', tipo: 'movilidad' };
     }
 
-    // Detectar MOVIMIENTO_LOGISTICO (entregas, recojos, pedidos de materiales)
-    const keywordsEntrega = ['entrega', 'delivery', 'despacho', 'implementacion'];
+    // Detectar MOVIMIENTO_LOGISTICO (entregas, recojos, instalaciones, etc.)
+    const keywordsEntrega = ['entrega', 'delivery', 'despacho'];
     const keywordsRecojo = ['recojo', 'pickup', 'recoger', 'pedido_materiales'];
+    const keywordsInstalacion = ['instalacion', 'implementacion', 'montaje', 'armado'];
+    const keywordsIntervencion = ['intervencion', 'intervencion_en_sitio', 'cambio_tags', 'retiro', 'colocacion'];
+    const keywordsSupervision = ['supervision', 'inspeccion', 'verificacion', 'revision_campo'];
+    const keywordsMantenimiento = ['mantenimiento', 'reparacion', 'limpieza', 'ajuste'];
 
+    if (keywordsInstalacion.some(k => tipoOriginal.includes(k))) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'instalacion' };
+    }
+    if (keywordsIntervencion.some(k => tipoOriginal.includes(k))) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'intervencion' };
+    }
+    if (keywordsSupervision.some(k => tipoOriginal.includes(k))) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'supervision' };
+    }
+    if (keywordsMantenimiento.some(k => tipoOriginal.includes(k))) {
+        return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'mantenimiento' };
+    }
     if (keywordsEntrega.some(k => tipoOriginal.includes(k))) {
         return { seccion: 'MOVIMIENTO_LOGISTICO', tipo: 'entrega' };
     }
@@ -853,7 +869,13 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
                                     proveedor: String(evento.proveedor || ''),
                                     producto: String(evento.producto || detalleP?.producto || ''),
                                     cantidad: Number(cantidadProd),
-                                    especificaciones: evento.especificaciones || detalleP?.especificaciones,
+                                    especificaciones: (() => {
+                                        const espec = evento.especificaciones || detalleP?.especificaciones || detalleP;
+                                        if (!espec) return undefined;
+                                        if (typeof espec === 'string') return { descripcion: espec };
+                                        if (typeof espec === 'object') return espec as Record<string, unknown>;
+                                        return { valor: String(espec) };
+                                    })(),
                                     precio_unitario: detalleP?.precio_por_millar_sin_igv || detalleP?.precio_unitario,
                                     precio_total: precioTotal,
                                     estado: String(evento.estado) as any,
@@ -1074,7 +1096,6 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
         return createPortal(
             <div
                 className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
-                onClick={(e) => e.target === e.currentTarget && handleClose()}
                 onKeyDown={(e) => { if (e.key === 'Escape') handleClose(); }}
                 tabIndex={0}
                 ref={(el) => el?.focus()}
@@ -1348,7 +1369,6 @@ export function ImportarJSONModal({ isOpen, onClose }: Props) {
     return createPortal(
         <div
             className="fixed inset-0 liquid-glass-overlay z-[9999] flex items-center justify-center p-4"
-            onClick={(e) => e.target === e.currentTarget && handleClose()}
             onKeyDown={(e) => { if (e.key === 'Escape') handleClose(); }}
             tabIndex={0}
             ref={(el) => el?.focus()}
