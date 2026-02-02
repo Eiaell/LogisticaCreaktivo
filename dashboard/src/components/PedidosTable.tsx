@@ -1086,9 +1086,9 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                         return (
                                                             <span
                                                                 onClick={(e) => handleEditStart(row.id, 'tipoOperacion', row.tipoOperacion || '', e)}
-                                                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full cursor-pointer hover:ring-1 hover:ring-white/30 transition-all ${getTipoStyle(row.tipoOperacion || '')}`}
+                                                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full cursor-pointer hover:ring-1 hover:ring-white/30 transition-all inline-block min-w-[70px] text-center ${getTipoStyle(row.tipoOperacion || '')}`}
                                                             >
-                                                                {row.tipoOperacionLabel}
+                                                                {row.tipoOperacionLabel || '— Sin tipo'}
                                                             </span>
                                                         );
                                                     })()
@@ -1267,9 +1267,9 @@ export function PedidosTable({ onNavigateToPKL }: PedidosTableProps) {
                                                 return (
                                                     <span
                                                         onClick={(e) => handleEditStart(row.id, 'estado', estadoValue || '', e)}
-                                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer hover:ring-1 hover:ring-white/30 ${getEstadoStyle(estadoValue || '')}`}
+                                                        className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer hover:ring-1 hover:ring-white/30 inline-block min-w-[70px] text-center ${getEstadoStyle(estadoValue || '')}`}
                                                     >
-                                                        {estadoLabel}
+                                                        {estadoLabel || '— Sin estado'}
                                                     </span>
                                                 );
                                             })()

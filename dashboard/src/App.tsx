@@ -629,7 +629,12 @@ function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: Dashbo
 
 function AppContent() {
   const { db, events, isLoading, clientes, pedidos, dataSource } = useDatabase();
-  const [currentPage, setCurrentPage] = useState<PageView>('dashboard');
+  // Leer página inicial desde hash de URL
+  const [currentPage, setCurrentPage] = useState<PageView>(() => {
+    const hash = window.location.hash.replace('#', '') as PageView;
+    const validPages: PageView[] = ['dashboard', 'clientes', 'cliente_ficha', 'proveedores', 'proveedor_ficha', 'catalogo_items', 'cotizaciones', 'dia_a_dia', 'pkl', 'costos'];
+    return validPages.includes(hash) ? hash : 'dashboard';
+  });
   const [selectedClienteRazonSocial, setSelectedClienteRazonSocial] = useState<string | null>(null);
   const [selectedProveedorId, setSelectedProveedorId] = useState<string | null>(null);
   const [selectedPKLId, setSelectedPKLId] = useState<string | null>(null);
@@ -649,6 +654,11 @@ function AppContent() {
   // Estado para modales de requerimiento
   const [showRequerimientoModal, setShowRequerimientoModal] = useState(false);
   const [tipoRequerimiento, setTipoRequerimiento] = useState<TipoRequerimiento | null>(null);
+
+  // Persistir página actual en hash de URL
+  useEffect(() => {
+    window.location.hash = currentPage === 'dashboard' ? '' : currentPage;
+  }, [currentPage]);
 
   // Persistir estado de sidebar
   useEffect(() => {

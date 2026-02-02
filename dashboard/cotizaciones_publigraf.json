@@ -1,0 +1,40 @@
+{
+  "proveedor": "Publigraf",
+  "proveedor_id": "publigraf",
+  "notas_proveedor": "Removedores y productos acrílicos publicitarios.",
+  "items": [
+    {
+      "producto_base": "removedor",
+      "descripcion": "Removedores publicitarios 1 cara, millar",
+      "variante": "1 cara millar",
+      "precio_unitario": 0.50,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-10-01",
+      "notas": "S/.500 por millar +IGV."
+    },
+    {
+      "producto_base": "removedor",
+      "descripcion": "Removedores publicitarios 2 caras, millar",
+      "variante": "2 caras millar",
+      "precio_unitario": 0.65,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-10-01",
+      "notas": "S/.650 por millar +IGV."
+    },
+    {
+      "producto_base": "removedor",
+      "descripcion": "Removedores publicitarios 2 caras, 500 und",
+      "variante": "2 caras 500 und",
+      "precio_unitario": 0.76,
+      "incluye_igv": false,
+      "cantidad_referencia": 500,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-10-01",
+      "notas": "S/.380 por 500 unidades +IGV."
+    }
+  ]
+}

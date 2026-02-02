@@ -1,0 +1,117 @@
+{
+  "proveedor": "Goicochea",
+  "proveedor_id": "goicochea",
+  "notas_proveedor": "Imprenta offset. Trabaja con Grupo Lar, TYC y otros clientes. Precios generalmente +IGV.",
+  "items": [
+    {
+      "producto_base": "posavasos",
+      "descripcion": "Posavasos impresos, millar",
+      "variante": "millar",
+      "precio_unitario": 0.23,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-10-15",
+      "notas": "S/.230 por millar +IGV."
+    },
+    {
+      "producto_base": "tag",
+      "descripcion": "Tags impresos",
+      "variante": null,
+      "precio_unitario": 2.07,
+      "incluye_igv": false,
+      "cantidad_referencia": 70,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-10-15",
+      "notas": "S/.145 por 70 unidades +IGV."
+    },
+    {
+      "producto_base": "folleto",
+      "descripcion": "Folletos impresos, lote de 500",
+      "variante": "500 und",
+      "precio_unitario": 3.50,
+      "incluye_igv": false,
+      "cantidad_referencia": 500,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-01",
+      "notas": "S/.1750 por 500 unidades +IGV."
+    },
+    {
+      "producto_base": "folleto",
+      "descripcion": "Folletos impresos, lote de 800",
+      "variante": "800 und",
+      "precio_unitario": 2.69,
+      "incluye_igv": false,
+      "cantidad_referencia": 800,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-01",
+      "notas": "S/.2150 por 800 unidades +IGV."
+    },
+    {
+      "producto_base": "folleto",
+      "descripcion": "Folletos impresos, lote de 1000",
+      "variante": "1000 und",
+      "precio_unitario": 2.55,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-01",
+      "notas": "S/.2550 por 1000 unidades +IGV."
+    },
+    {
+      "producto_base": "calendario",
+      "descripcion": "Calendarios impresos, lote de 50",
+      "variante": "50 und",
+      "precio_unitario": 12.60,
+      "incluye_igv": false,
+      "cantidad_referencia": 50,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-12-01",
+      "notas": "S/.630 por 50 unidades +IGV."
+    },
+    {
+      "producto_base": "volante",
+      "descripcion": "Volantes impresos, millar",
+      "variante": "millar",
+      "precio_unitario": 0.105,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-12-01",
+      "notas": "S/.105 por millar +IGV."
+    },
+    {
+      "producto_base": "bolsillo_folleto",
+      "descripcion": "Bolsillos para folleto, lote de 500",
+      "variante": "500 und",
+      "precio_unitario": 0.46,
+      "incluye_igv": false,
+      "cantidad_referencia": 500,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-01",
+      "notas": "S/.230 por 500 unidades +IGV."
+    },
+    {
+      "producto_base": "bolsillo_folleto",
+      "descripcion": "Bolsillos para folleto, lote de 800",
+      "variante": "800 und",
+      "precio_unitario": 0.35,
+      "incluye_igv": false,
+      "cantidad_referencia": 800,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-01",
+      "notas": "S/.280 por 800 unidades +IGV."
+    },
+    {
+      "producto_base": "bolsillo_folleto",
+      "descripcion": "Bolsillos para folleto, lote de 1000",
+      "variante": "1000 und",
+      "precio_unitario": 0.33,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-01",
+      "notas": "S/.330 por 1000 unidades +IGV."
+    }
+  ]
+}

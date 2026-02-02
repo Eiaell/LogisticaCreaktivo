@@ -1,0 +1,29 @@
+{
+  "proveedor": "Wilson",
+  "proveedor_id": "wilson",
+  "notas_proveedor": "Acrílicos y productos de escritorio.",
+  "items": [
+    {
+      "producto_base": "acrilico",
+      "descripcion": "Acrílicos personalizados",
+      "variante": null,
+      "precio_unitario": 5.00,
+      "incluye_igv": true,
+      "cantidad_referencia": null,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-15",
+      "notas": "S/.5 por unidad, incluye IGV."
+    },
+    {
+      "producto_base": "portapapeles",
+      "descripcion": "Portapapeles acrílico personalizado",
+      "variante": null,
+      "precio_unitario": 22.00,
+      "incluye_igv": true,
+      "cantidad_referencia": null,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-11-15",
+      "notas": "S/.22 por unidad, incluye IGV."
+    }
+  ]
+}

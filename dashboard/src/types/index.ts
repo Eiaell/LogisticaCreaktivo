@@ -817,6 +817,9 @@ export interface TaskPKL {
     esPrecioUnitario?: boolean;      // Si el precio ingresado es por unidad o total
     incluyeIgv?: boolean;            // Si el precio incluye IGV
     cotizaciones?: CotizacionProveedor[];  // Lista de cotizaciones de proveedores
+    // Subtasks: jerarquía task/subtask
+    parent_task_id?: string | null;  // null = task raíz, string = subtask de ese task
+    subtasks?: TaskPKL[];            // Subtasks anidados (calculado en frontend, no en DB)
 }
 
 // Evento externo

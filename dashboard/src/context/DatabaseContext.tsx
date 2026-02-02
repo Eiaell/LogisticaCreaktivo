@@ -54,6 +54,7 @@ interface DatabaseContextType {
 
     // CRUD Histórico de Precios
     createHistoricoPrecio: (data: Omit<HistoricoPrecio, 'id' | 'created_at' | 'updated_at'>) => Promise<HistoricoPrecio>;
+    updateHistoricoPrecio: (id: string, data: Partial<Omit<HistoricoPrecio, 'id' | 'created_at' | 'updated_at'>>) => Promise<void>;
     getHistoricoPorProveedor: (proveedorId: string) => HistoricoPrecio[];
     getHistoricoPorProductoBase: (proveedorId: string, productoBase: string) => HistoricoPrecio[];
     getHistoricoReciente: (proveedorId: string, productoBase: string, diasAtras?: number) => HistoricoPrecio[];
@@ -302,8 +303,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 }
 
                 // Cargar histórico de precios
-                const { data: historicoPrecioData } = await supabase.from('historico_precios').select('*');
-                if (historicoPrecioData) {
+                const { data: historicoPrecioData, error: histError } = await supabase.from('historico_precios').select('*');
+                if (histError) {
+                    console.warn('⚠️ Error cargando historico_precios:', histError.message);
+                } else if (historicoPrecioData) {
                     setHistoricoPrecio(historicoPrecioData as HistoricoPrecio[]);
                 }
 
@@ -394,6 +397,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                             esPrecioUnitario: task.es_precio_unitario,
                             incluyeIgv: task.incluye_igv,
                             cotizaciones: task.cotizaciones,
+                            // Subtasks
+                            parent_task_id: task.parent_task_id || null,
                         });
                         return acc;
                     }, {});
@@ -574,6 +579,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     costo: task.costo || null,
                     responsable: task.responsable || 'Huber', // Campo requerido
                     evento_origen_id: (task as any).evento_origen_id || null, // Vinculación con evento original
+                    parent_task_id: (task as any).parent_task_id || null,
                     created_at: now,
                     updated_at: now
                 }));
@@ -794,6 +800,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 es_precio_unitario: updatedTask.esPrecioUnitario,
                 incluye_igv: updatedTask.incluyeIgv,
                 cotizaciones: updatedTask.cotizaciones,
+                parent_task_id: updatedTask.parent_task_id || null,
             }, { onConflict: 'pkl_id,task_id' });
 
             if (error) {
@@ -835,11 +842,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             orden: taskNum,
         };
 
-        // Update state
-        const updatedTasks = [...currentPkl.tasks, newTask];
+        // Update state - use functional updater to avoid stale closure when called in a loop
         setPkls(prev => prev.map(pkl =>
             pkl.pkl_id === pklId
-                ? { ...pkl, tasks: updatedTasks, updated_at: now }
+                ? { ...pkl, tasks: [...pkl.tasks, newTask], updated_at: now }
                 : pkl
         ));
 
@@ -874,6 +880,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     ? (currentPkl.origen?.fecha_solicitud || currentPkl.created_at || now).split('T')[0]
                     : null),
                 evento_origen_id: (newTask as any).evento_origen_id || null,
+                parent_task_id: (newTask as any).parent_task_id || null,
                 created_at: now,
                 updated_at: now,
             };
@@ -912,10 +919,15 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const taskToDelete = currentPkl.tasks.find(t => t.task_id === taskId);
         const eventoOrigenId = (taskToDelete as any)?.evento_origen_id;
 
-        // Update state - remove task and reorder
+        // Also find subtasks of this task
+        const subtaskIds = currentPkl.tasks
+            .filter(t => t.parent_task_id === taskId)
+            .map(t => t.task_id);
+
+        // Update state - remove task AND its subtasks, then reorder root tasks
         const updatedTasks = currentPkl.tasks
-            .filter(t => t.task_id !== taskId)
-            .map((t, idx) => ({ ...t, orden: idx + 1 }));
+            .filter(t => t.task_id !== taskId && !subtaskIds.includes(t.task_id))
+            .map((t, idx) => t.parent_task_id ? t : { ...t, orden: idx + 1 });
 
         setPkls(prev => prev.map(pkl =>
             pkl.pkl_id === pklId
@@ -923,8 +935,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 : pkl
         ));
 
-        // Delete from Supabase
+        // Delete from Supabase (task + subtasks)
         try {
+            // Delete subtasks first
+            if (subtaskIds.length > 0) {
+                await supabase.from('pkl_tasks').delete().in('task_id', subtaskIds);
+            }
             const { error } = await supabase.from('pkl_tasks').delete().eq('task_id', taskId);
             if (error) {
                 console.error('Error deleting PKL task:', error);
@@ -1194,6 +1210,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                     es_happy_path: task.es_happy_path,
                     duracion_min: task.duracion_min,
                     ubicacion: task.ubicacion,
+                    parent_task_id: task.parent_task_id || null,
                 }));
                 await supabase.from('pkl_tasks').insert(tasksToInsert);
             }
@@ -2040,9 +2057,25 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             updated_at: now,
         };
 
-        setHistoricoPrecio(prev => [newHistorico, ...prev]);
-
         try {
+            // Auto-crear proveedor si no existe (evitar FK constraint error)
+            const proveedorNombre = newHistorico.proveedor_id;
+            if (proveedorNombre && !proveedores[proveedorNombre]) {
+                const { error: provError } = await supabase.from('proveedores').upsert({
+                    nombre: proveedorNombre,
+                    created_at: now,
+                    updated_at: now,
+                }, { onConflict: 'nombre' });
+                if (provError) {
+                    console.warn("Advertencia creando proveedor auto:", provError);
+                } else {
+                    setProveedores(prev => ({
+                        ...prev,
+                        [proveedorNombre]: { id: proveedorNombre, nombre: proveedorNombre, created_at: now, updated_at: now } as Proveedor
+                    }));
+                }
+            }
+
             const { error } = await supabase.from('historico_precios').insert({
                 id: newHistorico.id,
                 proveedor_id: newHistorico.proveedor_id,
@@ -2061,12 +2094,37 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
                 updated_at: now,
             });
             if (error) throw error;
+
+            // Solo actualizar estado DESPUÉS de éxito en DB
+            setHistoricoPrecio(prev => [newHistorico, ...prev]);
             console.log("Histórico de precio creado en Supabase:", newHistorico.id);
         } catch (err) {
             console.error("Error creating histórico de precio:", err);
+            throw err; // Re-lanzar para que el importador cuente el error
         }
 
         return newHistorico;
+    };
+
+    const updateHistoricoPrecio = async (id: string, data: Partial<Omit<HistoricoPrecio, 'id' | 'created_at' | 'updated_at'>>): Promise<void> => {
+        const now = new Date().toISOString();
+
+        try {
+            const { error } = await supabase.from('historico_precios').update({
+                ...data,
+                updated_at: now,
+            }).eq('id', id);
+            if (error) throw error;
+
+            // Solo actualizar estado DESPUÉS de éxito en DB
+            setHistoricoPrecio(prev => prev.map(h =>
+                h.id === id ? { ...h, ...data, updated_at: now } : h
+            ));
+            console.log("Histórico de precio actualizado:", id);
+        } catch (err) {
+            console.error("Error updating histórico de precio:", err);
+            throw err;
+        }
     };
 
     const getHistoricoPorProveedor = (proveedorId: string): HistoricoPrecio[] => {
@@ -2868,7 +2926,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
             // CRUD Cotizaciones
             createCotizacion, updateCotizacion, deleteCotizacion, getCotizacionesByProveedor,
             // CRUD Histórico de Precios
-            createHistoricoPrecio, getHistoricoPorProveedor, getHistoricoPorProductoBase, getHistoricoReciente,
+            createHistoricoPrecio, updateHistoricoPrecio, getHistoricoPorProveedor, getHistoricoPorProductoBase, getHistoricoReciente,
             // CRUD Líneas de Pedido
             createLineaPedido, updateLineaPedido, deleteLineaPedido, getLineasPedido,
             // CRUD Cambios de Pedido

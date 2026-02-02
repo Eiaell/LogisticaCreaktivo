@@ -1,0 +1,128 @@
+{
+  "proveedor": "Ideas de Armando",
+  "proveedor_id": "ideas-de-armando",
+  "notas_proveedor": "También conocido como 'Armando', 'IDEA', 'Idea Centro Creaktivo' en PKLs. Gigantografías, viniles, ruletas, backings, elementos POP. Precios libres = sin IGV (nota de venta). Si quieres factura = +IGV. RUC: 20614613166. Abren 10am. NO hacen: periódicos, brochures.",
+  "items": [
+    {
+      "producto_base": "rollscreen",
+      "descripcion": "Roll screen 2x1 en banner blackout acabado mate",
+      "variante": "banner blackout mate",
+      "precio_unitario": 150.00,
+      "incluye_igv": true,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": 1,
+      "fecha_cotizacion": "2026-01-12",
+      "notas": "S/.150 facturado por unidad. Incluye estructura roll screen + impresión banner blackout mate."
+    },
+    {
+      "producto_base": "ruleta_promocional",
+      "descripcion": "Ruleta promocional color madera, flecha estándar roja",
+      "variante": "madera, flecha roja",
+      "precio_unitario": 110.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": 1,
+      "fecha_cotizacion": "2026-01-27",
+      "notas": "S/.110 libre. Flecha estándar color rojo incluida. Producción ~1 día después de aprobación de diseño."
+    },
+    {
+      "producto_base": "ruleta_promocional",
+      "descripcion": "Ruleta promocional color blanco, flecha estándar roja",
+      "variante": "blanco, flecha roja",
+      "precio_unitario": 130.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": 1,
+      "fecha_cotizacion": "2026-01-27",
+      "notas": "S/.130 libre. Flecha estándar color rojo incluida. Si cambian color de flecha, costo adicional."
+    },
+    {
+      "producto_base": "ruleta_promocional",
+      "descripcion": "Ruleta promocional blanca, flecha acrílico personalizada (naranja) + prueba de color",
+      "variante": "blanco, flecha naranja, con prueba",
+      "precio_unitario": 150.00,
+      "incluye_igv": true,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": 1,
+      "fecha_cotizacion": "2026-01-28",
+      "notas": "S/.150 facturado. Incluye: ruleta blanca + flecha acrílico blanco con cabeza naranja + prueba de color (~20cm). Círculo 35x35cm, alto 43cm, ancho 30cm."
+    },
+    {
+      "producto_base": "ruleta_promocional",
+      "descripcion": "Ruleta promocional blanca, flecha naranja, sin prueba de color, sin IGV",
+      "variante": "blanco, flecha naranja, sin prueba",
+      "precio_unitario": 130.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": 1,
+      "fecha_cotizacion": "2026-01-29",
+      "notas": "S/.130 libre (nota de venta). Ruleta nueva sin prueba de color, sin IGV. Precio negociado."
+    },
+    {
+      "producto_base": "cambio_vinil_ruleta",
+      "descripcion": "Cambio de vinil en ruleta existente (solo reemplazo de impresión)",
+      "variante": null,
+      "precio_unitario": 80.00,
+      "incluye_igv": true,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": 1,
+      "fecha_cotizacion": "2026-01-29",
+      "notas": "S/.80 facturado. Solo cambio de vinil, más trabajoso que producción nueva. Alternativa a comprar ruleta nueva."
+    },
+    {
+      "producto_base": "prueba_de_color",
+      "descripcion": "Prueba de color vinil laminado mate (~20cm)",
+      "variante": "vinil blackout mate",
+      "precio_unitario": 10.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-16",
+      "notas": "S/.10 mínimo. Tamaño ~20cm de alto. Si es más pequeña puede ser gratis. Listo en ~3-4 horas."
+    },
+    {
+      "producto_base": "paleta_prop",
+      "descripcion": "Paleta prop en celtex 5mm, vinil + laminado mate, corte láser",
+      "variante": "celtex 5mm, laminado mate, corte láser",
+      "precio_unitario": 22.50,
+      "incluye_igv": true,
+      "cantidad_referencia": 2,
+      "tiempo_produccion_dias": 1,
+      "fecha_cotizacion": "2026-01-19",
+      "notas": "S/.45 facturado por 2 unidades = S/.22.50 c/u. Vinil + laminado mate + celtex 5mm cortado a láser. Tamaño ~24-26cm. Corte láser demora un poco más."
+    },
+    {
+      "producto_base": "mochila_publicitaria",
+      "descripcion": "Mochila publicitaria 60x40cm, impresión vinil ambas caras",
+      "variante": "60x40 ambas caras",
+      "precio_unitario": 95.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-19",
+      "notas": "S/.95 la unidad. Impresión vinil ambas caras 60x40cm."
+    },
+    {
+      "producto_base": "vinil_foam",
+      "descripcion": "Vinil pegado en foam, laminado mate",
+      "variante": "laminado mate",
+      "precio_unitario": 65.00,
+      "incluye_igv": true,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-23",
+      "notas": "S/.65 facturado. Vinil + laminado mate + foam. Tamaño según arte del cliente. Producción mismo día si se confirma temprano."
+    },
+    {
+      "producto_base": "backing",
+      "descripcion": "Backing publicitario impreso, estructura + vinil",
+      "variante": null,
+      "precio_unitario": 1150.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 1,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-12-01",
+      "notas": "S/.1150 +IGV. Incluye estructura y vinil impreso."
+    }
+  ]
+}

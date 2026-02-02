@@ -1,0 +1,29 @@
+{
+  "proveedor": "Ninagraf / Marina",
+  "proveedor_id": "ninagraf",
+  "notas_proveedor": "También conocido como Marina. Calendarios, poliestireno, impresiones.",
+  "items": [
+    {
+      "producto_base": "calendario",
+      "descripcion": "Calendarios impresos",
+      "variante": null,
+      "precio_unitario": 15.00,
+      "incluye_igv": false,
+      "cantidad_referencia": null,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-12-01",
+      "notas": "S/.15 por unidad."
+    },
+    {
+      "producto_base": "poliestireno",
+      "descripcion": "Poliestireno impreso, lote de 50",
+      "variante": "50 und",
+      "precio_unitario": 5.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 50,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2025-12-01",
+      "notas": "S/.250 por 50 unidades +IGV."
+    }
+  ]
+}

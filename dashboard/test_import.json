@@ -1,0 +1,72 @@
+{
+  "fecha": "2026-01-23",
+  "eventos_dia": [
+    {
+      "seccion": "RENDICION_PAGO",
+      "tipo": "compra_material",
+      "cliente": "Grupo Lar",
+      "proveedor": "Tienda Publicitaria",
+      "monto": 2125.59,
+      "moneda": "PEN",
+      "estado": "pagado",
+      "detalle": {
+        "concepto": "Tomatodo sublimable blanco x150 + Bolsa con fuelle azul x150",
+        "forma_pago": "Contado"
+      },
+      "observaciones": "Compra presencial en local de Ate"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "Arteck Jhonn",
+      "estado": "completado",
+      "detalle": {
+        "items": [
+          { "producto": "Tomatodos", "cantidad": 150 },
+          { "producto": "Bolsas", "cantidad": 150 }
+        ]
+      },
+      "observaciones": "Entrega de materiales para personalizacion"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Lar",
+      "proveedor": "Dennis",
+      "estado": "completado",
+      "detalle": {
+        "items": [
+          { "producto": "Volantes", "cantidad": 2000 },
+          { "producto": "Muestra de color", "cantidad": 1 }
+        ]
+      },
+      "observaciones": "Recojo en Centro de Lima"
+    },
+    {
+      "seccion": "RENDICION_PAGO",
+      "tipo": "compra_material",
+      "cliente": "Grupo Lar",
+      "monto": 318.00,
+      "moneda": "PEN",
+      "estado": "pagado",
+      "detalle": {
+        "concepto": "Planchas poliestireno 32 + Cinta doble contacto 6 + Foam 50 + Volantes 2 millares 220 + Muestra color 10"
+      },
+      "observaciones": "Compras y pagos directos en Centro de Lima"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "Grupo Lar",
+      "estado": "completado",
+      "detalle": {
+        "items": [
+          { "producto": "Volantes Proyecto Zendai", "cantidad": 1000 },
+          { "producto": "Foam Proyecto Zendai", "cantidad": 1 },
+          { "producto": "Volantes Proyecto D34", "cantidad": 1000 }
+        ]
+      },
+      "observaciones": "Distribucion de materiales en proyectos Zendai y D34"
+    }
+  ]
+}

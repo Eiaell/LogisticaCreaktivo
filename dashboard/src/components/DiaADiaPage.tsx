@@ -1838,6 +1838,7 @@ function PKLEventoAcordeon({
 }) {
     const [showLinkInput, setShowLinkInput] = useState(false);
     const [linkSearch, setLinkSearch] = useState('');
+    const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
     const estadoInfo = ESTADOS_PKL.find(e => e.value === pkl.estado.actual);
     const tipoInfo = TIPOS_OPERACION_PKL.find(t => t.value === pkl.clasificacion?.tipo_operacion);
     const clienteLogo = pkl.cliente?.nombre ? getClienteLogo(pkl.cliente.nombre) : null;
@@ -2210,12 +2211,15 @@ function PKLEventoAcordeon({
             {isExpanded && tasksDelDia.length > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-3 space-y-2">
                     {(() => {
+                        // Separar tasks raíz de subtasks (parent_task_id)
+                        const tasksRaiz = tasksDelDia.filter(t => !t.parent_task_id);
+                        const subtasksDelDia = tasksDelDia.filter(t => !!t.parent_task_id);
                         // Separar tasks principales de vinculados
-                        const tasksPrincipales = tasksDelDia.filter(t => !(t as any).vinculado_a_task_id);
-                        const tasksVinculados = tasksDelDia.filter(t => (t as any).vinculado_a_task_id);
+                        const tasksPrincipales = tasksRaiz.filter(t => !(t as any).vinculado_a_task_id);
+                        const tasksVinculados = tasksRaiz.filter(t => (t as any).vinculado_a_task_id);
 
                         // Función para renderizar un task
-                        const renderTask = (task: TaskPKL, isVinculado: boolean = false) => {
+                        const renderTask = (task: TaskPKL, isVinculado: boolean = false, subtaskCount: number = 0) => {
                             const tipoEmojis: Record<string, string> = {
                                 cotizacion: '💬', coordinacion_proveedor: '🤝', compra_insumo: '🛒',
                                 pago: '💰', movilidad: '🚚', instalacion: '🔧', cierre: '✅', administrativo: '📄',
@@ -2283,6 +2287,26 @@ function PKLEventoAcordeon({
                                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
                                                         → {taskPadre.nombre.substring(0, 20)}...
                                                     </span>
+                                                )}
+                                                {subtaskCount > 0 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setExpandedSubtasks(prev => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(task.task_id)) {
+                                                                    next.delete(task.task_id);
+                                                                } else {
+                                                                    next.add(task.task_id);
+                                                                }
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                                                    >
+                                                        <span className={`transition-transform duration-200 ${expandedSubtasks.has(task.task_id) ? 'rotate-90' : ''}`}>▶</span>
+                                                        {subtaskCount} subtask{subtaskCount > 1 ? 's' : ''}
+                                                    </button>
                                                 )}
                                             </div>
 
@@ -2386,9 +2410,37 @@ function PKLEventoAcordeon({
                                     const vinculadosDeEsteTask = tasksVinculados.filter(
                                         tv => (tv as any).vinculado_a_task_id === task.task_id
                                     );
+                                    const subtasksDeEsteTask = subtasksDelDia
+                                        .filter(st => st.parent_task_id === task.task_id)
+                                        .sort((a, b) => (a.orden || 0) - (b.orden || 0));
                                     return (
                                         <div key={task.task_id}>
-                                            {renderTask(task, false)}
+                                            {renderTask(task, false, subtasksDeEsteTask.length)}
+                                            {/* Subtasks acordeón */}
+                                            {subtasksDeEsteTask.length > 0 && expandedSubtasks.has(task.task_id) && (
+                                                <div className="ml-6 mt-1 mb-1 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-gray-200/50 dark:border-gray-700/30 overflow-hidden">
+                                                    {subtasksDeEsteTask.map((sub, subIdx) => {
+                                                        const subCompleted = sub.estado === 'completado';
+                                                        return (
+                                                            <div key={sub.task_id} className={`flex items-center gap-2 px-3 py-1.5 text-sm ${subIdx < subtasksDeEsteTask.length - 1 ? 'border-b border-gray-200/50 dark:border-gray-700/30' : ''}`}>
+                                                                <span className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center text-[9px] ${
+                                                                    subCompleted
+                                                                        ? 'bg-emerald-500 border-emerald-400 text-white'
+                                                                        : sub.estado === 'en_progreso'
+                                                                        ? 'border-blue-400 bg-blue-500/20'
+                                                                        : 'border-gray-300 dark:border-gray-600'
+                                                                }`}>
+                                                                    {subCompleted && '\u2713'}
+                                                                </span>
+                                                                <span className={`${subCompleted ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                                    {sub.nombre}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">subtask</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                             {/* Tasks vinculados a este task */}
                                             {vinculadosDeEsteTask.map(tv => renderTask(tv, true))}
                                         </div>

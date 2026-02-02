@@ -1,0 +1,18 @@
+{
+  "proveedor": "Don Juan",
+  "proveedor_id": "don-juan",
+  "notas_proveedor": "Fabricación de cajas, empaques especiales.",
+  "items": [
+    {
+      "producto_base": "caja_imantada",
+      "descripcion": "Caja imantada 20x18x15cm, cartón rígido forrado con papel rojo",
+      "variante": null,
+      "precio_unitario": 40.00,
+      "incluye_igv": false,
+      "cantidad_referencia": 25,
+      "tiempo_produccion_dias": 12,
+      "fecha_cotizacion": "2026-01-28",
+      "notas": "Cliente Experiencia Creativa. Ejecutiva: Natalia. S/.40 por unidad comprando 25."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "proveedor": "Mastergraf",
+  "proveedor_id": "mastergraf",
+  "notas_proveedor": "Mochilas publicitarias y productos promocionales.",
+  "items": [
+    {
+      "producto_base": "mochila_publicitaria",
+      "descripcion": "Mochila publicitaria impresa",
+      "variante": null,
+      "precio_unitario": 83.00,
+      "incluye_igv": true,
+      "cantidad_referencia": null,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-15",
+      "notas": "S/.83 facturado por unidad."
+    }
+  ]
+}

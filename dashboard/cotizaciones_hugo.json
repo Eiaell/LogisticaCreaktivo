@@ -1,0 +1,40 @@
+{
+  "proveedor": "Hugo",
+  "proveedor_id": "hugo-bolsas",
+  "notas_proveedor": "Confección de bolsas de tocuyo. Diferentes grosores disponibles.",
+  "items": [
+    {
+      "producto_base": "bolsa_tocuyo",
+      "descripcion": "Bolsa tocuyo delgado (confección)",
+      "variante": "delgado",
+      "precio_unitario": 4.50,
+      "incluye_igv": false,
+      "cantidad_referencia": null,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-10",
+      "notas": "Rango S/.4.50-4.90 según cantidad. Confección de la bolsa, no incluye serigrafía."
+    },
+    {
+      "producto_base": "bolsa_tocuyo",
+      "descripcion": "Bolsa tocuyo intermedio (confección)",
+      "variante": "intermedio",
+      "precio_unitario": 5.50,
+      "incluye_igv": false,
+      "cantidad_referencia": null,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-10",
+      "notas": "Rango S/.5.50-6.00 según cantidad. Confección de la bolsa, no incluye serigrafía."
+    },
+    {
+      "producto_base": "bolsa_tocuyo",
+      "descripcion": "Bolsa tocuyo grueso (confección)",
+      "variante": "grueso",
+      "precio_unitario": 7.00,
+      "incluye_igv": false,
+      "cantidad_referencia": null,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-10",
+      "notas": "Rango S/.7.00-7.50 según cantidad. Confección de la bolsa, no incluye serigrafía."
+    }
+  ]
+}

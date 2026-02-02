@@ -1,0 +1,40 @@
+{
+  "proveedor": "EyF / Chiper",
+  "proveedor_id": "eyf-chiper",
+  "notas_proveedor": "También conocido como Chiper. Merchandising y productos promocionales en volumen.",
+  "items": [
+    {
+      "producto_base": "pelota_antiestres",
+      "descripcion": "Pelotas antiestrés publicitarias, millar",
+      "variante": "millar",
+      "precio_unitario": 1.80,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-20",
+      "notas": "S/.1800 por millar."
+    },
+    {
+      "producto_base": "libreta",
+      "descripcion": "Libretas publicitarias, millar",
+      "variante": "millar",
+      "precio_unitario": 5.80,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-20",
+      "notas": "S/.5800 por millar."
+    },
+    {
+      "producto_base": "lapicero",
+      "descripcion": "Lapiceros publicitarios, millar",
+      "variante": "millar",
+      "precio_unitario": 0.60,
+      "incluye_igv": false,
+      "cantidad_referencia": 1000,
+      "tiempo_produccion_dias": null,
+      "fecha_cotizacion": "2026-01-20",
+      "notas": "S/.600 por millar."
+    }
+  ]
+}

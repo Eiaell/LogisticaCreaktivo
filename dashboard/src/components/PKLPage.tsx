@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { PKL, EstadoPKL, TipoOperacionPKL, TipoTaskPKL } from '../types';
+import type { PKL, EstadoPKL, TipoOperacionPKL, TipoTaskPKL, TaskPKL } from '../types';
 import { ESTADOS_PKL, TIPOS_OPERACION_PKL, TIPOS_TASK_PKL, GRUPOS_OPERACION_PKL } from '../types';
 import { useDatabase } from '../context/DatabaseContext';
 // Funciones centralizadas de cálculo de costos (#12)
@@ -22,7 +22,7 @@ const getTaskTypeConfig = (tipo: string) => {
 
 interface PKLPageProps {
     initialSelectedPKLId?: string | null;
-    initialTab?: 'overview' | 'tasks' | 'eventos';
+    initialTab?: 'overview' | 'tasks';
     onBack?: () => void;
     returnToLabel?: string;
 }
@@ -339,10 +339,10 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
     onCreateTask: CreateTaskFn;
     onDeleteTask: DeleteTaskFn;
     onDelete: () => void;
-    initialTab?: 'overview' | 'tasks' | 'eventos';
+    initialTab?: 'overview' | 'tasks';
 }) {
     const { clientes, createPKLTask, deletePKLTask, pkls, updatePKL } = useDatabase();
-    const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'eventos'>(initialTab || 'overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'tasks'>(initialTab || 'overview');
     const [editingField, setEditingField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
     const [showEditModal, setShowEditModal] = useState(false);
@@ -485,7 +485,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl overflow-hidden">
+        <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl">
             {/* Header */}
             <div className="p-6 border-b border-gray-200 dark:border-gray-700/50">
                 <div className="flex items-start justify-between mb-4">
@@ -724,7 +724,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
 
             {/* Tabs */}
             <div className="flex gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700/50">
-                {(['overview', 'tasks', 'eventos'] as const).map(tab => (
+                {(['overview', 'tasks'] as const).map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -736,7 +736,6 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                     >
                         {tab === 'overview' && 'Resumen'}
                         {tab === 'tasks' && `Tasks (${(pkl.tasks || []).length})`}
-                        {tab === 'eventos' && `Eventos (${(pkl.eventos_externos || []).length})`}
                     </button>
                 ))}
             </div>
@@ -745,7 +744,6 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
             <div className="p-6">
                 {activeTab === 'overview' && <OverviewTab pkl={pkl} onUpdate={onUpdate} onUpdateTask={onUpdateTask} />}
                 {activeTab === 'tasks' && <TasksTab pkl={pkl} onUpdateTask={onUpdateTask} onCreateTask={onCreateTask} onDeleteTask={onDeleteTask} />}
-                {activeTab === 'eventos' && <EventosTab pkl={pkl} onUpdate={onUpdate} />}
             </div>
 
             {/* Modal de edición PKL */}
@@ -2987,6 +2985,50 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
     const [showNewTask, setShowNewTask] = useState(false);
     const [newTaskName, setNewTaskName] = useState('');
     const [newTaskDesc, setNewTaskDesc] = useState('');
+    // Subtask inline form
+    const [addingSubtaskTo, setAddingSubtaskTo] = useState<string | null>(null);
+    const [newSubtaskName, setNewSubtaskName] = useState('');
+    // Accordion: expanded tasks showing subtasks
+    const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+    const toggleExpanded = (taskId: string) => {
+        setExpandedTasks(prev => {
+            const next = new Set(prev);
+            if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+            return next;
+        });
+    };
+    // Drag & drop for subtasks
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
+    const [dragOverPosition, setDragOverPosition] = useState<'above' | 'below'>('below');
+
+    const handleDrop = (parentTaskId: string | null) => {
+        if (!draggingId || !dragOverId || draggingId === dragOverId) {
+            setDraggingId(null);
+            setDragOverId(null);
+            return;
+        }
+        const allTasks = pkl.tasks || [];
+        const siblings = parentTaskId
+            ? [...allTasks.filter(t => t.parent_task_id === parentTaskId)]
+            : [...allTasks.filter(t => !t.parent_task_id)];
+        const dragIdx = siblings.findIndex(t => t.task_id === draggingId);
+        const overIdx = siblings.findIndex(t => t.task_id === dragOverId);
+        if (dragIdx === -1 || overIdx === -1) return;
+
+        const [moved] = siblings.splice(dragIdx, 1);
+        const newOverIdx = siblings.findIndex(t => t.task_id === dragOverId);
+        const insertAt = dragOverPosition === 'above' ? newOverIdx : newOverIdx + 1;
+        siblings.splice(insertAt, 0, moved);
+
+        siblings.forEach((t, i) => {
+            if (t.orden !== i + 1) {
+                onUpdateTask(pkl.pkl_id, t.task_id, { orden: i + 1 });
+            }
+        });
+        setDraggingId(null);
+        setDragOverId(null);
+    };
     const [newTaskTipo, setNewTaskTipo] = useState<TipoTaskPKL | ''>(''); // Vacío por defecto
     const [newTaskResponsable, setNewTaskResponsable] = useState('Huber');
     const [newTaskFecha, setNewTaskFecha] = useState(() => {
@@ -3141,224 +3183,522 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                 </div>
             )}
 
-            {(pkl.tasks || []).map((task, index) => {
-                const typeConfig = getTaskTypeConfig(task.tipo);
-                const isCompleted = task.estado === 'completado';
-                const isLast = index === (pkl.tasks || []).length - 1;
-                const isEditing = editingTask === task.task_id;
+            {(() => {
+                // Separar tasks raíz y subtasks
+                const allTasks = pkl.tasks || [];
+                const rootTasks = allTasks.filter(t => !t.parent_task_id).sort((a, b) => (a.orden || 0) - (b.orden || 0));
+                const getSubtasks = (parentId: string) => allTasks.filter(t => t.parent_task_id === parentId).sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
-                return (
-                    <div
-                        key={task.task_id}
-                        className={`relative flex items-start gap-4 py-4 group/task ${!isLast ? 'border-b border-gray-800/50' : ''}`}
-                    >
-                        {/* Timeline */}
-                        <div className="flex flex-col items-center">
-                            {/* Number circle - clickable to toggle estado */}
-                            <button
-                                onClick={() => {
-                                    const estados: ('pendiente' | 'en_progreso' | 'completado' | 'cancelado')[] = ['pendiente', 'en_progreso', 'completado'];
-                                    const currentIdx = estados.indexOf(task.estado as any);
-                                    const nextIdx = (currentIdx + 1) % estados.length;
-                                    handleEstadoChange(task.task_id, estados[nextIdx]);
-                                }}
-                                title="Click para cambiar estado"
-                                className={`relative z-10 w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold border-2 transition-all hover:scale-110 ${
-                                    isCompleted
-                                        ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/30'
-                                        : task.estado === 'en_progreso'
-                                        ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-500/30'
-                                        : 'bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500'
-                                }`}
+                const renderTaskRow = (task: TaskPKL, index: number, isSubtask: boolean, isLastRoot: boolean, isLastSubtask: boolean) => {
+                    const typeConfig = getTaskTypeConfig(task.tipo);
+                    const isCompleted = task.estado === 'completado';
+                    const isEditing = editingTask === task.task_id;
+                    const subtasks = isSubtask ? [] : getSubtasks(task.task_id);
+                    const hasSubtasks = subtasks.length > 0;
+
+                    const isRootDragging = !isSubtask && draggingId === task.task_id;
+                    const isRootDragOver = !isSubtask && dragOverId === task.task_id && draggingId !== task.task_id;
+
+                    return (
+                        <div key={task.task_id}>
+                            <div
+                                {...(!isSubtask ? {
+                                    draggable: true,
+                                    onDragStart: (e: React.DragEvent) => {
+                                        setDraggingId(task.task_id);
+                                        e.dataTransfer.effectAllowed = 'move';
+                                    },
+                                    onDragOver: (e: React.DragEvent) => {
+                                        e.preventDefault();
+                                        e.dataTransfer.dropEffect = 'move';
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const midY = rect.top + rect.height / 2;
+                                        setDragOverPosition(e.clientY < midY ? 'above' : 'below');
+                                        setDragOverId(task.task_id);
+                                    },
+                                    onDragLeave: () => { if (dragOverId === task.task_id) setDragOverId(null); },
+                                    onDrop: (e: React.DragEvent) => { e.preventDefault(); handleDrop(null); },
+                                    onDragEnd: () => { setDraggingId(null); setDragOverId(null); },
+                                } : {})}
+                                className={`relative flex items-start gap-4 py-4 group/task ${isSubtask ? 'ml-10 pl-4 border-l-2 border-gray-700/50' : 'cursor-grab active:cursor-grabbing'} ${!isSubtask && !isLastRoot ? 'border-b border-gray-800/50' : ''} ${isSubtask && !isLastSubtask ? 'border-b border-gray-700/30' : ''} ${isRootDragging ? 'opacity-30' : ''}`}
                             >
-                                {isCompleted ? '✓' : task.orden}
-                            </button>
-                            {/* Connecting line */}
-                            {!isLast && (
-                                <div className={`w-0.5 flex-1 min-h-[40px] -mb-4 ${
-                                    isCompleted ? 'bg-gradient-to-b from-emerald-500 to-emerald-500/20' : 'bg-gray-700/50'
-                                }`} />
-                            )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pb-2">
-                            {/* Nombre - editable */}
-                            <div className="flex items-center gap-2 mb-1">
-                                {isEditing && editingField === 'nombre' ? (
-                                    <input
-                                        autoFocus
-                                        value={editValue}
-                                        onChange={e => setEditValue(e.target.value)}
-                                        onBlur={() => handleEditSave(task.task_id)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') handleEditSave(task.task_id);
-                                            if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
-                                        }}
-                                        className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white font-semibold outline-none w-full"
-                                    />
-                                ) : (
-                                    <span
-                                        onClick={() => handleEditStart(task.task_id, 'nombre', task.nombre)}
-                                        className={`font-semibold cursor-pointer hover:text-cyan-400 transition-colors ${isCompleted ? 'text-gray-300' : 'text-white'}`}
-                                        title="Click para editar"
-                                    >
-                                        {task.nombre}
-                                    </span>
+                                {/* Drop indicator for root tasks */}
+                                {isRootDragOver && (
+                                    <div className={`absolute left-0 right-0 h-0.5 bg-cyan-400 z-10 pointer-events-none ${dragOverPosition === 'above' ? '-top-px' : '-bottom-px'}`}>
+                                        <div className={`absolute ${dragOverPosition === 'above' ? '-top-1' : '-bottom-1'} left-0 w-2.5 h-2.5 rounded-full bg-cyan-400`} />
+                                    </div>
                                 )}
-                                {task.es_happy_path && (
-                                    <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded font-medium">
-                                        HP
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Descripcion - editable */}
-                            {isEditing && editingField === 'descripcion' ? (
-                                <textarea
-                                    autoFocus
-                                    value={editValue}
-                                    onChange={e => setEditValue(e.target.value)}
-                                    onBlur={() => handleEditSave(task.task_id)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
-                                    }}
-                                    className="bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-300 text-sm outline-none w-full mb-2 resize-none"
-                                    rows={2}
-                                />
-                            ) : (
-                                <p
-                                    onClick={() => handleEditStart(task.task_id, 'descripcion', task.descripcion || '')}
-                                    className="text-gray-500 text-sm mb-2 cursor-pointer hover:text-gray-400 transition-colors"
-                                    title="Click para editar"
-                                >
-                                    {task.descripcion || <span className="italic text-gray-600">Sin descripcion</span>}
-                                </p>
-                            )}
-
-                            <div className="flex flex-wrap items-center gap-2 text-xs">
-                                {/* Tipo - dropdown */}
-                                <div className="relative group">
+                                {/* Timeline */}
+                                <div className="flex flex-col items-center">
                                     <button
-                                        className={`px-2 py-0.5 rounded-full ${typeConfig?.color || 'bg-gray-600'} text-white font-medium hover:ring-2 hover:ring-white/30 transition-all`}
+                                        onClick={() => {
+                                            const estados: ('pendiente' | 'en_progreso' | 'completado' | 'cancelado')[] = ['pendiente', 'en_progreso', 'completado'];
+                                            const currentIdx = estados.indexOf(task.estado as any);
+                                            const nextIdx = (currentIdx + 1) % estados.length;
+                                            handleEstadoChange(task.task_id, estados[nextIdx]);
+                                        }}
+                                        title="Click para cambiar estado"
+                                        className={`relative z-10 flex items-center justify-center rounded-full text-sm font-bold border-2 transition-all hover:scale-110 ${
+                                            isSubtask ? 'w-6 h-6 text-xs' : 'w-8 h-8'
+                                        } ${
+                                            isCompleted
+                                                ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+                                                : task.estado === 'en_progreso'
+                                                ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-500/30'
+                                                : 'bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500'
+                                        }`}
                                     >
-                                        {typeConfig?.label || task.tipo}
+                                        {isCompleted ? '✓' : isSubtask ? '·' : task.orden}
                                     </button>
-                                    <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[150px]">
-                                        {TIPOS_TASK_PKL.map(tipo => (
-                                            <button
-                                                key={tipo.value}
-                                                onClick={() => handleTipoChange(task.task_id, tipo.value)}
-                                                className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
+                                    {!isSubtask && !isLastRoot && (
+                                        <div className={`w-0.5 flex-1 min-h-[40px] -mb-4 ${
+                                            isCompleted ? 'bg-gradient-to-b from-emerald-500 to-emerald-500/20' : 'bg-gray-700/50'
+                                        }`} />
+                                    )}
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 min-w-0 pb-2">
+                                    {/* Nombre - editable */}
+                                    <div className="flex items-center gap-2 mb-1">
+                                        {isEditing && editingField === 'nombre' ? (
+                                            <input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value)}
+                                                onBlur={() => handleEditSave(task.task_id)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') handleEditSave(task.task_id);
+                                                    if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
+                                                }}
+                                                className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white font-semibold outline-none w-full"
+                                            />
+                                        ) : (
+                                            <span
+                                                onClick={() => handleEditStart(task.task_id, 'nombre', task.nombre)}
+                                                className={`cursor-pointer hover:text-cyan-400 transition-colors ${isSubtask ? 'text-sm font-medium' : 'font-semibold'} ${isCompleted ? 'text-gray-300' : 'text-white'}`}
+                                                title="Click para editar"
                                             >
-                                                {tipo.label}
+                                                {task.nombre}
+                                            </span>
+                                        )}
+                                        {task.es_happy_path && (
+                                            <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded font-medium">
+                                                HP
+                                            </span>
+                                        )}
+                                        {isSubtask && (
+                                            <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 text-[10px] rounded font-medium">
+                                                subtask
+                                            </span>
+                                        )}
+                                        {hasSubtasks && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); toggleExpanded(task.task_id); }}
+                                                className="flex items-center gap-1 px-1.5 py-0.5 bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 text-[10px] rounded font-medium transition-colors cursor-pointer"
+                                            >
+                                                <span className={`transition-transform duration-200 ${expandedTasks.has(task.task_id) ? 'rotate-90' : ''}`}>&#9654;</span>
+                                                {subtasks.length} subtask{subtasks.length > 1 ? 's' : ''}
                                             </button>
-                                        ))}
+                                        )}
+                                    </div>
+
+                                    {/* Descripcion - editable */}
+                                    {isEditing && editingField === 'descripcion' ? (
+                                        <textarea
+                                            autoFocus
+                                            value={editValue}
+                                            onChange={e => setEditValue(e.target.value)}
+                                            onBlur={() => handleEditSave(task.task_id)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
+                                            }}
+                                            className="bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-300 text-sm outline-none w-full mb-2 resize-none"
+                                            rows={2}
+                                        />
+                                    ) : (
+                                        <p
+                                            onClick={() => handleEditStart(task.task_id, 'descripcion', task.descripcion || '')}
+                                            className="text-gray-500 text-sm mb-2 cursor-pointer hover:text-gray-400 transition-colors"
+                                            title="Click para editar"
+                                        >
+                                            {task.descripcion || <span className="italic text-gray-600">Sin descripcion</span>}
+                                        </p>
+                                    )}
+
+                                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        {/* Tipo - dropdown */}
+                                        <div className="relative group">
+                                            <button
+                                                className={`px-2 py-0.5 rounded-full min-w-[70px] text-center ${typeConfig?.color || 'bg-gray-600'} !text-white font-medium hover:ring-2 hover:ring-white/30 transition-all`}
+                                            >
+                                                {typeConfig?.label || task.tipo || '— Sin tipo'}
+                                            </button>
+                                            <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[150px]">
+                                                {TIPOS_TASK_PKL.map(tipo => (
+                                                    <button
+                                                        key={tipo.value}
+                                                        onClick={() => handleTipoChange(task.task_id, tipo.value)}
+                                                        className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${tipo.color} !text-white`}
+                                                    >
+                                                        {tipo.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Responsable - editable */}
+                                        {isEditing && editingField === 'responsable' ? (
+                                            <input
+                                                autoFocus
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value)}
+                                                onBlur={() => handleEditSave(task.task_id)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') handleEditSave(task.task_id);
+                                                    if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
+                                                }}
+                                                className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-24"
+                                            />
+                                        ) : (
+                                            <span
+                                                onClick={() => handleEditStart(task.task_id, 'responsable', task.responsable)}
+                                                className="text-gray-500 cursor-pointer hover:text-cyan-400 transition-colors"
+                                                title="Click para editar"
+                                            >
+                                                <span className="text-gray-600">Responsable:</span> {task.responsable}
+                                            </span>
+                                        )}
+
+                                        {/* Duracion - editable */}
+                                        {isEditing && editingField === 'duracion_min' ? (
+                                            <input
+                                                autoFocus
+                                                type="number"
+                                                value={editValue}
+                                                onChange={e => setEditValue(e.target.value)}
+                                                onBlur={() => handleEditSave(task.task_id)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') handleEditSave(task.task_id);
+                                                    if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
+                                                }}
+                                                className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-16"
+                                            />
+                                        ) : (
+                                            <span
+                                                onClick={() => handleEditStart(task.task_id, 'duracion_min', String(task.duracion_min || ''))}
+                                                className="text-gray-500 cursor-pointer hover:text-cyan-400 transition-colors"
+                                                title="Click para editar"
+                                            >
+                                                <span className="text-gray-600">⏱</span> {task.duracion_min || '-'} min
+                                            </span>
+                                        )}
+
+                                        {task.costo?.monto && task.costo.monto > 0 && (
+                                            <span className="text-emerald-400 font-medium">S/ {task.costo.monto.toFixed(2)}</span>
+                                        )}
+                                        {task.fecha_completado && (
+                                            <span className="text-gray-500">{task.fecha_completado}</span>
+                                        )}
+                                    </div>
+                                    {task.ruta && (
+                                        <div className="mt-2 text-sm text-gray-500 flex items-center gap-1">
+                                            <span className="text-gray-600">📍</span>
+                                            {task.ruta.origen} <span className="text-cyan-500">→</span> {task.ruta.destino}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Actions column */}
+                                <div className="flex flex-col items-end gap-1">
+                                    {/* Status Badge - dropdown */}
+                                    <div className="relative group">
+                                        <button
+                                            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap min-w-[80px] text-center hover:ring-2 hover:ring-white/20 transition-all ${
+                                                isCompleted ? 'text-emerald-400' :
+                                                task.estado === 'en_progreso' ? 'text-blue-400' :
+                                                task.estado === 'cancelado' ? 'text-red-400' :
+                                                'text-gray-500'
+                                            }`}
+                                        >
+                                            {task.estado || '— Sin estado'}
+                                        </button>
+                                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[120px]">
+                                            {TASK_ESTADOS.map(estado => (
+                                                <button
+                                                    key={estado.value}
+                                                    onClick={() => handleEstadoChange(task.task_id, estado.value)}
+                                                    className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} !text-white`}
+                                                >
+                                                    {estado.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Action buttons row */}
+                                    <div className="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity">
+                                        {/* Add Subtask button - only for root tasks */}
+                                        {!isSubtask && (
+                                            <button
+                                                onClick={() => {
+                                                    const opening = addingSubtaskTo !== task.task_id;
+                                                    setAddingSubtaskTo(opening ? task.task_id : null);
+                                                    setNewSubtaskName('');
+                                                    if (opening) setExpandedTasks(prev => new Set(prev).add(task.task_id));
+                                                }}
+                                                className={`p-1.5 rounded transition-all ${addingSubtaskTo === task.task_id ? 'text-cyan-400 bg-cyan-500/20' : 'text-cyan-400/60 hover:text-cyan-400 hover:bg-cyan-500/20'}`}
+                                                title="Agregar subtask"
+                                            >
+                                                <span className="text-xs">+ sub</span>
+                                            </button>
+                                        )}
+
+                                        {/* Promote subtask to task */}
+                                        {isSubtask && (
+                                            <button
+                                                onClick={() => {
+                                                    onUpdateTask(pkl.pkl_id, task.task_id, {
+                                                        parent_task_id: null,
+                                                        orden: rootTasks.length + 1,
+                                                    } as any);
+                                                }}
+                                                className="p-1.5 text-amber-400/60 hover:text-amber-400 hover:bg-amber-500/20 rounded transition-all"
+                                                title="Promover a task independiente"
+                                            >
+                                                <span className="text-xs">↑</span>
+                                            </button>
+                                        )}
+
+                                        {/* Demote task to subtask - dropdown */}
+                                        {!isSubtask && rootTasks.length > 1 && (
+                                            <div className="relative group/demote">
+                                                <button
+                                                    className="p-1.5 text-purple-400/60 hover:text-purple-400 hover:bg-purple-500/20 rounded transition-all"
+                                                    title="Convertir en subtask de otro task"
+                                                >
+                                                    <span className="text-xs">↓</span>
+                                                </button>
+                                                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border-2 border-purple-400 rounded-lg shadow-xl z-[100] opacity-0 invisible group-hover/demote:opacity-100 group-hover/demote:visible transition-all min-w-[200px]">
+                                                    <div className="px-3 py-2 bg-purple-50 dark:bg-purple-900/30 rounded-t-lg border-b border-purple-300 dark:border-purple-700">
+                                                        <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">Mover como subtask de:</span>
+                                                    </div>
+                                                    {rootTasks.filter(t => t.task_id !== task.task_id).map(t => (
+                                                        <button
+                                                            key={t.task_id}
+                                                            onClick={() => {
+                                                                onUpdateTask(pkl.pkl_id, task.task_id, {
+                                                                    parent_task_id: t.task_id,
+                                                                } as any);
+                                                            }}
+                                                            className="block w-full text-left px-3 py-2 text-xs text-gray-800 dark:text-gray-200 hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-colors last:rounded-b-lg"
+                                                        >
+                                                            <span className="font-medium">{t.orden}.</span> {t.nombre}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Delete button */}
+                                        <button
+                                            onClick={() => {
+                                                const subtaskCount = getSubtasks(task.task_id).length;
+                                                const msg = subtaskCount > 0
+                                                    ? `¿Eliminar task "${task.nombre}" y sus ${subtaskCount} subtask(s)?\n\nEsta acción no se puede deshacer.`
+                                                    : `¿Eliminar task "${task.nombre}"?\n\nEsta acción no se puede deshacer.`;
+                                                if (confirm(msg)) {
+                                                    onDeleteTask(task.task_id);
+                                                }
+                                            }}
+                                            className="p-1.5 text-red-400/60 hover:text-red-400 hover:bg-red-500/20 rounded transition-all"
+                                            title="Eliminar task"
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
                                 </div>
-
-                                {/* Responsable - editable */}
-                                {isEditing && editingField === 'responsable' ? (
-                                    <input
-                                        autoFocus
-                                        value={editValue}
-                                        onChange={e => setEditValue(e.target.value)}
-                                        onBlur={() => handleEditSave(task.task_id)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') handleEditSave(task.task_id);
-                                            if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
-                                        }}
-                                        className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-24"
-                                    />
-                                ) : (
-                                    <span
-                                        onClick={() => handleEditStart(task.task_id, 'responsable', task.responsable)}
-                                        className="text-gray-500 cursor-pointer hover:text-cyan-400 transition-colors"
-                                        title="Click para editar"
-                                    >
-                                        <span className="text-gray-600">Responsable:</span> {task.responsable}
-                                    </span>
-                                )}
-
-                                {/* Duracion - editable */}
-                                {isEditing && editingField === 'duracion_min' ? (
-                                    <input
-                                        autoFocus
-                                        type="number"
-                                        value={editValue}
-                                        onChange={e => setEditValue(e.target.value)}
-                                        onBlur={() => handleEditSave(task.task_id)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') handleEditSave(task.task_id);
-                                            if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
-                                        }}
-                                        className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-16"
-                                    />
-                                ) : (
-                                    <span
-                                        onClick={() => handleEditStart(task.task_id, 'duracion_min', String(task.duracion_min || ''))}
-                                        className="text-gray-500 cursor-pointer hover:text-cyan-400 transition-colors"
-                                        title="Click para editar"
-                                    >
-                                        <span className="text-gray-600">⏱</span> {task.duracion_min || '-'} min
-                                    </span>
-                                )}
-
-                                {task.costo?.monto && task.costo.monto > 0 && (
-                                    <span className="text-emerald-400 font-medium">S/ {task.costo.monto.toFixed(2)}</span>
-                                )}
-                                {task.fecha_completado && (
-                                    <span className="text-gray-500">{task.fecha_completado}</span>
-                                )}
                             </div>
-                            {task.ruta && (
-                                <div className="mt-2 text-sm text-gray-500 flex items-center gap-1">
-                                    <span className="text-gray-600">📍</span>
-                                    {task.ruta.origen} <span className="text-cyan-500">→</span> {task.ruta.destino}
+
+                            {/* Subtasks accordion */}
+                            {!isSubtask && (expandedTasks.has(task.task_id) || addingSubtaskTo === task.task_id) && (hasSubtasks || addingSubtaskTo === task.task_id) && (
+                                <div className="ml-10 mt-1 mb-2 bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-gray-200 dark:border-gray-700/50 overflow-hidden">
+                                    {/* Subtask list - compact checklist style */}
+                                    {subtasks.map((sub, subIdx) => {
+                                        const subTypeConfig = getTaskTypeConfig(sub.tipo);
+                                        const subCompleted = sub.estado === 'completado';
+                                        const isDragging = draggingId === sub.task_id;
+                                        const isDragOver = dragOverId === sub.task_id;
+                                        return (
+                                            <div
+                                                key={sub.task_id}
+                                                draggable
+                                                onDragStart={(e) => {
+                                                    setDraggingId(sub.task_id);
+                                                    e.dataTransfer.effectAllowed = 'move';
+                                                    // Transparent drag image
+                                                    const el = e.currentTarget;
+                                                    e.dataTransfer.setDragImage(el, 0, 0);
+                                                }}
+                                                onDragOver={(e) => {
+                                                    e.preventDefault();
+                                                    e.dataTransfer.dropEffect = 'move';
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    const midY = rect.top + rect.height / 2;
+                                                    setDragOverPosition(e.clientY < midY ? 'above' : 'below');
+                                                    setDragOverId(sub.task_id);
+                                                }}
+                                                onDragLeave={() => {
+                                                    if (dragOverId === sub.task_id) setDragOverId(null);
+                                                }}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    handleDrop(task.task_id);
+                                                }}
+                                                onDragEnd={() => {
+                                                    setDraggingId(null);
+                                                    setDragOverId(null);
+                                                }}
+                                                className={`relative flex items-center gap-3 px-3 py-2 group/sub transition-colors select-none ${
+                                                    subIdx !== subtasks.length - 1 || addingSubtaskTo === task.task_id ? 'border-b border-gray-200 dark:border-gray-700/30' : ''
+                                                } ${isDragging ? 'opacity-30' : 'hover:bg-gray-100 dark:hover:bg-gray-800/50'} cursor-grab active:cursor-grabbing`}
+                                            >
+                                                {/* Drop indicator line */}
+                                                {isDragOver && !isDragging && (
+                                                    <div className={`absolute left-0 right-0 h-0.5 bg-cyan-400 z-10 pointer-events-none ${dragOverPosition === 'above' ? '-top-px' : '-bottom-px'}`}>
+                                                        <div className={`absolute ${dragOverPosition === 'above' ? '-top-1' : '-bottom-1'} left-0 w-2.5 h-2.5 rounded-full bg-cyan-400`} />
+                                                    </div>
+                                                )}
+
+                                                {/* Checkbox */}
+                                                <button
+                                                    onClick={() => {
+                                                        const estados: ('pendiente' | 'en_progreso' | 'completado' | 'cancelado')[] = ['pendiente', 'en_progreso', 'completado'];
+                                                        const currentIdx = estados.indexOf(sub.estado as any);
+                                                        const nextIdx = (currentIdx + 1) % estados.length;
+                                                        handleEstadoChange(sub.task_id, estados[nextIdx]);
+                                                    }}
+                                                    className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                                                        subCompleted
+                                                            ? 'bg-emerald-500 border-emerald-400 text-white'
+                                                            : sub.estado === 'en_progreso'
+                                                            ? 'border-blue-400 bg-blue-500/20'
+                                                            : 'border-gray-400 dark:border-gray-600 hover:border-cyan-400'
+                                                    }`}
+                                                    title="Click para cambiar estado"
+                                                >
+                                                    {subCompleted && <span className="text-[10px]">&#10003;</span>}
+                                                    {sub.estado === 'en_progreso' && <span className="w-2 h-2 bg-blue-400 rounded-full" />}
+                                                </button>
+
+                                                {/* Name */}
+                                                {editingTask === sub.task_id && editingField === 'nombre' ? (
+                                                    <input
+                                                        autoFocus
+                                                        value={editValue}
+                                                        onChange={e => setEditValue(e.target.value)}
+                                                        onBlur={() => handleEditSave(sub.task_id)}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter') handleEditSave(sub.task_id);
+                                                            if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
+                                                        }}
+                                                        className="flex-1 bg-white dark:bg-gray-800 border border-cyan-500 rounded px-2 py-0.5 text-sm text-gray-900 dark:text-white outline-none"
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        onClick={() => handleEditStart(sub.task_id, 'nombre', sub.nombre)}
+                                                        className={`flex-1 text-sm cursor-pointer hover:text-cyan-400 transition-colors ${subCompleted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}
+                                                        title="Click para editar"
+                                                    >
+                                                        {sub.nombre}
+                                                    </span>
+                                                )}
+
+                                                {/* Type badge - small */}
+                                                <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${subTypeConfig?.color || 'bg-gray-600'} !text-white`}>
+                                                    {subTypeConfig?.label || sub.tipo}
+                                                </span>
+
+                                                {/* Action buttons - visible on hover */}
+                                                <div className="flex items-center gap-0.5 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => {
+                                                            onUpdateTask(pkl.pkl_id, sub.task_id, {
+                                                                parent_task_id: null,
+                                                                orden: rootTasks.length + 1,
+                                                            } as any);
+                                                        }}
+                                                        className="p-1 text-amber-400/60 hover:text-amber-400 rounded transition-all"
+                                                        title="Promover a task"
+                                                    >
+                                                        <span className="text-[10px]">&#8593;</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm(`¿Eliminar subtask "${sub.nombre}"?`)) {
+                                                                onDeleteTask(sub.task_id);
+                                                            }
+                                                        }}
+                                                        className="p-1 text-red-400/60 hover:text-red-400 rounded transition-all"
+                                                        title="Eliminar"
+                                                    >
+                                                        <span className="text-[10px]">&#10005;</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Inline subtask creation form */}
+                                    {addingSubtaskTo === task.task_id && (
+                                        <div className="flex items-center gap-3 px-3 py-2 bg-cyan-50/50 dark:bg-cyan-900/10">
+                                            <div className="flex-shrink-0 w-5 h-5 rounded border-2 border-dashed border-cyan-400/50 flex items-center justify-center text-cyan-400 text-[10px]">
+                                                +
+                                            </div>
+                                            <input
+                                                autoFocus
+                                                value={newSubtaskName}
+                                                onChange={e => setNewSubtaskName(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && newSubtaskName.trim()) {
+                                                        onCreateTask({
+                                                            orden: subtasks.length + 1,
+                                                            nombre: newSubtaskName.trim(),
+                                                            tipo: task.tipo,
+                                                            responsable: task.responsable,
+                                                            estado: 'pendiente',
+                                                            es_happy_path: false,
+                                                            fecha_completado: task.fecha_completado,
+                                                            parent_task_id: task.task_id,
+                                                        } as any);
+                                                        setNewSubtaskName('');
+                                                    }
+                                                    if (e.key === 'Escape') {
+                                                        setAddingSubtaskTo(null);
+                                                        setNewSubtaskName('');
+                                                    }
+                                                }}
+                                                placeholder="Nuevo subtask... Enter para crear, Esc para cerrar"
+                                                className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none"
+                                            />
+                                            <button
+                                                onClick={() => { setAddingSubtaskTo(null); setNewSubtaskName(''); }}
+                                                className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs transition-colors"
+                                            >
+                                                &#10005;
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
+                    );
+                };
 
-                        {/* Status Badge - dropdown */}
-                        <div className="relative group">
-                            <button
-                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap hover:ring-2 hover:ring-white/20 transition-all ${
-                                    isCompleted ? 'text-emerald-400' :
-                                    task.estado === 'en_progreso' ? 'text-blue-400' :
-                                    task.estado === 'cancelado' ? 'text-red-400' :
-                                    'text-gray-500'
-                                }`}
-                            >
-                                {task.estado}
-                            </button>
-                            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[120px]">
-                                {TASK_ESTADOS.map(estado => (
-                                    <button
-                                        key={estado.value}
-                                        onClick={() => handleEstadoChange(task.task_id, estado.value)}
-                                        className={`block w-full text-left px-3 py-2 text-xs hover:brightness-90 first:rounded-t-lg last:rounded-b-lg ${estado.color} !text-white`}
-                                    >
-                                        {estado.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Delete button - always visible */}
-                        <button
-                            onClick={() => {
-                                if (confirm(`¿Eliminar task "${task.nombre}"?\n\nEsta acción no se puede deshacer.`)) {
-                                    onDeleteTask(task.task_id);
-                                }
-                            }}
-                            className="p-2 text-red-400/60 hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-all"
-                            title="Eliminar task"
-                        >
-                            🗑️
-                        </button>
-                    </div>
+                return rootTasks.map((task, index) =>
+                    renderTaskRow(task, index, false, index === rootTasks.length - 1, false)
                 );
-            })}
+            })()}
         </div>
     );
 }
