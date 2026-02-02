@@ -127,7 +127,8 @@ function handlePreviewVideo(req, res) {
         maxWords: config.maxWords || 25,
         bgColor: config.bgColor || [0, 0, 0],
         textColor: config.textColor || [255, 255, 255],
-        focusColor: config.focusColor || [255, 59, 48]
+        focusColor: config.focusColor || [255, 59, 48],
+        sentences: config.sentences || null
       };
 
       console.log(`Generando preview: ${outputFilename}`);
@@ -202,7 +203,8 @@ function handleGenerate(req, res) {
         fontSize: config.fontSize || 120,
         bgColor: config.bgColor || [0, 0, 0],
         textColor: config.textColor || [255, 255, 255],
-        focusColor: config.focusColor || [255, 59, 48]
+        focusColor: config.focusColor || [255, 59, 48],
+        sentences: config.sentences || null
       };
 
       console.log(`Generando: ${outputFilename} (${config.text.split(/\s+/).filter(w=>w).length} palabras)`);

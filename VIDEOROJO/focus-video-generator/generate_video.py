@@ -27,18 +27,13 @@ except ImportError:
 
 
 def get_focus_index(word):
-    """Calcula el índice de la letra de enfoque (ORP)"""
+    """Calcula el indice de la letra de enfoque (centro de la palabra)"""
     length = len(word)
     if length <= 1:
         return 0
-    elif length <= 5:
+    if length <= 3:
         return 1
-    elif length <= 9:
-        return 2
-    elif length <= 13:
-        return 3
-    else:
-        return 4
+    return length // 2 - 1
 
 
 def parse_words_with_ranges(words):
@@ -62,15 +57,26 @@ def parse_words_with_ranges(words):
         clean = word
         trailing_punct = ''
 
-        # Detectar pausas PRIMERO
-        if clean.endswith('||'):
-            pause_multiplier = 4
+        # Detectar pausas al INICIO de la palabra
+        while clean.startswith("||"):
+            pause_multiplier += 3
+            clean = clean[2:]
+        while clean.startswith("..."):
+            pause_multiplier += 1
+            clean = clean[3:]
+        while clean.startswith(".."):
+            pause_multiplier += 1
+            clean = clean[2:]
+
+        # Detectar pausas al FINAL de la palabra
+        if clean.endswith("||"):
+            pause_multiplier += 3
             clean = clean[:-2]
-        elif clean.endswith('...'):
-            pause_multiplier = 2
+        elif clean.endswith("..."):
+            pause_multiplier += 1
             clean = clean[:-3]
-        elif clean.endswith('..'):
-            pause_multiplier = 2
+        elif clean.endswith(".."):
+            pause_multiplier += 1
             clean = clean[:-2]
 
         # Extraer puntuación final ANTES de buscar marcadores
@@ -114,8 +120,8 @@ def parse_words_with_ranges(words):
         # Restaurar puntuación
         clean = clean + trailing_punct
 
-        if clean:
-            result.append((clean, bold, underline, pause_multiplier))
+        if clean or pause_multiplier > 1:
+            result.append((clean if clean else "", bold, underline, pause_multiplier))
 
     return result
 
@@ -182,10 +188,11 @@ def create_word_frame(word, width=1080, height=1920,
 
     # Margen mínimo a los lados
     margin = 40
+    available_width = width - margin * 2
 
     focus_idx = get_focus_index(word)
 
-    # Calcular posiciones
+    # Calcular posiciones de caracteres
     char_positions = []
     total_width = 0
 
@@ -198,46 +205,65 @@ def create_word_frame(word, width=1080, height=1920,
     if not char_positions:
         return img
 
+    # Si la palabra no cabe, reducir fuente
+    actual_font = font
+    actual_font_size = font_size
+    if total_width > available_width:
+        scale = available_width / total_width
+        actual_font_size = max(40, int(font_size * scale * 0.95))
+        scaled_fonts = load_fonts(actual_font_size)
+        actual_font = scaled_fonts['bold'] if bold else scaled_fonts['normal']
+        # Recalcular posiciones con fuente reducida
+        char_positions = []
+        total_width = 0
+        for char in word:
+            bbox = actual_font.getbbox(char)
+            char_width = bbox[2] - bbox[0]
+            char_positions.append((char, char_width))
+            total_width += char_width
+
     focus_idx = min(focus_idx, len(char_positions) - 1)
     focus_char_width = char_positions[focus_idx][1]
     width_before_focus = sum(cw for _, cw in char_positions[:focus_idx])
 
     center_x = width // 2
+    # Centrar la letra de enfoque en el medio exacto de la pantalla
     start_x = center_x - width_before_focus - (focus_char_width // 2)
 
-    # CORRECCIÓN: Asegurar que la palabra no se corte
-    # Si empieza antes del margen izquierdo, moverla a la derecha
-    if start_x < margin:
-        start_x = margin
-
-    # Si termina después del margen derecho, moverla a la izquierda
+    # Solo ajustar si la palabra se sale completamente de la pantalla
     end_x = start_x + total_width
-    if end_x > width - margin:
-        start_x = width - margin - total_width
+    if end_x > width:
+        start_x = width - total_width
+    if start_x < 0:
+        start_x = 0
 
-    # Si aún no cabe (palabra muy larga), centrarla
-    if start_x < margin:
-        start_x = (width - total_width) // 2
+    # Calcular posicion Y usando getbbox del texto completo
+    # bbox retorna (left, top, right, bottom) relativo al anchor
+    text_bbox = actual_font.getbbox(word)
+    bbox_top = text_bbox[1]
+    bbox_bottom = text_bbox[3]
+    # Centrar el texto visible en la pantalla
+    # El texto visible va de (y + bbox_top) a (y + bbox_bottom)
+    # Queremos que el centro visual esté en height/2
+    y = (height // 2) - (bbox_top + bbox_bottom) // 2
 
-    text_bbox = font.getbbox(word)
-    text_height = text_bbox[3] - text_bbox[1]
-    y = (height - text_height) // 2
-
-    # Línea guía
-    guide_color = (60, 60, 60)
-    draw.line([(center_x, 0), (center_x, height)], fill=guide_color, width=2)
 
     # Dibujar letras
+    stroke_offsets = [(-2,-2),(-2,0),(-2,2),(0,-2),(0,2),(2,-2),(2,0),(2,2)] if bold else []
     current_x = start_x
     for i, (char, char_width) in enumerate(char_positions):
         color = focus_color if i == focus_idx else text_color
-        draw.text((current_x, y), char, font=font, fill=color)
+        # Bold: dibujar stroke para mayor grosor
+        for dx, dy in stroke_offsets:
+            draw.text((current_x + dx, y + dy), char, font=actual_font, fill=color)
+        draw.text((current_x, y), char, font=actual_font, fill=color)
         current_x += char_width
 
-    # Subrayado
+    # Subrayado: posicionar DEBAJO del texto visible
     if underline:
-        underline_y = y + text_height + 10
-        underline_thickness = max(4, font_size // 20)
+        # bbox_bottom es la posición más baja del texto relativa al anchor
+        underline_y = y + bbox_bottom + 15
+        underline_thickness = max(4, actual_font_size // 20)
         draw.line(
             [(start_x, underline_y), (start_x + total_width, underline_y)],
             fill=focus_color,
@@ -249,7 +275,8 @@ def create_word_frame(word, width=1080, height=1920,
 
 def generate_preview_video(text, output_path, wpm=300, width=1080, height=1920,
                            bg_color=(0, 0, 0), text_color=(255, 255, 255),
-                           focus_color=(255, 59, 48), font_size=120, max_words=20):
+                           focus_color=(255, 59, 48), font_size=120, max_words=20,
+                           sentences=None):
     """Genera un video de preview corto (WebM para navegador)"""
     temp_dir = Path(output_path).parent / "temp_preview"
     temp_dir.mkdir(exist_ok=True)
@@ -260,6 +287,17 @@ def generate_preview_video(text, output_path, wpm=300, width=1080, height=1920,
     raw_words = text.split()[:max_words]
     if not raw_words:
         return False
+
+    # Build per-word WPM map from sentences
+    word_wpm_map = {}
+    if sentences:
+        word_idx = 0
+        for sent_info in sentences:
+            sent_words = sent_info['text'].split()
+            sent_wpm = sent_info.get('wpm', wpm)
+            for _ in sent_words:
+                word_wpm_map[word_idx] = sent_wpm
+                word_idx += 1
 
     fonts = load_fonts(font_size)
 
@@ -276,8 +314,18 @@ def generate_preview_video(text, output_path, wpm=300, width=1080, height=1920,
     # Parsear todas las palabras con soporte de rangos
     parsed_words = parse_words_with_ranges(raw_words)
 
-    for clean_word, bold, underline, pause_mult in parsed_words:
+    for word_i, (clean_word, bold, underline, pause_mult) in enumerate(parsed_words):
         if not clean_word:
+            # Pausa: generar frames en blanco
+            if pause_mult > 1:
+                blank_pause = Image.new("RGB", (preview_width, preview_height), bg_color)
+                w_wpm = word_wpm_map.get(word_i, wpm) if word_wpm_map else wpm
+                w_spw = 60.0 / w_wpm
+                w_base = max(1, int(fps * w_spw))
+                for _ in range(w_base * pause_mult):
+                    frame_path = temp_dir / f"frame_{frame_num:06d}.png"
+                    blank_pause.save(frame_path)
+                    frame_num += 1
             continue
 
         img = create_word_frame(
@@ -289,7 +337,11 @@ def generate_preview_video(text, output_path, wpm=300, width=1080, height=1920,
         # Redimensionar
         img = img.resize((preview_width, preview_height), Image.Resampling.LANCZOS)
 
-        frames_count = base_frames * pause_mult
+        # Per-word WPM from sentence map
+        w_wpm = word_wpm_map.get(word_i, wpm) if word_wpm_map else wpm
+        w_spw = 60.0 / w_wpm
+        w_base = max(1, int(fps * w_spw))
+        frames_count = w_base * pause_mult
         for _ in range(frames_count):
             frame_path = temp_dir / f"frame_{frame_num:06d}.png"
             img.save(frame_path)
@@ -339,7 +391,7 @@ def generate_preview_video(text, output_path, wpm=300, width=1080, height=1920,
 
 def generate_video(text, output_path, wpm=300, width=1080, height=1920,
                    bg_color=(0, 0, 0), text_color=(255, 255, 255),
-                   focus_color=(255, 59, 48), font_size=120):
+                   focus_color=(255, 59, 48), font_size=120, sentences=None):
     """Genera un video RSVP completo"""
     temp_dir = Path(output_path).parent / "temp_frames"
     temp_dir.mkdir(exist_ok=True)
@@ -351,6 +403,18 @@ def generate_video(text, output_path, wpm=300, width=1080, height=1920,
     if not raw_words:
         print("Error: No hay palabras", file=sys.stderr)
         return False
+
+    # Build per-word WPM map from sentences
+    word_wpm_map = {}
+    if sentences:
+        word_idx = 0
+        for sent_info in sentences:
+            sent_words = sent_info['text'].split()
+            sent_wpm = sent_info.get('wpm', wpm)
+            for _ in sent_words:
+                word_wpm_map[word_idx] = sent_wpm
+                word_idx += 1
+        print(f"  WPM por oracion: {[s.get('wpm', wpm) for s in sentences]}", file=sys.stderr)
 
     fonts = load_fonts(font_size)
     print(f"Generando {len(raw_words)} palabras...", file=sys.stderr)
@@ -369,6 +433,16 @@ def generate_video(text, output_path, wpm=300, width=1080, height=1920,
             print(f"  {i + 1}/{len(parsed_words)}...", file=sys.stderr)
 
         if not clean_word:
+            # Pausa: generar frames en blanco
+            if pause_mult > 1:
+                blank_pause = Image.new("RGB", (width, height), bg_color)
+                w_wpm = word_wpm_map.get(i, wpm) if word_wpm_map else wpm
+                w_spw = 60.0 / w_wpm
+                w_base = max(1, int(fps * w_spw))
+                for _ in range(w_base * pause_mult):
+                    frame_path = temp_dir / f"frame_{frame_num:06d}.png"
+                    blank_pause.save(frame_path)
+                    frame_num += 1
             continue
 
         img = create_word_frame(
@@ -377,13 +451,17 @@ def generate_video(text, output_path, wpm=300, width=1080, height=1920,
             bold, underline, fonts
         )
 
-        frames_count = base_frames * pause_mult
+        # Per-word WPM from sentence map
+        w_wpm = word_wpm_map.get(i, wpm) if word_wpm_map else wpm
+        w_spw = 60.0 / w_wpm
+        w_base = max(1, int(fps * w_spw))
+        frames_count = w_base * pause_mult
         for _ in range(frames_count):
             frame_path = temp_dir / f"frame_{frame_num:06d}.png"
             img.save(frame_path)
             frame_num += 1
 
-    blank = Image.new('RGB', (width, height), bg_color)
+        blank = Image.new('RGB', (width, height), bg_color)
     for _ in range(fps):
         frame_path = temp_dir / f"frame_{frame_num:06d}.png"
         blank.save(frame_path)
@@ -432,8 +510,10 @@ def main():
         text_color = tuple(config.get("textColor", [255, 255, 255]))
         focus_color = tuple(config.get("focusColor", [255, 59, 48]))
 
+        sentences = config.get("sentences", None)
+
         success = generate_video(text, output, wpm, width, height,
-                                 bg, text_color, focus_color, font_size)
+                                 bg, text_color, focus_color, font_size, sentences)
 
         print(json.dumps({"success": success, "output": output if success else None}))
 
@@ -453,8 +533,11 @@ def main():
         text_color = tuple(config.get("textColor", [255, 255, 255]))
         focus_color = tuple(config.get("focusColor", [255, 59, 48]))
 
+        sentences = config.get("sentences", None)
+
         success = generate_preview_video(text, output, wpm, width, height,
-                                         bg, text_color, focus_color, font_size, max_words)
+                                         bg, text_color, focus_color, font_size, max_words,
+                                         sentences)
 
         print(json.dumps({"success": success, "output": output if success else None}))
 

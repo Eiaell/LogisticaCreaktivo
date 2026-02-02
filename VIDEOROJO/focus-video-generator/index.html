@@ -240,6 +240,162 @@
       border-radius: 3px;
       color: #ff6b5b;
     }
+
+    /* Sentence WPM editor */
+    .sentence-editor {
+      margin-top: 1rem;
+      border: 1px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .sentence-editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0.75rem;
+      background: #1a1a2a;
+      border-bottom: 1px solid #333;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+    .sentence-editor-header button {
+      padding: 0.25rem 0.6rem;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: #222;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .sentence-editor-header button:hover { background: #333; }
+    .sentence-list {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .sentence-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #222;
+      font-size: 0.85rem;
+    }
+    .sentence-item:last-child { border-bottom: none; }
+    .sentence-item:hover { background: #1a1a1a; }
+    .sentence-num {
+      color: #666;
+      font-size: 0.75rem;
+      min-width: 20px;
+    }
+    .sentence-text {
+      flex: 1;
+      color: #ccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sentence-wpm {
+      width: 70px;
+      padding: 0.25rem 0.4rem;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #222;
+      color: #fff;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .sentence-wpm:focus { border-color: #ff3b30; outline: none; }
+    .sentence-wpm-label {
+      color: #666;
+      font-size: 0.7rem;
+    }
+
+    /* Layout con sidebar historial */
+    .page-layout { display: flex; gap: 1rem; }
+    .page-main { flex: 1; min-width: 0; }
+    .history-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: #111;
+      border-radius: 12px;
+      border: 1px solid #333;
+      padding: 1rem;
+      max-height: calc(100vh - 3rem);
+      overflow-y: auto;
+      position: sticky;
+      top: 1.5rem;
+    }
+    .history-sidebar h3 {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-sidebar h3 button {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .history-sidebar h3 button:hover { color: #ff3b30; background: #222; }
+    .history-item {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 0.6rem;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .history-item:hover { border-color: #ff3b30; }
+    .history-item-title {
+      font-size: 0.8rem;
+      color: #ddd;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .history-item-meta {
+      font-size: 0.65rem;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+    }
+    .history-item-delete {
+      background: none;
+      border: none;
+      color: #555;
+      cursor: pointer;
+      font-size: 0.65rem;
+      padding: 0;
+      float: right;
+    }
+    .history-item-delete:hover { color: #ff3b30; }
+    .history-empty {
+      color: #555;
+      font-size: 0.75rem;
+      text-align: center;
+      padding: 2rem 0;
+    }
+    @media (max-width: 1100px) {
+      .history-sidebar { width: 200px; }
+    }
+    @media (max-width: 900px) {
+      .page-layout { flex-direction: column; }
+      .history-sidebar {
+        width: 100%;
+        max-height: 200px;
+        position: static;
+        order: -1;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -247,6 +403,8 @@
     <h1>Focus Video Generator</h1>
     <p class="subtitle">Videos RSVP con letra de enfoque - Exporta como MP4</p>
 
+    <div class="page-layout">
+    <div class="page-main">
     <div class="main-layout">
       <!-- Panel izquierdo: Editor -->
       <div class="panel">
@@ -279,7 +437,7 @@ Selecciona palabras y usa los botones de arriba para:
 
         <div class="settings-row">
           <div class="setting-item">
-            <label>WPM</label>
+            <label>WPM base</label>
             <input type="number" id="wpm" value="300" min="60" max="900" step="10">
           </div>
           <div class="setting-item">
@@ -304,6 +462,16 @@ Selecciona palabras y usa los botones de arriba para:
           <button class="format-opt active" data-w="1080" data-h="1920">9:16 Vertical</button>
           <button class="format-opt" data-w="1920" data-h="1080">16:9 Horizontal</button>
           <button class="format-opt" data-w="1080" data-h="1080">1:1 Cuadrado</button>
+        </div>
+
+
+        <!-- Sentence WPM Editor -->
+        <div class="sentence-editor" id="sentenceEditor" style="display:none;">
+          <div class="sentence-editor-header">
+            <span>Velocidad por oracion</span>
+            <button onclick="resetAllSentenceWpms()">Reset todo</button>
+          </div>
+          <div class="sentence-list" id="sentenceList"></div>
         </div>
 
         <div class="help-box">
@@ -343,39 +511,191 @@ Selecciona palabras y usa los botones de arriba para:
   </div>
 
   <script>
-    const textInput = document.getElementById('textInput');
-    const wordCountEl = document.getElementById('wordCount');
-    const durationEl = document.getElementById('duration');
-    const wpmInput = document.getElementById('wpm');
-    const bgColorInput = document.getElementById('bgColor');
-    const textColorInput = document.getElementById('textColor');
-    const focusColorInput = document.getElementById('focusColor');
-    const fontSizeInput = document.getElementById('fontSize');
-    const previewBtn = document.getElementById('previewBtn');
-    const generateBtn = document.getElementById('generateBtn');
-    const previewContainer = document.getElementById('previewContainer');
-    const statusDiv = document.getElementById('status');
-    const statusText = document.getElementById('statusText');
-    const formatOpts = document.querySelectorAll('.format-opt');
+    var textInput = document.getElementById('textInput');
+    var wordCountEl = document.getElementById('wordCount');
+    var durationEl = document.getElementById('duration');
+    var wpmInput = document.getElementById('wpm');
+    var bgColorInput = document.getElementById('bgColor');
+    var textColorInput = document.getElementById('textColor');
+    var focusColorInput = document.getElementById('focusColor');
+    var fontSizeInput = document.getElementById('fontSize');
+    var previewBtn = document.getElementById('previewBtn');
+    var generateBtn = document.getElementById('generateBtn');
+    var previewContainer = document.getElementById('previewContainer');
+    var statusDiv = document.getElementById('status');
+    var statusTextEl = document.getElementById('statusText');
+    var formatOpts = document.querySelectorAll('.format-opt');
+    var sentenceEditor = document.getElementById('sentenceEditor');
+    var sentenceListEl = document.getElementById('sentenceList');
 
-    let videoWidth = 1080;
-    let videoHeight = 1920;
+    var videoWidth = 1080;
+    var videoHeight = 1920;
+    var sentenceWpms = {};
 
-    // Funciones de formato
+    // ---- LocalStorage: guardar y restaurar estado ----
+    function saveState() {
+      try {
+        var state = {
+          text: document.getElementById("textInput").value,
+          wpm: document.getElementById("wpm").value,
+          fontSize: document.getElementById("fontSize").value,
+          bgColor: document.getElementById("bgColor").value,
+          textColor: document.getElementById("textColor").value,
+          focusColor: document.getElementById("focusColor").value,
+          sentenceWpms: sentenceWpms,
+          videoWidth: videoWidth,
+          videoHeight: videoHeight
+        };
+        localStorage.setItem("focusVideoState", JSON.stringify(state));
+      } catch(e) {}
+    }
+
+    function loadState() {
+      try {
+        var saved = localStorage.getItem("focusVideoState");
+        if (!saved) return;
+        var state = JSON.parse(saved);
+        if (state.text) document.getElementById("textInput").value = state.text;
+        if (state.wpm) document.getElementById("wpm").value = state.wpm;
+        if (state.fontSize) document.getElementById("fontSize").value = state.fontSize;
+        if (state.bgColor) document.getElementById("bgColor").value = state.bgColor;
+        if (state.textColor) document.getElementById("textColor").value = state.textColor;
+        if (state.focusColor) document.getElementById("focusColor").value = state.focusColor;
+        if (state.sentenceWpms) sentenceWpms = state.sentenceWpms;
+        if (state.videoWidth) videoWidth = state.videoWidth;
+        if (state.videoHeight) videoHeight = state.videoHeight;
+        // Activar el botón de formato correcto
+        document.querySelectorAll(".format-btn").forEach(function(btn) {
+          var w = parseInt(btn.getAttribute("data-w"));
+          var h = parseInt(btn.getAttribute("data-h"));
+          btn.classList.toggle("active", w === videoWidth && h === videoHeight);
+        });
+        // Actualizar sentence editor si hay texto
+        if (state.text && typeof updateSentenceEditor === "function") {
+          updateSentenceEditor();
+        }
+      } catch(e) {}
+    }
+
+    // Auto-guardar en cada cambio
+    function attachSaveListeners() {
+      ["textInput","wpm","fontSize","bgColor","textColor","focusColor"].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          el.addEventListener("input", saveState);
+          el.addEventListener("change", saveState);
+        }
+      });
+      document.querySelectorAll(".format-btn").forEach(function(btn) {
+        btn.addEventListener("click", function() { setTimeout(saveState, 100); });
+      });
+    }
+
+    // ---- Historial de proyectos ----
+    function getHistory() {
+      try { return JSON.parse(localStorage.getItem("focusVideoHistory") || "[]"); }
+      catch(e) { return []; }
+    }
+
+    function saveToHistory() {
+      var text = document.getElementById("textInput").value;
+      if (!text.trim()) return;
+      var words = text.trim().split(/\s+/).filter(function(w){return w;});
+      var title = text.trim().substring(0, 60).replace(/[\n\r]+/g, " ");
+      var entry = {
+        id: Date.now(),
+        title: title,
+        wordCount: words.length,
+        wpm: document.getElementById("wpm").value,
+        text: text,
+        fontSize: document.getElementById("fontSize").value,
+        bgColor: document.getElementById("bgColor").value,
+        textColor: document.getElementById("textColor").value,
+        focusColor: document.getElementById("focusColor").value,
+        sentenceWpms: JSON.parse(JSON.stringify(sentenceWpms)),
+        videoWidth: videoWidth,
+        videoHeight: videoHeight,
+        date: new Date().toLocaleString("es-PE")
+      };
+      var history = getHistory();
+      // No duplicar si el texto es igual al ultimo
+      if (history.length > 0 && history[0].text === text) {
+        history[0] = entry;
+      } else {
+        history.unshift(entry);
+      }
+      // Max 20 entradas
+      if (history.length > 20) history = history.slice(0, 20);
+      localStorage.setItem("focusVideoHistory", JSON.stringify(history));
+      renderHistory();
+    }
+
+    function loadFromHistory(id) {
+      var history = getHistory();
+      var entry = history.find(function(h) { return h.id === id; });
+      if (!entry) return;
+      document.getElementById("textInput").value = entry.text || "";
+      document.getElementById("wpm").value = entry.wpm || 300;
+      document.getElementById("fontSize").value = entry.fontSize || 120;
+      document.getElementById("bgColor").value = entry.bgColor || "#000000";
+      document.getElementById("textColor").value = entry.textColor || "#ffffff";
+      document.getElementById("focusColor").value = entry.focusColor || "#ff3b30";
+      if (entry.sentenceWpms) sentenceWpms = entry.sentenceWpms;
+      if (entry.videoWidth) videoWidth = entry.videoWidth;
+      if (entry.videoHeight) videoHeight = entry.videoHeight;
+      document.querySelectorAll(".format-btn").forEach(function(btn) {
+        var w = parseInt(btn.getAttribute("data-w"));
+        var h = parseInt(btn.getAttribute("data-h"));
+        if (w && h) btn.classList.toggle("active", w === videoWidth && h === videoHeight);
+      });
+      if (typeof updateSentenceEditor === "function") updateSentenceEditor();
+      if (typeof updateWordCount === "function") updateWordCount();
+      saveState();
+    }
+
+    function deleteFromHistory(id, evt) {
+      if (evt) evt.stopPropagation();
+      var history = getHistory().filter(function(h) { return h.id !== id; });
+      localStorage.setItem("focusVideoHistory", JSON.stringify(history));
+      renderHistory();
+    }
+
+    function clearHistory() {
+      localStorage.removeItem("focusVideoHistory");
+      renderHistory();
+    }
+
+    function renderHistory() {
+      var list = document.getElementById("historyList");
+      if (!list) return;
+      var history = getHistory();
+      if (history.length === 0) {
+        list.innerHTML = '<div class="history-empty">Sin proyectos guardados</div>';
+        return;
+      }
+      list.innerHTML = history.map(function(h) {
+        return '<div class="history-item" onclick="loadFromHistory(' + h.id + ')">' +
+          '<button class="history-item-delete" onclick="deleteFromHistory(' + h.id + ', event)">x</button>' +
+          '<div class="history-item-title">' + h.title.replace(/</g,"&lt;") + '</div>' +
+          '<div class="history-item-meta"><span>' + h.wordCount + ' palabras | ' + h.wpm + ' wpm</span><span>' + h.date + '</span></div>' +
+          '</div>';
+      }).join("");
+    }
+
+
+
     function wrapSelection(before, after) {
-      const start = textInput.selectionStart;
-      const end = textInput.selectionEnd;
-      const text = textInput.value;
-      const selected = text.substring(start, end);
-
+      var start = textInput.selectionStart;
+      var end = textInput.selectionEnd;
+      var text = textInput.value;
+      var selected = text.substring(start, end);
       if (selected) {
-        const wrapped = before + selected + after;
+        var wrapped = before + selected + after;
         textInput.value = text.substring(0, start) + wrapped + text.substring(end);
         textInput.selectionStart = start;
         textInput.selectionEnd = start + wrapped.length;
       } else {
-        // Si no hay seleccion, insertar placeholder
-        const placeholder = before + 'texto' + after;
+        var placeholder = before + 'texto' + after;
         textInput.value = text.substring(0, start) + placeholder + text.substring(end);
         textInput.selectionStart = start + before.length;
         textInput.selectionEnd = start + before.length + 5;
@@ -384,54 +704,100 @@ Selecciona palabras y usa los botones de arriba para:
       updateWordCount();
     }
 
-    function insertAtCursor(text) {
-      const start = textInput.selectionStart;
-      const end = textInput.selectionEnd;
-      const value = textInput.value;
-
-      // Insertar antes del espacio si estamos al final de una palabra
-      let insertPos = start;
-      if (start > 0 && value[start - 1] !== ' ' && (start === value.length || value[start] === ' ')) {
-        // Estamos justo despues de una palabra
-        textInput.value = value.substring(0, start) + text + value.substring(end);
-        textInput.selectionStart = textInput.selectionEnd = start + text.length;
-      } else {
-        textInput.value = value.substring(0, start) + text + value.substring(end);
-        textInput.selectionStart = textInput.selectionEnd = start + text.length;
-      }
+    function insertAtCursor(txt) {
+      var start = textInput.selectionStart;
+      var end = textInput.selectionEnd;
+      var value = textInput.value;
+      textInput.value = value.substring(0, start) + txt + value.substring(end);
+      textInput.selectionStart = textInput.selectionEnd = start + txt.length;
       textInput.focus();
       updateWordCount();
     }
 
     function hexToRgb(hex) {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? [
-        parseInt(result[1], 16),
-        parseInt(result[2], 16),
-        parseInt(result[3], 16)
-      ] : [0, 0, 0];
+      var r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [0,0,0];
+    }
+
+    function splitSentences(text) {
+      var parts = text.split(/(?<=[.!?])\s+|\n+/);
+      return parts.map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+    }
+
+    function updateSentenceEditor() {
+      var text = textInput.value.trim();
+      var sentences = splitSentences(text);
+      if (sentences.length <= 1) { sentenceEditor.style.display='none'; return; }
+      sentenceEditor.style.display = 'block';
+      var defWpm = parseInt(wpmInput.value)||300;
+      var html = '';
+      for (var i=0; i<sentences.length; i++) {
+        var s = sentences[i];
+        var w = sentenceWpms[i] !== undefined ? sentenceWpms[i] : '';
+        var wc = s.split(/\s+/).filter(function(x){return x;}).length;
+        html += '<div class="sentence-item">' +
+          '<span class="sentence-num">'+(i+1)+'</span>' +
+          '<span class="sentence-text" title="'+s.replace(/"/g,'&quot;')+'">'+s+'</span>' +
+          '<span class="sentence-wpm-label">'+wc+'w</span>' +
+          '<input type="number" class="sentence-wpm" value="'+w+'" placeholder="'+defWpm+'" min="60" max="900" step="10" data-idx="'+i+'" title="WPM para esta oracion (vacio = usar WPM base)">' +
+          '<span class="sentence-wpm-label">wpm</span></div>';
+      }
+      sentenceListEl.innerHTML = html;
+      sentenceListEl.querySelectorAll('.sentence-wpm').forEach(function(inp){
+        inp.addEventListener('change', function(){
+          var idx = parseInt(this.getAttribute('data-idx'));
+          if (this.value==='') delete sentenceWpms[idx];
+          else sentenceWpms[idx] = parseInt(this.value);
+          updateDuration();
+        });
+      });
+    }
+
+    function resetAllSentenceWpms() {
+      sentenceWpms = {};
+      updateSentenceEditor();
+      updateDuration();
+      saveState();
+    }
+
+    function updateDuration() {
+      var text = textInput.value.trim();
+      var allWords = text.split(/\s+/).filter(function(w){return w;});
+      var defWpm = parseInt(wpmInput.value)||300;
+      var sentences = splitSentences(text);
+      var total = 0;
+      if (sentences.length > 1) {
+        for (var i=0; i<sentences.length; i++) {
+          var wpm = sentenceWpms[i] || defWpm;
+          var bt = 60/wpm;
+          var sw = sentences[i].split(/\s+/).filter(function(w){return w;});
+          for (var j=0; j<sw.length; j++) {
+            if (sw[j].indexOf('||')!==-1) total+=bt*4;
+            else if (sw[j].indexOf('...')!==-1) total+=bt*2;
+            else total+=bt;
+          }
+        }
+      } else {
+        var bt2 = 60/defWpm;
+        for (var k=0; k<allWords.length; k++) {
+          if (allWords[k].indexOf('||')!==-1) total+=bt2*4;
+          else if (allWords[k].indexOf('...')!==-1) total+=bt2*2;
+          else total+=bt2;
+        }
+      }
+      durationEl.textContent = Math.ceil(total);
     }
 
     function updateWordCount() {
-      const words = textInput.value.trim().split(/\s+/).filter(w => w);
-      const count = words.length;
-      const wpm = parseInt(wpmInput.value) || 300;
-
-      let totalTime = 0;
-      const baseTime = 60 / wpm;
-      words.forEach(word => {
-        if (word.includes('||')) totalTime += baseTime * 4;
-        else if (word.includes('...')) totalTime += baseTime * 2;
-        else totalTime += baseTime;
-      });
-
-      wordCountEl.textContent = count;
-      durationEl.textContent = Math.ceil(totalTime);
+      var words = textInput.value.trim().split(/\s+/).filter(function(w){return w;});
+      wordCountEl.textContent = words.length;
+      updateDuration();
+      updateSentenceEditor();
     }
 
-    formatOpts.forEach(opt => {
-      opt.addEventListener('click', () => {
-        formatOpts.forEach(o => o.classList.remove('active'));
+    formatOpts.forEach(function(opt){
+      opt.addEventListener('click', function(){
+        formatOpts.forEach(function(o){o.classList.remove('active');});
         opt.classList.add('active');
         videoWidth = parseInt(opt.dataset.w);
         videoHeight = parseInt(opt.dataset.h);
@@ -441,96 +807,94 @@ Selecciona palabras y usa los botones de arriba para:
     textInput.addEventListener('input', updateWordCount);
     wpmInput.addEventListener('input', updateWordCount);
 
+    function buildSentenceWpmMap() {
+      var text = textInput.value.trim();
+      var sentences = splitSentences(text);
+      if (sentences.length<=1) return null;
+      if (Object.keys(sentenceWpms).length===0) return null;
+      var defWpm = parseInt(wpmInput.value)||300;
+      return sentences.map(function(s,i){ return {text:s, wpm:sentenceWpms[i]||defWpm}; });
+    }
+
     function getConfig() {
-      return {
+      var cfg = {
         text: textInput.value.trim(),
-        wpm: parseInt(wpmInput.value) || 300,
+        wpm: parseInt(wpmInput.value)||300,
         width: videoWidth,
         height: videoHeight,
-        fontSize: parseInt(fontSizeInput.value) || 120,
+        fontSize: parseInt(fontSizeInput.value)||120,
         bgColor: hexToRgb(bgColorInput.value),
         textColor: hexToRgb(textColorInput.value),
         focusColor: hexToRgb(focusColorInput.value)
       };
+      var sm = buildSentenceWpmMap();
+      if (sm) cfg.sentences = sm;
+      return cfg;
     }
 
-    // Preview
-    previewBtn.addEventListener('click', async () => {
-      const config = getConfig();
-      if (!config.text) {
-        alert('Escribe algo primero');
-        return;
-      }
-
-      previewBtn.disabled = true;
-      previewBtn.textContent = 'Generando...';
-      previewContainer.innerHTML = '<div class="preview-placeholder"><span class="spinner"></span> Generando preview...</div>';
-
+    previewBtn.addEventListener('click', async function(){
+      var config = getConfig();
+      if (!config.text){alert('Escribe algo primero');return;}
+      previewBtn.disabled=true;
+      previewBtn.textContent='Generando...';
+      previewContainer.innerHTML='<div class="preview-placeholder"><span class="spinner"></span> Generando preview...</div>';
       try {
-        const response = await fetch('/preview-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...config, maxWords: 25 })
-        });
-
-        const result = await response.json();
-
+        var body = JSON.parse(JSON.stringify(config));
+        body.maxWords = 25;
+        var response = await fetch('/preview-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        var result = await response.json();
         if (result.success && result.previewUrl) {
-          previewContainer.innerHTML = `
-            <video controls autoplay loop muted playsinline>
-              <source src="${result.previewUrl}" type="video/webm">
-              <source src="${result.previewUrl.replace('.webm', '.mp4')}" type="video/mp4">
-            </video>
-          `;
-        } else {
-          throw new Error(result.error || 'Error generando preview');
-        }
-      } catch (err) {
-        previewContainer.innerHTML = `<div class="preview-placeholder" style="color:#ff6b5b;">Error: ${err.message}</div>`;
+          previewContainer.innerHTML='<video controls autoplay loop muted playsinline><source src="'+result.previewUrl+'" type="video/webm"><source src="'+result.previewUrl.replace(".webm",".mp4")+'" type="video/mp4"></video>';
+        } else { throw new Error(result.error||'Error generando preview'); }
+      } catch(err) {
+        previewContainer.innerHTML='<div class="preview-placeholder" style="color:#ff6b5b;">Error: '+err.message+'</div>';
       }
-
-      previewBtn.disabled = false;
-      previewBtn.textContent = 'Ver Preview';
+      previewBtn.disabled=false;
+      previewBtn.textContent='Ver Preview';
     });
 
-    // Generate
-    generateBtn.addEventListener('click', async () => {
-      const config = getConfig();
-      if (!config.text) {
-        alert('Escribe algo primero');
-        return;
-      }
-
-      generateBtn.disabled = true;
-      previewBtn.disabled = true;
-      statusDiv.className = 'status loading';
-      statusText.innerHTML = '<span class="spinner"></span> Generando video completo...';
-
+    generateBtn.addEventListener('click', async function(){
+      var config = getConfig();
+      if (!config.text){alert('Escribe algo primero');return;}
+      generateBtn.disabled=true;
+      previewBtn.disabled=true;
+      statusDiv.className='status loading';
+      saveToHistory();
+      statusTextEl.innerHTML='<span class="spinner"></span> Generando video completo...';
       try {
-        const response = await fetch('/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(config)
-        });
-
-        const result = await response.json();
-
+        var response = await fetch('/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});
+        var result = await response.json();
         if (result.success) {
-          statusDiv.className = 'status success';
-          statusText.innerHTML = `Video listo!<br><a class="download-link" href="${result.downloadUrl}" download>Descargar MP4</a>`;
-        } else {
-          throw new Error(result.error || 'Error');
-        }
-      } catch (err) {
-        statusDiv.className = 'status error';
-        statusText.textContent = 'Error: ' + err.message;
+          statusDiv.className='status success';
+          statusTextEl.innerHTML='Video listo!<br><a class="download-link" href="'+result.downloadUrl+'" download>Descargar MP4</a>';
+        } else { throw new Error(result.error||'Error'); }
+      } catch(err) {
+        statusDiv.className='status error';
+        statusTextEl.textContent='Error: '+err.message;
       }
-
-      generateBtn.disabled = false;
-      previewBtn.disabled = false;
+      generateBtn.disabled=false;
+      previewBtn.disabled=false;
     });
 
     updateWordCount();
+
+    // Cargar estado guardado al iniciar
+    loadState();
+    renderHistory();
+    attachSaveListeners();
+
   </script>
+
+    </div><!-- end page-main -->
+
+    <!-- Sidebar Historial -->
+    <div class="history-sidebar" id="historySidebar">
+      <h3>Historial <button onclick="clearHistory()" title="Limpiar todo">Limpiar</button></h3>
+      <div id="historyList">
+        <div class="history-empty">Sin proyectos guardados</div>
+      </div>
+    </div>
+
+    </div><!-- end page-layout -->
 </body>
 </html>

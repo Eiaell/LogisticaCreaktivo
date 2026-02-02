@@ -91,7 +91,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   ```
 - Razón: Mayor flexibilidad para el usuario, permite valores nuevos, más rápido que navegar dropdowns largos
 
-### 8. Errores pasados - NO repetir
+### 8. Contenedores con `overflow-hidden` recortan dropdowns
+- **NUNCA usar `overflow-hidden`** en contenedores que tengan dropdowns/popups internos con posición `absolute`
+- Si un contenedor padre tiene `overflow-hidden`, los dropdowns que se abren con `top-full` o `bottom-full` serán **recortados/cortados** visualmente
+- **Caso corregido**: El contenedor principal del detalle PKL (`PKLPage.tsx`) tenía `overflow-hidden` junto con `rounded-xl`. Los dropdowns de tipo de task y estado se cortaban al estar cerca del borde inferior del contenedor.
+- **Regla**: Usar `rounded-xl` **sin** `overflow-hidden`. Los bordes redondeados funcionan visualmente sin necesidad de overflow-hidden cuando el contenido interno usa padding.
+- **Si se necesita overflow-hidden** para esquinas redondeadas, aplicarlo solo en sub-contenedores internos que NO contengan dropdowns absolutos.
+- **Verificación**: Buscar `overflow-hidden` en contenedores que tengan hijos con dropdowns `absolute`. Si existe, es un bug potencial.
+
+### 9. Errores pasados - NO repetir
 - **Click fuera del modal cierra la ventana**: Claude agregó patrones de cierre por click en el overlay en **10 archivos**. Se corrigió en TODOS. Los patrones prohibidos son:
   1. `onClick={(e) => e.target === e.currentTarget && handleClose()}` en el div overlay
   2. `onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}` en el div overlay
