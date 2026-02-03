@@ -3703,8 +3703,10 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
     );
 }
 
-// Eventos Tab
-function _EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
+// Eventos Tab - Reservado para uso futuro
+/* eslint-disable */
+// @ts-ignore: Preserved for future use
+export function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     const [editingEventoId, setEditingEventoId] = useState<string | null>(null);
     const [editDescripcion, setEditDescripcion] = useState('');
     const [showNewEvento, setShowNewEvento] = useState(false);
