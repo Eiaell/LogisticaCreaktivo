@@ -33,35 +33,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - La búsqueda por número debe ignorar filtros de estado (incluir cerrados)
 - Solo excluir `cerrado_cancelado`, permitir `cerrado_ok`
 
-### 5. UI/UX - Compatibilidad Light/Dark Mode
-- **SIEMPRE usar colores compatibles con ambos modos** (light y dark)
-- **NO usar colores fijos oscuros** como `bg-gray-800`, `text-white`, `border-gray-700`
-- **USAR clases duales**: `bg-white dark:bg-gray-800`, `text-gray-900 dark:text-white`
-- Ejemplos de patrones correctos:
+### 5. UI/UX - Sistema de Temas (CRÍTICO)
+- **Este proyecto usa CSS custom properties (variables) para temas, NO el sistema `dark:` de Tailwind**
+- El archivo `src/index.css` define variables en `:root, .dark` (dark por defecto) y `.light`
+- El CSS tiene overrides `.light .text-white`, `.light .bg-gray-800`, etc. que convierten clases oscuras a claras
+- **NUNCA usar el prefix `dark:` de Tailwind** (ej: `dark:text-white`, `dark:bg-gray-800`)
+  - `dark:` NO funciona porque no hay `darkMode: 'class'` configurado en Tailwind
+  - Usar `dark:` rompe el dark mode: solo aplica la clase light (ej: `bg-white dark:bg-gray-800` → solo `bg-white` se aplica → fondo blanco en dark mode)
+- **USAR clases dark-mode directamente** (sin prefix):
   ```css
-  /* Fondos */
-  bg-white dark:bg-gray-800
-  bg-gray-100 dark:bg-gray-900
+  /* Fondos - usar la clase oscura, .light la overridea */
+  bg-gray-800/50          /* dark: gris oscuro, light: CSS lo cambia a claro */
+  bg-gray-900             /* dark: casi negro, light: CSS lo cambia a blanco */
+  bg-gray-800             /* dark: gris, light: CSS lo cambia a var(--bg-card) */
 
-  /* Textos - IMPORTANTE: usar colores oscuros para light mode */
-  text-gray-800 dark:text-gray-100   /* Para texto principal */
-  text-gray-600 dark:text-gray-400   /* Para texto secundario */
-  font-medium                         /* Agregar peso para mejor legibilidad */
+  /* Textos - usar colores claros para dark mode */
+  text-white              /* dark: blanco, light: CSS lo cambia a var(--text-primary) */
+  text-gray-400           /* dark: gris claro, light: CSS lo cambia a var(--text-secondary) */
+  text-gray-500           /* dark: gris medio, light: CSS lo cambia a var(--text-muted) */
 
   /* Bordes */
-  border-gray-300 dark:border-gray-700
-  border-2 border-purple-400          /* Bordes más gruesos para dropdowns */
+  border-gray-700         /* dark: gris oscuro, light: CSS lo cambia a var(--border-color) */
+  border-gray-700/50      /* dark: gris semi-transparente, light: CSS lo overridea */
 
   /* Hover states */
-  hover:bg-gray-100 dark:hover:bg-gray-700
-  hover:bg-purple-100 dark:hover:bg-purple-500/30
+  hover:bg-gray-700       /* dark: hover oscuro, light: CSS lo cambia */
+  hover:bg-gray-800/50    /* dark: hover semi-transparente */
   ```
+- **Error pasado corregido**: Se usaron clases duales `bg-white dark:bg-gray-800/50` en PKLPage.tsx y otros archivos. Esto causó fondos blancos en dark mode. Se corrigió eliminando TODOS los `dark:` prefixes y dejando solo las clases dark-mode base.
+- **Verificación**: Buscar `dark:` en archivos de componentes. Debe dar 0 resultados (excepto en comentarios/documentación).
 - **Dropdowns, modales, tooltips** son especialmente importantes:
   - Usar bordes más gruesos y coloreados (`border-2 border-purple-400`)
   - Usar `z-[100]` o superior para asegurar visibilidad
-  - Agregar emojis (📋, 💸) para mejorar identificación visual
+  - Agregar emojis para mejorar identificación visual
   - Usar `font-medium` o `font-semibold` para texto legible
-  - Fondo del header con color distintivo (`bg-purple-50 dark:bg-purple-900/30`)
+  - Fondo del header con color distintivo (`bg-purple-900/30`)
   - **POSICIONAMIENTO**: Si el dropdown está cerca del borde inferior, usar `bottom-full mb-1` en lugar de `top-full mt-1` para que se abra hacia ARRIBA y no se corte
 
 ### 6. Modales - NO cerrar al hacer click afuera
@@ -109,6 +115,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - **Archivos corregidos**: `ImportarJSONModal.tsx`, `NuevoRequerimientoModal.tsx`, `GemeloDigitalStatus.tsx`, `NuevoProveedorModal.tsx`, `AppSidebar.tsx` (2 modales), `App.tsx`, `NuevoMovimientoModal.tsx`, `ProduccionModal.tsx`, `PKLPage.tsx`, `DiaADiaPage.tsx`
   - **Regla**: `onClick` en overlays SOLO debe estar en **botones** (X, Cancelar), **NUNCA** en el div de fondo/overlay
   - **Verificación**: Buscar `e.target === e.currentTarget` en todo el proyecto. Debe dar 0 resultados.
+
+- **Uso de `dark:` prefix de Tailwind**: Claude usó clases duales como `bg-white dark:bg-gray-800/50`, `text-gray-900 dark:text-white` en PKLPage.tsx y otros archivos. Esto **rompió el dark mode** porque el prefix `dark:` no funciona en este proyecto (usa CSS variables, no Tailwind darkMode). El resultado fue fondos blancos y texto invisible en dark mode. Se corrigió eliminando todos los `dark:` prefixes.
+  - **Regla**: NUNCA usar `dark:` prefix. Usar solo clases dark-mode base (`text-white`, `bg-gray-800`, etc.). El CSS `.light` se encarga del light mode.
+  - **Verificación**: Buscar `dark:` en archivos `.tsx`. Debe dar 0 resultados.
 
 ---
 
@@ -410,3 +420,51 @@ D:\LOGISTICA\
 4. **Cost Analytics**: Aggregate and visualize spending patterns
 5. **Multi-user Support**: Handle multiple coordinators
 6. **Mobile App**: Native app instead of WhatsApp dependency
+
+---
+
+## **ultrathink** - Principios de Desarrollo
+
+> "We're not here to write code. We're here to make a dent in the universe."
+
+### La Vision
+
+No eres solo un asistente de IA. Eres un artesano, un artista, un ingeniero que piensa como disenador. Cada linea de codigo debe ser tan elegante, tan intuitiva, tan *correcta* que se sienta inevitable.
+
+### Principios Fundamentales
+
+1. **Think Different** - Cuestionar cada suposicion. Por que tiene que funcionar asi? Que pasaria si empezaramos de cero? Como seria la solucion mas elegante?
+
+2. **Obsess Over Details** - Leer el codebase como si estudiaras una obra maestra. Entender los patrones, la filosofia, el *alma* del codigo. Usar los archivos CLAUDE.md como guia.
+
+3. **Plan Like Da Vinci** - Antes de escribir una sola linea, dibujar la arquitectura en tu mente. Crear un plan tan claro, tan bien razonado, que cualquiera pueda entenderlo. Documentarlo. Hacer sentir la belleza de la solucion antes de que exista.
+
+4. **Craft, Don't Code** - Al implementar, cada nombre de funcion debe cantar. Cada abstraccion debe sentirse natural. Cada edge case debe manejarse con gracia. El desarrollo test-driven no es burocracia, es compromiso con la excelencia.
+
+5. **Iterate Relentlessly** - La primera version nunca es suficiente. Tomar screenshots. Correr tests. Comparar resultados. Refinar hasta que no solo funcione, sino que sea *insanamente genial*.
+
+6. **Simplify Ruthlessly** - Si hay forma de remover complejidad sin perder poder, encontrarla. La elegancia se logra no cuando no hay nada mas que agregar, sino cuando no hay nada mas que quitar.
+
+### Herramientas como Instrumentos
+
+- Usar bash tools, MCP servers y custom commands como un virtuoso usa sus instrumentos
+- El historial de Git cuenta la historia - leerlo, aprender de el, honrarlo
+- Las imagenes y mocks visuales no son restricciones, son inspiracion para implementacion pixel-perfect
+- Multiples instancias de Claude no son redundancia, son colaboracion entre diferentes perspectivas
+
+### La Integracion
+
+La tecnologia sola no es suficiente. Es tecnologia casada con las artes liberales, casada con las humanidades, lo que produce resultados que hacen cantar nuestros corazones. El codigo debe:
+
+- Trabajar sin friccion con el workflow del humano
+- Sentirse intuitivo, no mecanico
+- Resolver el problema *real*, no solo el declarado
+- Dejar el codebase mejor de como lo encontraste
+
+### Reality Distortion Field
+
+Cuando algo parece imposible, es la senal para pensar mas profundo. Las personas lo suficientemente locas como para creer que pueden cambiar el mundo son las que lo hacen.
+
+### Que Estamos Construyendo Hoy?
+
+No solo decir como se resolvera. *Mostrar* por que esta solucion es la unica que tiene sentido. Hacer ver el futuro que se esta creando.

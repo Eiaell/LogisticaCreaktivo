@@ -94,7 +94,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
             <div className="flex items-center justify-between mb-2">
                 <div>
                     <h1 className="text-3xl font-bold text-white tracking-tight">PKL - Primary Key Logistica</h1>
-                    <p className="text-gray-800 dark:text-gray-400 text-sm mt-2 leading-relaxed">
+                    <p className="text-gray-400 text-sm mt-2 leading-relaxed">
                         Trazabilidad end-to-end de requerimientos logisticos
                     </p>
                 </div>
@@ -105,29 +105,29 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <div className="text-3xl font-bold text-gray-900 dark:text-white leading-none">{stats.total}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Total PKLs</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-white leading-none">{stats.total}</div>
+                    <div className="text-gray-400 text-sm mt-2 font-medium">Total PKLs</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <div className="text-3xl font-bold text-green-600 dark:text-green-400 leading-none">{stats.cerrados}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Cerrados</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-green-400 leading-none">{stats.cerrados}</div>
+                    <div className="text-gray-400 text-sm mt-2 font-medium">Cerrados</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <div className="text-3xl font-bold text-cyan-600 dark:text-cyan-400 leading-none">{stats.enCurso}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">En Curso</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-cyan-400 leading-none">{stats.enCurso}</div>
+                    <div className="text-gray-400 text-sm mt-2 font-medium">En Curso</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 leading-none">{stats.enPausa}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">En Pausa</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-yellow-400 leading-none">{stats.enPausa}</div>
+                    <div className="text-gray-400 text-sm mt-2 font-medium">En Pausa</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <div className="text-3xl font-bold text-gray-900 dark:text-white leading-none">S/ {stats.totalCosto.toFixed(2)}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Costo Total</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-white leading-none">S/ {stats.totalCosto.toFixed(2)}</div>
+                    <div className="text-gray-400 text-sm mt-2 font-medium">Costo Total</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 leading-none">{stats.totalTasks}</div>
-                    <div className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-medium">Tasks Ejecutados</div>
+                <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer">
+                    <div className="text-3xl font-bold text-purple-400 leading-none">{stats.totalTasks}</div>
+                    <div className="text-gray-400 text-sm mt-2 font-medium">Tasks Ejecutados</div>
                 </div>
             </div>
 
@@ -138,14 +138,14 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
                     placeholder="Buscar por ID, cliente o descripcion..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="flex-1 min-w-[200px] px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
+                    className="flex-1 min-w-[200px] px-4 py-2.5 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
                 />
                 <input
                     type="text"
                     list="filter-estado-pkl-list"
                     value={filterEstado}
                     onChange={e => setFilterEstado(e.target.value as EstadoPKL | 'todos')}
-                    className="px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
+                    className="px-4 py-2.5 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
                     placeholder="Escribe para buscar..."
                 />
                 <datalist id="filter-estado-pkl-list">
@@ -159,7 +159,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
                     list="filter-tipo-pkl-list"
                     value={filterTipo}
                     onChange={e => setFilterTipo(e.target.value as TipoOperacionPKL | 'todos')}
-                    className="px-4 py-2.5 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
+                    className="px-4 py-2.5 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 cursor-pointer font-medium"
                     placeholder="Escribe para buscar..."
                 />
                 <datalist id="filter-tipo-pkl-list">
@@ -203,7 +203,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
                                             ? 'bg-cyan-900/30 border-cyan-500 shadow-lg shadow-cyan-500/20'
                                             : isForMerge
                                                 ? 'bg-purple-900/30 border-purple-500 ring-2 ring-purple-500 shadow-lg shadow-purple-500/20'
-                                                : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/50 hover:border-gray-400 dark:hover:border-gray-600 hover:shadow-md hover:-translate-y-0.5'
+                                                : 'bg-gray-800/50 border-gray-700/50 hover:border-gray-600 hover:shadow-md hover:-translate-y-0.5'
                                     }`}
                                 >
                                     <div className="flex items-start gap-3">
@@ -242,7 +242,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
                                                     >
                                                         {estadoConfig.label}
                                                     </span>
-                                                    <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover/estado:opacity-100 group-hover/estado:visible transition-all min-w-[140px]">
+                                                    <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover/estado:opacity-100 group-hover/estado:visible transition-all min-w-[140px]">
                                                         {ESTADOS_PKL.filter(e => e.value !== 'recibido').map(estado => (
                                                             <button
                                                                 key={estado.value}
@@ -270,7 +270,7 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
                                                     })()}
                                                 </div>
                                                 {pkl.cliente.proyecto && (
-                                                    <div className="text-gray-800 dark:text-gray-400 text-sm mb-2">
+                                                    <div className="text-gray-400 text-sm mb-2">
                                                         Proyecto: {pkl.cliente.proyecto}
                                                     </div>
                                                 )}
@@ -312,9 +312,9 @@ export default function PKLPage({ initialSelectedPKLId, initialTab, onBack, retu
                             initialTab={initialTab}
                         />
                     ) : (
-                        <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl p-8 text-center">
-                            <div className="text-gray-600 dark:text-gray-500 text-lg mb-2">Selecciona un PKL</div>
-                            <div className="text-gray-500 dark:text-gray-600 text-sm">
+                        <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl p-8 text-center">
+                            <div className="text-gray-500 text-lg mb-2">Selecciona un PKL</div>
+                            <div className="text-gray-600 text-sm">
                                 Haz clic en un PKL de la lista para ver sus detalles
                             </div>
                         </div>
@@ -485,9 +485,9 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800/50 backdrop-blur border border-gray-200 dark:border-gray-700/50 rounded-xl">
+        <div className="bg-gray-800/50 backdrop-blur border border-gray-700/50 rounded-xl">
             {/* Header */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700/50">
+            <div className="p-6 border-b border-gray-700/50">
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
@@ -497,7 +497,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                 <span className={`px-3 py-1 rounded-full ${estadoConfig.color} !text-white font-semibold text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
                                     {estadoConfig.label}
                                 </span>
-                                <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[140px]">
+                                <div className="absolute left-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[140px]">
                                     {ESTADOS_PKL.filter(e => e.value !== 'recibido').map(estado => (
                                         <button
                                             key={estado.value}
@@ -518,7 +518,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                 onChange={e => setEditValue(e.target.value)}
                                 onBlur={handleEditSave}
                                 onKeyDown={handleKeyDown}
-                                className="text-xl font-bold bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white outline-none w-full max-w-md"
+                                className="text-xl font-bold bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-white outline-none w-full max-w-md"
                             />
                         ) : (
                             <h2
@@ -549,10 +549,10 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         ) : (
                             <div
                                 onClick={() => handleEditStart('cliente.proyecto', pkl.cliente.proyecto || '')}
-                                className="text-gray-800 dark:text-gray-400 cursor-pointer hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+                                className="text-gray-400 cursor-pointer hover:text-cyan-400 transition-colors"
                                 title="Click para editar proyecto"
                             >
-                                {pkl.cliente.proyecto ? `Proyecto: ${pkl.cliente.proyecto}` : <span className="text-gray-600 dark:text-gray-500 italic">+ Agregar proyecto</span>}
+                                {pkl.cliente.proyecto ? `Proyecto: ${pkl.cliente.proyecto}` : <span className="text-gray-500 italic">+ Agregar proyecto</span>}
                             </div>
                         )}
                     </div>
@@ -562,10 +562,10 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                             <span className={`px-3 py-1 rounded ${tipoConfig.color} !text-white text-sm cursor-pointer hover:ring-2 hover:ring-white/30`}>
                                 {tipoConfig.label}
                             </span>
-                            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[220px] max-h-[400px] overflow-y-auto">
+                            <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[220px] max-h-[400px] overflow-y-auto">
                                 {GRUPOS_OPERACION_PKL.map((grupo) => (
                                     <div key={grupo.grupo}>
-                                        <div className={`px-3 py-1.5 text-xs font-bold ${grupo.color} bg-gray-100 dark:bg-gray-800 sticky top-0`}>
+                                        <div className={`px-3 py-1.5 text-xs font-bold ${grupo.color} bg-gray-800 sticky top-0`}>
                                             {grupo.grupo}
                                         </div>
                                         {grupo.tipos.map(tipoValue => {
@@ -612,16 +612,16 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                 🔗 Vincular
                             </button>
                             {showVincularDropdown && (
-                                <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 border-2 border-indigo-400 rounded-xl shadow-2xl z-[100] overflow-hidden">
-                                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 border-b border-indigo-200 dark:border-indigo-700">
+                                <div className="absolute right-0 top-full mt-2 w-80 bg-gray-900 border-2 border-indigo-400 rounded-xl shadow-2xl z-[100] overflow-hidden">
+                                    <div className="p-3 bg-indigo-900/30 border-b border-indigo-700">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">🔗 Vincular a otro PKL</span>
+                                            <span className="text-sm font-semibold text-indigo-300">🔗 Vincular a otro PKL</span>
                                             <button
                                                 onClick={() => {
                                                     setShowVincularDropdown(false);
                                                     setVincularSearchTerm('');
                                                 }}
-                                                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                                                className="text-gray-500 hover:text-gray-300"
                                             >
                                                 ✕
                                             </button>
@@ -631,7 +631,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                             value={vincularSearchTerm}
                                             onChange={(e) => setVincularSearchTerm(e.target.value)}
                                             placeholder="Buscar por ID, cliente..."
-                                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:border-indigo-500"
+                                            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
                                             autoFocus
                                         />
                                         <p className="text-xs text-gray-500 mt-1">Escribe un número para buscar PKL-YYYY-000X</p>
@@ -648,16 +648,16 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                                                     <button
                                                         key={p.pkl_id}
                                                         onClick={() => handleVincularAPKL(p.pkl_id)}
-                                                        className="w-full text-left p-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors"
+                                                        className="w-full text-left p-3 hover:bg-indigo-900/20 border-b border-gray-800 last:border-0 transition-colors"
                                                     >
                                                         <div className="flex items-center justify-between">
-                                                            <span className="font-mono text-indigo-600 dark:text-indigo-400 text-sm">{p.pkl_id}</span>
+                                                            <span className="font-mono text-indigo-400 text-sm">{p.pkl_id}</span>
                                                             <span className={`px-2 py-0.5 text-xs rounded ${estadoConfig.color} !text-white`}>
                                                                 {estadoConfig.label}
                                                             </span>
                                                         </div>
-                                                        <div className="text-gray-800 dark:text-gray-200 font-medium text-sm mt-1">{p.cliente.nombre}</div>
-                                                        <div className="text-gray-500 dark:text-gray-400 text-xs line-clamp-1">{p.origen.descripcion_inicial}</div>
+                                                        <div className="text-gray-200 font-medium text-sm mt-1">{p.cliente.nombre}</div>
+                                                        <div className="text-gray-400 text-xs line-clamp-1">{p.origen.descripcion_inicial}</div>
                                                     </button>
                                                 );
                                             })
@@ -686,12 +686,12 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         onBlur={handleEditSave}
                         onKeyDown={handleKeyDown}
                         rows={2}
-                        className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 outline-none w-full resize-none"
+                        className="text-gray-300 bg-gray-900 border border-cyan-500 rounded px-2 py-1 outline-none w-full resize-none"
                     />
                 ) : (
                     <p
                         onClick={() => handleEditStart('descripcion', pkl.origen.descripcion_inicial)}
-                        className="text-gray-800 dark:text-gray-300 cursor-pointer hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+                        className="text-gray-300 cursor-pointer hover:text-cyan-400 transition-colors"
                         title="Click para editar descripción"
                     >
                         {pkl.origen.descripcion_inicial}
@@ -706,7 +706,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                             onChange={e => setEditValue(e.target.value)}
                             onBlur={handleEditSave}
                             onKeyDown={handleKeyDown}
-                            className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 outline-none text-sm w-32"
+                            className="bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 outline-none text-sm w-32"
                         />
                     ) : (
                         <span
@@ -723,7 +723,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700/50">
+            <div className="flex gap-2 p-2 bg-gray-900/50 border-b border-gray-700/50">
                 {(['overview', 'tasks'] as const).map(tab => (
                     <button
                         key={tab}
@@ -731,7 +731,7 @@ function PKLDetail({ pkl, onUpdate, onUpdateTask, onCreateTask, onDeleteTask, on
                         className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                             activeTab === tab
                                 ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/30'
-                                : 'bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700/50'
+                                : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-white border border-gray-700/50'
                         }`}
                     >
                         {tab === 'overview' && 'Resumen'}
@@ -1391,7 +1391,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
 
                         {/* Form para agregar task - COPIADO EXACTAMENTE del modal de fusión */}
                         {showAddTask && (
-                            <div className="mt-3 p-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-400 dark:border-purple-500/30 rounded-lg space-y-3">
+                            <div className="mt-3 p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg space-y-3">
                                 {/* Fila 1: Tipo y Descripción */}
                                 <div className="flex gap-2">
                                     <input
@@ -1399,7 +1399,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         list="new-task-tipo-list"
                                         value={newTaskTipo}
                                         onChange={(e) => setNewTaskTipo(e.target.value)}
-                                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                         placeholder="Escribe para buscar..."
                                     />
                                     <datalist id="new-task-tipo-list">
@@ -1417,7 +1417,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         value={newTaskDesc}
                                         onChange={(e) => setNewTaskDesc(e.target.value)}
                                         placeholder="Descripción del task..."
-                                        className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                     />
                                 </div>
 
@@ -1428,15 +1428,15 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         value={newTaskProveedor}
                                         onChange={(e) => setNewTaskProveedor(e.target.value)}
                                         placeholder="Proveedor (opcional)"
-                                        className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                     />
                                     <div className="flex items-center gap-1">
-                                        <span className="text-gray-500 dark:text-gray-400 text-sm">📅</span>
+                                        <span className="text-gray-400 text-sm">📅</span>
                                         <input
                                             type="date"
                                             value={newTaskFecha}
                                             onChange={(e) => setNewTaskFecha(e.target.value)}
-                                            className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                            className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                             title="Fecha del task (para Día a Día)"
                                         />
                                     </div>
@@ -1448,20 +1448,20 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         {/* Lista de ítems de cotización */}
                                         <div className="space-y-2 max-h-48 overflow-y-auto">
                                             {newTaskItems.map((item) => (
-                                                <div key={item.id} className="flex gap-1 items-center bg-gray-100 dark:bg-gray-700/50 p-2 rounded">
+                                                <div key={item.id} className="flex gap-1 items-center bg-gray-700/50 p-2 rounded">
                                                     <input
                                                         type="text"
                                                         value={item.descripcion}
                                                         onChange={(e) => updateCotizacionItem(item.id, 'descripcion', e.target.value)}
                                                         placeholder="Descripción del ítem"
-                                                        className="flex-1 min-w-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-xs outline-none"
+                                                        className="flex-1 min-w-0 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs outline-none"
                                                     />
                                                     <input
                                                         type="number"
                                                         value={item.cantidad}
                                                         onChange={(e) => updateCotizacionItem(item.id, 'cantidad', e.target.value)}
                                                         placeholder="Cant"
-                                                        className="w-14 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-xs outline-none text-center"
+                                                        className="w-14 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs outline-none text-center"
                                                     />
                                                     <span className="text-gray-500 text-xs">×</span>
                                                     <input
@@ -1470,7 +1470,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                                         onChange={(e) => updateCotizacionItem(item.id, 'precio_unitario', e.target.value)}
                                                         placeholder="P.Unit"
                                                         step="0.01"
-                                                        className="w-20 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-xs outline-none text-right"
+                                                        className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs outline-none text-right"
                                                     />
                                                     <span className="text-white text-xs font-medium w-16 text-right">
                                                         {(parseFloat(item.cantidad) || 0) * (parseFloat(item.precio_unitario) || 0) > 0
@@ -1497,7 +1497,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                             >
                                                 <span>+</span> Agregar ítem
                                             </button>
-                                            <label className="flex items-center gap-2 text-gray-800 dark:text-gray-200 text-sm cursor-pointer">
+                                            <label className="flex items-center gap-2 text-gray-200 text-sm cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={newTaskIncluyeIgv}
@@ -1509,7 +1509,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         </div>
                                         {/* Total general */}
                                         {calcularMontoTask() > 0 && (
-                                            <div className="text-right text-white text-sm font-bold border-t border-gray-300 dark:border-gray-600 pt-2">
+                                            <div className="text-right text-white text-sm font-bold border-t border-gray-600 pt-2">
                                                 TOTAL: S/. {calcularMontoTask().toFixed(2)}
                                                 {!newTaskIncluyeIgv && <span className="text-gray-300 text-xs ml-1">(inc. IGV)</span>}
                                             </div>
@@ -1522,7 +1522,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                         onChange={(e) => setNewTaskMonto(e.target.value)}
                                         placeholder="Monto S/. (opcional)"
                                         step="0.01"
-                                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                     />
                                 )}
 
@@ -1530,7 +1530,7 @@ function PKLEditModal({ pkl, clientes, onClose, onUpdate, onCreateTask, onDelete
                                 <div className="flex gap-2 justify-end">
                                     <button
                                         onClick={resetTaskForm}
-                                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white text-xs rounded"
+                                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
                                     >
                                         Cancelar
                                     </button>
@@ -2139,10 +2139,10 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             {/* Progress */}
             <div>
                 <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-600 dark:text-gray-400">Progreso</span>
-                    <span className="text-gray-900 dark:text-white">{tasksCompletados}/{tasksTotal}</span>
+                    <span className="text-gray-400">Progreso</span>
+                    <span className="text-white">{tasksCompletados}/{tasksTotal}</span>
                 </div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 transition-all duration-500"
                         style={{ width: `${progreso}%` }}
@@ -2153,9 +2153,9 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             {/* Info Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Productos */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                <div className="bg-gray-900/50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-gray-700 dark:text-gray-400 text-sm font-medium">Productos</h4>
+                        <h4 className="text-gray-400 text-sm font-medium">Productos</h4>
                         <button
                             onClick={() => setShowAddProducto(true)}
                             className="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 !text-white text-sm font-medium rounded transition-colors"
@@ -2166,13 +2166,13 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
 
                     {/* Add Producto Form */}
                     {showAddProducto && (
-                        <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-cyan-500/30 space-y-2">
+                        <div className="mb-4 p-3 bg-gray-800 rounded-lg border border-cyan-500/30 space-y-2">
                             <input
                                 type="text"
                                 value={productoForm.tipo}
                                 onChange={e => setProductoForm({ ...productoForm, tipo: e.target.value })}
                                 placeholder="Tipo de producto (ej: Polos, Lanyards...)"
-                                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-cyan-500"
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-cyan-500"
                                 autoFocus
                             />
                             <div className="flex gap-2">
@@ -2181,34 +2181,34 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                     value={productoForm.cantidad}
                                     onChange={e => setProductoForm({ ...productoForm, cantidad: e.target.value })}
                                     placeholder="Cantidad"
-                                    className="w-24 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-cyan-500"
+                                    className="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-cyan-500"
                                 />
                                 <input
                                     type="text"
                                     value={productoForm.descripcion}
                                     onChange={e => setProductoForm({ ...productoForm, descripcion: e.target.value })}
                                     placeholder="Descripcion detallada"
-                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-cyan-500"
+                                    className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-cyan-500"
                                 />
                             </div>
                             <div className="flex gap-2 justify-end">
-                                <button onClick={() => { setShowAddProducto(false); setProductoForm({ tipo: '', cantidad: '', descripcion: '' }); }} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
+                                <button onClick={() => { setShowAddProducto(false); setProductoForm({ tipo: '', cantidad: '', descripcion: '' }); }} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded">Cancelar</button>
                                 <button onClick={handleAddProducto} className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs rounded">Guardar</button>
                             </div>
                         </div>
                     )}
 
                     {(pkl.productos || []).length === 0 ? (
-                        <div className="text-gray-500 dark:text-gray-600 dark:text-gray-500 italic text-sm py-4 text-center">Sin productos agregados</div>
+                        <div className="text-gray-500 italic text-sm py-4 text-center">Sin productos agregados</div>
                     ) : (pkl.productos || []).map(prod => (
-                        <div key={prod.producto_id} className="mb-3 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg group hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                        <div key={prod.producto_id} className="mb-3 p-3 bg-gray-800/50 rounded-lg group hover:bg-gray-800 transition-colors">
                             {editingProductoId === prod.producto_id ? (
                                 <div className="space-y-2">
                                     <input
                                         type="text"
                                         value={productoForm.tipo}
                                         onChange={e => setProductoForm({ ...productoForm, tipo: e.target.value })}
-                                        className="w-full bg-gray-50 dark:bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="w-full bg-gray-700 border border-cyan-500 rounded px-2 py-1 text-white text-sm outline-none"
                                         autoFocus
                                     />
                                     <div className="flex gap-2">
@@ -2217,25 +2217,25 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             value={productoForm.cantidad}
                                             onChange={e => setProductoForm({ ...productoForm, cantidad: e.target.value })}
                                             placeholder="Cant"
-                                            className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                         />
                                         <input
                                             type="text"
                                             value={productoForm.descripcion}
                                             onChange={e => setProductoForm({ ...productoForm, descripcion: e.target.value })}
-                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                         />
                                     </div>
                                     <div className="flex gap-2 justify-end">
-                                        <button onClick={() => { setEditingProductoId(null); setProductoForm({ tipo: '', cantidad: '', descripcion: '' }); }} className="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs rounded">Cancelar</button>
+                                        <button onClick={() => { setEditingProductoId(null); setProductoForm({ tipo: '', cantidad: '', descripcion: '' }); }} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded">Cancelar</button>
                                         <button onClick={handleSaveProducto} className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs rounded">Guardar</button>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                        <div className="text-gray-900 dark:text-white font-medium">{prod.tipo}</div>
-                                        <div className="text-gray-800 dark:text-gray-400 text-sm">
+                                        <div className="text-white font-medium">{prod.tipo}</div>
+                                        <div className="text-gray-400 text-sm">
                                             {prod.cantidad && <span className="text-cyan-400">Cant: {prod.cantidad}</span>}
                                             {prod.cantidad && prod.descripcion && ' - '}
                                             {prod.descripcion}
@@ -2252,9 +2252,9 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                 </div>
 
                 {/* Proveedores */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                <div className="bg-gray-900/50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-gray-700 dark:text-gray-400 text-sm font-medium">Proveedores</h4>
+                        <h4 className="text-gray-400 text-sm font-medium">Proveedores</h4>
                         <button
                             onClick={() => setShowAddProveedor(true)}
                             className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 !text-white text-sm font-medium rounded transition-colors"
@@ -2266,7 +2266,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                     {/* Add Proveedor Form */}
                     {showAddProveedor && (
                         <div
-                            className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-purple-500/30 space-y-2"
+                            className="mb-4 p-3 bg-gray-800 rounded-lg border border-purple-500/30 space-y-2"
                             onKeyDown={(e) => {
                                 if (e.key === 'Escape') {
                                     setShowAddProveedor(false);
@@ -2299,29 +2299,29 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                         setTimeout(() => setProveedorSearch(''), 200);
                                     }}
                                     placeholder="Buscar o escribir nombre del proveedor..."
-                                    className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
                                     autoFocus
                                 />
                                 {/* Autocomplete dropdown */}
                                 {proveedorSearch.length >= 2 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto">
                                         {filteredProveedoresDB.length > 0 ? (
                                             filteredProveedoresDB.map(prov => (
                                                 <button
                                                     key={prov.nombre}
                                                     onClick={() => handleSelectProveedorFromDB(prov)}
-                                                    className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                    className="w-full text-left px-3 py-2 hover:bg-gray-700 transition-colors"
                                                 >
-                                                    <div className="text-gray-900 dark:text-white text-sm font-medium">{prov.nombre}</div>
-                                                    <div className="text-gray-500 dark:text-gray-400 text-xs">{prov.especialidad} {prov.direccion && `| ${prov.direccion}`}</div>
+                                                    <div className="text-white text-sm font-medium">{prov.nombre}</div>
+                                                    <div className="text-gray-400 text-xs">{prov.especialidad} {prov.direccion && `| ${prov.direccion}`}</div>
                                                 </button>
                                             ))
                                         ) : (
                                             <div className="px-3 py-3 text-center">
-                                                <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">
+                                                <div className="text-gray-400 text-sm mb-2">
                                                     No se encontró "{proveedorSearch}" en la base de datos
                                                 </div>
-                                                <div className="text-purple-600 dark:text-purple-400 text-xs">
+                                                <div className="text-purple-400 text-xs">
                                                     Completa los datos y guarda para crear nuevo proveedor
                                                 </div>
                                             </div>
@@ -2334,7 +2334,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                 value={proveedorForm.servicio}
                                 onChange={e => setProveedorForm({ ...proveedorForm, servicio: e.target.value })}
                                 placeholder="Servicio (ej: Bordado, Sublimado...)"
-                                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
                             />
                             <div className="flex gap-2">
                                 <input
@@ -2342,14 +2342,14 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                     value={proveedorForm.ubicacion}
                                     onChange={e => setProveedorForm({ ...proveedorForm, ubicacion: e.target.value })}
                                     placeholder="Ubicacion"
-                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                    className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
                                 />
                                 <input
                                     type="text"
                                     value={proveedorForm.contacto}
                                     onChange={e => setProveedorForm({ ...proveedorForm, contacto: e.target.value })}
                                     placeholder="Contacto/Telefono"
-                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                    className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
                                 />
                             </div>
 
@@ -2361,7 +2361,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                     value={proveedorForm.cotizacion_descripcion}
                                     onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_descripcion: e.target.value })}
                                     placeholder="¿Qué se cotizó? (ej: 50 polos sublimados)"
-                                    className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 mb-2"
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500 mb-2"
                                 />
                                 <div className="flex gap-2 mb-2 items-center flex-wrap">
                                     <div className="flex items-center gap-1">
@@ -2371,7 +2371,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             value={proveedorForm.cotizacion_cantidad}
                                             onChange={e => handleCotizacionCantidadChange(e.target.value)}
                                             placeholder="Cantidad"
-                                            className="w-16 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                            className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-2 text-white text-sm outline-none focus:border-purple-500"
                                         />
                                     </div>
                                     <span className="text-gray-400">×</span>
@@ -2383,13 +2383,13 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             onChange={e => handleCotizacionPrecioChange(e.target.value)}
                                             placeholder="Precio"
                                             step="0.01"
-                                            className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                            className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-2 text-white text-sm outline-none focus:border-purple-500"
                                         />
                                     </div>
                                     <select
                                         value={proveedorForm.cotizacion_es_precio_unitario ? 'unitario' : 'total'}
                                         onChange={e => handleTipoPrecioChange(e.target.value === 'unitario')}
-                                        className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-xs outline-none focus:border-purple-500"
+                                        className="bg-gray-700 border border-gray-600 rounded px-2 py-2 text-white text-xs outline-none focus:border-purple-500"
                                     >
                                         <option value="unitario">c/u</option>
                                         <option value="total">total</option>
@@ -2408,7 +2408,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                         value={proveedorForm.cotizacion_tiempo_entrega}
                                         onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_tiempo_entrega: e.target.value })}
                                         placeholder="Tiempo entrega (ej: 3 días)"
-                                        className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-2 text-white text-sm outline-none focus:border-purple-500"
                                     />
                                     <label className="flex items-center gap-2 text-gray-400 text-xs cursor-pointer">
                                         <input
@@ -2425,7 +2425,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                     value={proveedorForm.cotizacion_notas}
                                     onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_notas: e.target.value })}
                                     placeholder="Notas adicionales..."
-                                    className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 mb-2"
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500 mb-2"
                                 />
                                 <label className="flex items-center gap-2 text-emerald-400 text-sm cursor-pointer">
                                     <input
@@ -2446,12 +2446,12 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                     )}
 
                     {(pkl.proveedores || []).length === 0 ? (
-                        <div className="text-gray-500 dark:text-gray-600 dark:text-gray-500 italic text-sm py-4 text-center">Sin proveedores asignados</div>
+                        <div className="text-gray-500 italic text-sm py-4 text-center">Sin proveedores asignados</div>
                     ) : (pkl.proveedores || []).map(prov => (
                         <div key={prov.proveedor_id} className={`mb-3 p-3 rounded-lg group transition-colors ${
                             prov.elegido
                                 ? 'bg-emerald-500/10 border-2 border-emerald-500/50 hover:bg-emerald-500/20'
-                                : 'bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-800'
+                                : 'bg-gray-800/50 hover:bg-gray-800'
                         }`}>
                             {editingProveedorId === prov.proveedor_id ? (
                                 <div className="space-y-2">
@@ -2468,7 +2468,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                         value={proveedorForm.servicio}
                                         onChange={e => setProveedorForm({ ...proveedorForm, servicio: e.target.value })}
                                         placeholder="Servicio"
-                                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                     />
                                     <div className="flex gap-2">
                                         <input
@@ -2476,14 +2476,14 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             value={proveedorForm.ubicacion}
                                             onChange={e => setProveedorForm({ ...proveedorForm, ubicacion: e.target.value })}
                                             placeholder="Ubicacion"
-                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                         />
                                         <input
                                             type="text"
                                             value={proveedorForm.contacto}
                                             onChange={e => setProveedorForm({ ...proveedorForm, contacto: e.target.value })}
                                             placeholder="Contacto"
-                                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                         />
                                     </div>
 
@@ -2495,7 +2495,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             value={proveedorForm.cotizacion_descripcion}
                                             onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_descripcion: e.target.value })}
                                             placeholder="¿Qué se cotizó?"
-                                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none mb-2"
+                                            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none mb-2"
                                         />
                                         <div className="flex gap-2 mb-2 items-center flex-wrap">
                                             <input
@@ -2503,7 +2503,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                                 value={proveedorForm.cotizacion_cantidad}
                                                 onChange={e => handleCotizacionCantidadChange(e.target.value)}
                                                 placeholder="Cant."
-                                                className="w-14 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                                className="w-14 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                             />
                                             <span className="text-gray-400 text-xs">×</span>
                                             <input
@@ -2512,12 +2512,12 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                                 onChange={e => handleCotizacionPrecioChange(e.target.value)}
                                                 placeholder="Precio"
                                                 step="0.01"
-                                                className="w-20 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                                className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                             />
                                             <select
                                                 value={proveedorForm.cotizacion_es_precio_unitario ? 'unitario' : 'total'}
                                                 onChange={e => handleTipoPrecioChange(e.target.value === 'unitario')}
-                                                className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1 text-gray-900 dark:text-white text-xs outline-none"
+                                                className="bg-gray-700 border border-gray-600 rounded px-1 py-1 text-white text-xs outline-none"
                                             >
                                                 <option value="unitario">c/u</option>
                                                 <option value="total">total</option>
@@ -2531,7 +2531,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                                 value={proveedorForm.cotizacion_tiempo_entrega}
                                                 onChange={e => setProveedorForm({ ...proveedorForm, cotizacion_tiempo_entrega: e.target.value })}
                                                 placeholder="Tiempo entrega"
-                                                className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                                className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm outline-none"
                                             />
                                             <label className="flex items-center gap-1 text-gray-400 text-xs cursor-pointer">
                                                 <input
@@ -2563,13 +2563,13 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                 <div>
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
-                                            <div className="text-gray-900 dark:text-white font-medium flex items-center gap-2">
+                                            <div className="text-white font-medium flex items-center gap-2">
                                                 {prov.elegido && <span className="text-emerald-400">✅</span>}
                                                 <span className="text-purple-400">🏭</span>
                                                 {prov.nombre}
                                                 {prov.elegido && <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">ELEGIDO</span>}
                                             </div>
-                                            <div className="text-gray-800 dark:text-gray-400 text-sm mt-1">
+                                            <div className="text-gray-400 text-sm mt-1">
                                                 {prov.servicio && <span className="text-purple-300">{prov.servicio}</span>}
                                                 {prov.servicio && prov.ubicacion && ' | '}
                                                 {prov.ubicacion && <span>📍 {prov.ubicacion}</span>}
@@ -2641,16 +2641,16 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                 </div>
 
                 {/* Estado History */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-gray-600 dark:text-gray-400 text-sm mb-3">Historial de Estados</h4>
+                <div className="bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-3">Historial de Estados</h4>
                     <div className="space-y-2">
                         {pkl.estado.historial.map((h, i) => {
                             const config = getEstadoConfig(h.estado);
                             return (
                                 <div key={i} className="flex items-center gap-2 text-sm group">
                                     <span className={`w-2 h-2 rounded-full ${config.color}`} />
-                                    <span className="text-gray-900 dark:text-white">{config.label}</span>
-                                    <span className="text-gray-700 dark:text-gray-500">{h.fecha}</span>
+                                    <span className="text-white">{config.label}</span>
+                                    <span className="text-gray-500">{h.fecha}</span>
                                     <button
                                         onClick={() => {
                                             const newHistorial = pkl.estado.historial.filter((_, idx) => idx !== i);
@@ -2675,18 +2675,18 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                 </div>
 
                 {/* Cierre */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                    <h4 className="text-gray-600 dark:text-gray-400 text-sm mb-3">Cierre</h4>
+                <div className="bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-gray-400 text-sm mb-3">Cierre</h4>
                     {pkl.cierre?.estado_final ? (
                         <>
-                            <div className="text-gray-900 dark:text-white mb-2">
+                            <div className="text-white mb-2">
                                 Estado: {getEstadoConfig(pkl.cierre.estado_final).label}
                             </div>
-                            <div className="text-gray-800 dark:text-gray-400 text-sm">
+                            <div className="text-gray-400 text-sm">
                                 Fecha: {pkl.cierre?.fecha_cierre || 'N/A'}
                             </div>
                             {(pkl.cierre?.evidencias || []).length > 0 && (
-                                <div className="text-gray-800 dark:text-gray-400 text-sm mt-2">
+                                <div className="text-gray-400 text-sm mt-2">
                                     Evidencias: {(pkl.cierre?.evidencias || []).map(e => e.tipo).join(', ')}
                                 </div>
                             )}
@@ -2698,7 +2698,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             </div>
 
             {/* Costos */}
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+            <div className="bg-gray-900/50 rounded-lg p-4">
                 {(() => {
                     // Calcular costos de tasks (usa getCostoMonto global)
                     // NOTA: Incluimos cotizaciones para mostrarlas pero NO se suman al total
@@ -2733,8 +2733,8 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                         <>
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
-                                    <h4 className="text-gray-600 dark:text-gray-400 text-sm">Costos</h4>
-                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                    <h4 className="text-gray-400 text-sm">Costos</h4>
+                                    <span className="text-emerald-400 font-bold">
                                         S/ {totalCombinado.toFixed(2)}
                                     </span>
                                 </div>
@@ -2748,14 +2748,14 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
 
                 {/* Add new costo form */}
                 {showAddCosto && (
-                    <div className="mb-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-emerald-500/30 space-y-3">
+                    <div className="mb-3 p-3 bg-gray-800 rounded-lg border border-emerald-500/30 space-y-3">
                         <div className="flex gap-3">
                             <input
                                 type="text"
                                 value={costoForm.concepto}
                                 onChange={e => setCostoForm({ ...costoForm, concepto: e.target.value })}
                                 placeholder="Concepto"
-                                className="flex-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
                             />
                             <input
                                 type="number"
@@ -2763,30 +2763,30 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                 onChange={e => setCostoForm({ ...costoForm, monto: e.target.value })}
                                 placeholder="Monto"
                                 step="0.01"
-                                className="w-28 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-emerald-500"
+                                className="w-28 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
                             />
                         </div>
                         <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-400 text-sm cursor-pointer">
+                            <label className="flex items-center gap-2 text-gray-400 text-sm cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={costoForm.incluye_igv}
                                     onChange={e => setCostoForm({ ...costoForm, incluye_igv: e.target.checked })}
-                                    className="w-4 h-4 rounded border-gray-400 dark:border-gray-600 bg-gray-100 dark:bg-gray-700"
+                                    className="w-4 h-4 rounded border-gray-600 bg-gray-700"
                                 />
                                 Incluye IGV
                             </label>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => { setShowAddCosto(false); setCostoForm({ concepto: '', monto: '', incluye_igv: false }); }}
-                                    className="px-3 py-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white text-xs rounded transition-colors"
+                                    className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     onClick={handleAddCosto}
                                     disabled={!costoForm.concepto.trim() || !costoForm.monto}
-                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-400 disabled:dark:bg-gray-600 text-white text-xs rounded transition-colors"
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-600 text-white text-xs rounded transition-colors"
                                 >
                                     Guardar
                                 </button>
@@ -2806,9 +2806,9 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                             const esExpandible = tieneItems || esCotizacion;
 
                             return (
-                            <div key={`task-${i}`} className="border-b border-gray-200 dark:border-gray-700">
+                            <div key={`task-${i}`} className="border-b border-gray-700">
                                 <div
-                                    className={`flex items-center justify-between py-2 ${esExpandible ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 -mx-1' : ''}`}
+                                    className={`flex items-center justify-between py-2 ${esExpandible ? 'cursor-pointer hover:bg-gray-800/50 rounded px-1 -mx-1' : ''}`}
                                     onClick={() => {
                                         if (esExpandible) {
                                             setExpandedTaskId(expandedTaskId === d.task_id ? null : d.task_id);
@@ -2820,11 +2820,11 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             <span className="text-gray-400 text-xs">{expandedTaskId === d.task_id ? '▼' : '▶'}</span>
                                         )}
                                         <span className="text-purple-500 text-xs">{esCotizacion ? '💬' : '📋'}</span>
-                                        <span className={`text-sm truncate max-w-[200px] ${esCotizacion ? 'text-gray-500 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>{d.concepto}</span>
+                                        <span className={`text-sm truncate max-w-[200px] ${esCotizacion ? 'text-gray-500' : 'text-white'}`}>{d.concepto}</span>
                                         <span className="text-purple-400 text-xs">(task)</span>
                                         {esCotizacion && <span className="text-xs text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded">cotización</span>}
                                     </div>
-                                    <span className={`font-medium ${esCotizacion ? 'text-gray-400 line-through' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                    <span className={`font-medium ${esCotizacion ? 'text-gray-400 line-through' : 'text-emerald-400'}`}>
                                         S/ {d.monto.toFixed(2)}
                                     </span>
                                 </div>
@@ -2834,10 +2834,10 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                         {tieneItems ? (
                                             d.items_cotizacion!.map((item, idx) => (
                                                 <div key={item.item_id || idx} className="flex justify-between text-xs py-1">
-                                                    <span className="text-gray-600 dark:text-gray-400">
+                                                    <span className="text-gray-400">
                                                         {item.cantidad}x {item.descripcion}
                                                     </span>
-                                                    <span className="text-gray-500 dark:text-gray-400">
+                                                    <span className="text-gray-400">
                                                         S/ {(item.precio_total || item.cantidad * item.precio_unitario).toFixed(2)}
                                                     </span>
                                                 </div>
@@ -2857,21 +2857,21 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                             // Encontrar el índice real en pkl.costos.detalle para edición/eliminación
                             const realIndex = (pkl.costos?.detalle || []).findIndex(det => det.concepto === d.concepto && det.monto === d.monto && !det.task_id);
                             return (
-                            <div key={`manual-${i}`} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 group">
+                            <div key={`manual-${i}`} className="flex items-center justify-between py-2 border-b border-gray-700 group">
                                 {editingCostoIndex === realIndex ? (
                                     <div className="flex items-center gap-2 flex-1">
                                         <input
                                             autoFocus
                                             value={costoForm.concepto}
                                             onChange={e => setCostoForm({ ...costoForm, concepto: e.target.value })}
-                                            className="flex-1 bg-gray-100 dark:bg-gray-700 border border-emerald-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            className="flex-1 bg-gray-700 border border-emerald-500 rounded px-2 py-1 text-white text-sm outline-none"
                                         />
                                         <input
                                             type="number"
                                             value={costoForm.monto}
                                             onChange={e => setCostoForm({ ...costoForm, monto: e.target.value })}
                                             step="0.01"
-                                            className="w-24 bg-gray-100 dark:bg-gray-700 border border-emerald-500 rounded px-2 py-1 text-gray-900 dark:text-white text-sm outline-none"
+                                            className="w-24 bg-gray-700 border border-emerald-500 rounded px-2 py-1 text-white text-sm outline-none"
                                         />
                                         <button onClick={handleSaveCosto} className="text-emerald-500 hover:text-emerald-400 text-sm">✓</button>
                                         <button onClick={() => { setEditingCostoIndex(null); setCostoForm({ concepto: '', monto: '', incluye_igv: false }); }} className="text-gray-500 hover:text-gray-400 text-sm">✕</button>
@@ -2882,13 +2882,13 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                                             onClick={() => handleEditCosto(realIndex)}
                                             className="cursor-pointer hover:text-emerald-500 transition-colors"
                                         >
-                                            <span className="text-gray-900 dark:text-white">{d.concepto}</span>
+                                            <span className="text-white">{d.concepto}</span>
                                             {d.incluye_igv && (
-                                                <span className="text-emerald-500 dark:text-emerald-400 text-xs ml-2">+IGV</span>
+                                                <span className="text-emerald-400 text-xs ml-2">+IGV</span>
                                             )}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                            <span className="text-emerald-400 font-medium">
                                                 S/ {d.monto.toFixed(2)}
                                             </span>
                                             <button
@@ -2910,8 +2910,8 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
             </div>
 
             {/* Observaciones - Editable */}
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                <h4 className="text-gray-800 dark:text-gray-400 text-sm mb-2">Observaciones</h4>
+            <div className="bg-gray-900/50 rounded-lg p-4">
+                <h4 className="text-gray-400 text-sm mb-2">Observaciones</h4>
                 {editingObs ? (
                     <div className="space-y-2">
                         <textarea
@@ -2940,10 +2940,10 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                 ) : (
                     <p
                         onClick={() => setEditingObs(true)}
-                        className="text-gray-800 dark:text-gray-300 cursor-pointer hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors min-h-[24px]"
+                        className="text-gray-300 cursor-pointer hover:text-cyan-400 transition-colors min-h-[24px]"
                         title="Click para editar"
                     >
-                        {pkl.observaciones || <span className="text-gray-600 dark:text-gray-500 italic">+ Agregar observaciones</span>}
+                        {pkl.observaciones || <span className="text-gray-500 italic">+ Agregar observaciones</span>}
                     </p>
                 )}
             </div>
@@ -2956,7 +2956,7 @@ function OverviewTab({ pkl, onUpdate, onUpdateTask }: { pkl: PKL; onUpdate: Upda
                         <div key={i} className="mb-2">
                             <div className="text-white">{r.descripcion}</div>
                             {r.mitigacion && (
-                                <div className="text-gray-800 dark:text-gray-400 text-sm">Mitigacion: {r.mitigacion}</div>
+                                <div className="text-gray-400 text-sm">Mitigacion: {r.mitigacion}</div>
                             )}
                             {r.costo_referencia && (
                                 <div className="text-gray-500 text-sm">Ref: {r.costo_referencia}</div>
@@ -3087,7 +3087,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
         <div className="space-y-0">
             {/* New Task Form */}
             {showNewTask ? (
-                <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-cyan-500/50 shadow-lg">
+                <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-cyan-500/50 shadow-lg">
                     <h4 className="text-white font-semibold mb-3">Nuevo Task</h4>
                     <div className="space-y-3">
                         <div>
@@ -3152,7 +3152,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                             <button
                                 onClick={handleCreateTask}
                                 disabled={!newTaskName.trim()}
-                                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-gray-900 dark:text-white font-medium rounded transition-colors"
+                                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded transition-colors"
                             >
                                 Crear Task
                             </button>
@@ -3271,7 +3271,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                     if (e.key === 'Enter') handleEditSave(task.task_id);
                                                     if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
                                                 }}
-                                                className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-gray-900 dark:text-white font-semibold outline-none w-full"
+                                                className="bg-gray-900 border border-cyan-500 rounded px-2 py-1 text-white font-semibold outline-none w-full"
                                             />
                                         ) : (
                                             <span
@@ -3334,7 +3334,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                             >
                                                 {typeConfig?.label || task.tipo || '— Sin tipo'}
                                             </button>
-                                            <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[150px]">
+                                            <div className="absolute left-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[150px]">
                                                 {TIPOS_TASK_PKL.map(tipo => (
                                                     <button
                                                         key={tipo.value}
@@ -3358,7 +3358,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                     if (e.key === 'Enter') handleEditSave(task.task_id);
                                                     if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
                                                 }}
-                                                className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-24"
+                                                className="bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-24"
                                             />
                                         ) : (
                                             <span
@@ -3382,7 +3382,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                     if (e.key === 'Enter') handleEditSave(task.task_id);
                                                     if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
                                                 }}
-                                                className="bg-gray-50 dark:bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-16"
+                                                className="bg-gray-900 border border-cyan-500 rounded px-2 py-0.5 text-gray-300 text-xs outline-none w-16"
                                             />
                                         ) : (
                                             <span
@@ -3423,7 +3423,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                         >
                                             {task.estado || '— Sin estado'}
                                         </button>
-                                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[120px]">
+                                        <div className="absolute right-0 top-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[120px]">
                                             {TASK_ESTADOS.map(estado => (
                                                 <button
                                                     key={estado.value}
@@ -3479,9 +3479,9 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                 >
                                                     <span className="text-xs">↓</span>
                                                 </button>
-                                                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 border-2 border-purple-400 rounded-lg shadow-xl z-[100] opacity-0 invisible group-hover/demote:opacity-100 group-hover/demote:visible transition-all min-w-[200px]">
-                                                    <div className="px-3 py-2 bg-purple-50 dark:bg-purple-900/30 rounded-t-lg border-b border-purple-300 dark:border-purple-700">
-                                                        <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">Mover como subtask de:</span>
+                                                <div className="absolute right-0 top-full mt-1 bg-gray-900 border-2 border-purple-400 rounded-lg shadow-xl z-[100] opacity-0 invisible group-hover/demote:opacity-100 group-hover/demote:visible transition-all min-w-[200px]">
+                                                    <div className="px-3 py-2 bg-purple-900/30 rounded-t-lg border-b border-purple-700">
+                                                        <span className="text-xs font-semibold text-purple-300">Mover como subtask de:</span>
                                                     </div>
                                                     {rootTasks.filter(t => t.task_id !== task.task_id).map(t => (
                                                         <button
@@ -3491,7 +3491,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                                     parent_task_id: t.task_id,
                                                                 } as any);
                                                             }}
-                                                            className="block w-full text-left px-3 py-2 text-xs text-gray-800 dark:text-gray-200 hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-colors last:rounded-b-lg"
+                                                            className="block w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-purple-500/20 transition-colors last:rounded-b-lg"
                                                         >
                                                             <span className="font-medium">{t.orden}.</span> {t.nombre}
                                                         </button>
@@ -3522,7 +3522,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
 
                             {/* Subtasks accordion */}
                             {!isSubtask && (expandedTasks.has(task.task_id) || addingSubtaskTo === task.task_id) && (hasSubtasks || addingSubtaskTo === task.task_id) && (
-                                <div className="ml-10 mt-1 mb-2 bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-gray-200 dark:border-gray-700/50 overflow-hidden">
+                                <div className="ml-10 mt-1 mb-2 bg-gray-900/40 rounded-lg border border-gray-700/50 overflow-hidden">
                                     {/* Subtask list - compact checklist style */}
                                     {subtasks.map((sub, subIdx) => {
                                         const subTypeConfig = getTaskTypeConfig(sub.tipo);
@@ -3560,8 +3560,8 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                     setDragOverId(null);
                                                 }}
                                                 className={`relative flex items-center gap-3 px-3 py-2 group/sub transition-colors select-none ${
-                                                    subIdx !== subtasks.length - 1 || addingSubtaskTo === task.task_id ? 'border-b border-gray-200 dark:border-gray-700/30' : ''
-                                                } ${isDragging ? 'opacity-30' : 'hover:bg-gray-100 dark:hover:bg-gray-800/50'} cursor-grab active:cursor-grabbing`}
+                                                    subIdx !== subtasks.length - 1 || addingSubtaskTo === task.task_id ? 'border-b border-gray-700/30' : ''
+                                                } ${isDragging ? 'opacity-30' : 'hover:bg-gray-800/50'} cursor-grab active:cursor-grabbing`}
                                             >
                                                 {/* Drop indicator line */}
                                                 {isDragOver && !isDragging && (
@@ -3583,7 +3583,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                             ? 'bg-emerald-500 border-emerald-400 text-white'
                                                             : sub.estado === 'en_progreso'
                                                             ? 'border-blue-400 bg-blue-500/20'
-                                                            : 'border-gray-400 dark:border-gray-600 hover:border-cyan-400'
+                                                            : 'border-gray-600 hover:border-cyan-400'
                                                     }`}
                                                     title="Click para cambiar estado"
                                                 >
@@ -3602,12 +3602,12 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                             if (e.key === 'Enter') handleEditSave(sub.task_id);
                                                             if (e.key === 'Escape') { setEditingTask(null); setEditingField(null); }
                                                         }}
-                                                        className="flex-1 bg-white dark:bg-gray-800 border border-cyan-500 rounded px-2 py-0.5 text-sm text-gray-900 dark:text-white outline-none"
+                                                        className="flex-1 bg-gray-800 border border-cyan-500 rounded px-2 py-0.5 text-sm text-white outline-none"
                                                     />
                                                 ) : (
                                                     <span
                                                         onClick={() => handleEditStart(sub.task_id, 'nombre', sub.nombre)}
-                                                        className={`flex-1 text-sm cursor-pointer hover:text-cyan-400 transition-colors ${subCompleted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}
+                                                        className={`flex-1 text-sm cursor-pointer hover:text-cyan-400 transition-colors ${subCompleted ? 'text-gray-500' : 'text-gray-300'}`}
                                                         title="Click para editar"
                                                     >
                                                         {sub.nombre}
@@ -3651,7 +3651,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
 
                                     {/* Inline subtask creation form */}
                                     {addingSubtaskTo === task.task_id && (
-                                        <div className="flex items-center gap-3 px-3 py-2 bg-cyan-50/50 dark:bg-cyan-900/10">
+                                        <div className="flex items-center gap-3 px-3 py-2 bg-cyan-900/10">
                                             <div className="flex-shrink-0 w-5 h-5 rounded border-2 border-dashed border-cyan-400/50 flex items-center justify-center text-cyan-400 text-[10px]">
                                                 +
                                             </div>
@@ -3679,11 +3679,11 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                                                     }
                                                 }}
                                                 placeholder="Nuevo subtask... Enter para crear, Esc para cerrar"
-                                                className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 outline-none"
+                                                className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none"
                                             />
                                             <button
                                                 onClick={() => { setAddingSubtaskTo(null); setNewSubtaskName(''); }}
-                                                className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs transition-colors"
+                                                className="flex-shrink-0 text-gray-400 hover:text-gray-300 text-xs transition-colors"
                                             >
                                                 &#10005;
                                             </button>
@@ -3748,7 +3748,7 @@ export function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn 
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h4 className="text-gray-800 dark:text-gray-400 text-sm">Eventos Externos (terceros)</h4>
+                <h4 className="text-gray-400 text-sm">Eventos Externos (terceros)</h4>
                 <button
                     onClick={() => setShowNewEvento(true)}
                     className="px-3 py-1.5 bg-purple-700 hover:bg-purple-600 !text-white text-sm font-medium rounded transition-colors"
@@ -3759,13 +3759,13 @@ export function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn 
 
             {/* Add new evento form */}
             {showNewEvento && (
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-purple-500/30 space-y-3">
+                <div className="p-3 bg-gray-800 rounded-lg border border-purple-500/30 space-y-3">
                     <textarea
                         value={newEvento.descripcion}
                         onChange={e => setNewEvento({ ...newEvento, descripcion: e.target.value })}
                         placeholder="Descripción del evento"
                         rows={2}
-                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 resize-none"
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500 resize-none"
                     />
                     <div className="flex gap-3">
                         <input
@@ -3773,13 +3773,13 @@ export function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn 
                             value={newEvento.proveedor_id}
                             onChange={e => setNewEvento({ ...newEvento, proveedor_id: e.target.value })}
                             placeholder="Proveedor (opcional)"
-                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
                         />
                         <input
                             type="date"
                             value={newEvento.fecha}
                             onChange={e => setNewEvento({ ...newEvento, fecha: e.target.value })}
-                            className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500"
+                            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
                         />
                     </div>
                     <div className="flex justify-end gap-2">
@@ -3807,7 +3807,7 @@ export function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn 
                     {pkl.eventos_externos.map(evento => (
                         <div
                             key={evento.evento_id}
-                            className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 group"
+                            className="bg-gray-900/50 rounded-lg p-4 group"
                         >
                             <div className="flex items-start justify-between mb-2">
                                 <span className="font-mono text-purple-400 text-sm">{evento.evento_id}</span>
@@ -3837,7 +3837,7 @@ export function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn 
                                 </div>
                             ) : (
                                 <p
-                                    className="text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-cyan-400 transition-colors"
+                                    className="text-white mb-2 cursor-pointer hover:text-cyan-400 transition-colors"
                                     onClick={() => handleEditStart(evento.evento_id, evento.descripcion)}
                                 >
                                     {evento.descripcion}

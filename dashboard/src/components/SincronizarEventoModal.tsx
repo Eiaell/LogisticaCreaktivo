@@ -428,21 +428,21 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {/* Resumen del evento */}
-                    <div className="bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
                         <div className="flex items-center gap-3 mb-2">
                             {clienteLogo ? (
                                 <img src={clienteLogo} alt={clienteEvento} className="w-10 h-10 rounded-lg object-cover" />
                             ) : clienteEvento ? (
-                                <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-400">
+                                <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-400">
                                     {clienteEvento.substring(0, 2).toUpperCase()}
                                 </div>
                             ) : null}
                             <div>
-                                <p className="text-gray-900 dark:text-white font-medium">{clienteEvento || 'Sin Cliente'}</p>
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">{evento.fecha}</p>
+                                <p className="text-white font-medium">{clienteEvento || 'Sin Cliente'}</p>
+                                <p className="text-gray-400 text-sm">{evento.fecha}</p>
                             </div>
                         </div>
-                        <p className="text-cyan-600 dark:text-cyan-400 text-sm">{getEventoDescripcion()}</p>
+                        <p className="text-cyan-400 text-sm">{getEventoDescripcion()}</p>
                         <p className="text-gray-500 text-xs mt-2">{currentConfig.accion}</p>
                     </div>
 
@@ -453,7 +453,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                             className={`flex-1 py-3 rounded-lg font-medium transition-all ${
                                 mode === 'vincular'
                                     ? 'bg-cyan-600 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                    : 'bg-gray-800 text-gray-400 hover:text-white'
                             }`}
                         >
                             🔗 Vincular a PKL Existente
@@ -463,7 +463,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                             className={`flex-1 py-3 rounded-lg font-medium transition-all ${
                                 mode === 'crear'
                                     ? 'bg-emerald-600 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                    : 'bg-gray-800 text-gray-400 hover:text-white'
                             }`}
                         >
                             ➕ Crear Nuevo PKL
@@ -479,7 +479,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Buscar PKL por ID, cliente o descripción..."
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:border-cyan-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-cyan-500 outline-none"
                                 />
                             </div>
 
@@ -503,14 +503,14 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                                                 className={`w-full p-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
                                                     selectedPKLId === pkl.pkl_id
                                                         ? 'border-cyan-500 bg-cyan-500/10'
-                                                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600'
+                                                        : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                                                 }`}
                                             >
                                                 {/* Logo */}
                                                 {pklLogo ? (
                                                     <img src={pklLogo} alt={pkl.cliente.nombre} className="w-8 h-8 rounded object-cover shrink-0" />
                                                 ) : (
-                                                    <div className="w-8 h-8 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                                                    <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-400 shrink-0">
                                                         {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
                                                     </div>
                                                 )}
@@ -518,7 +518,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                                                 {/* Info */}
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-gray-900 dark:text-white font-medium truncate">{pkl.cliente.nombre}</span>
+                                                        <span className="text-white font-medium truncate">{pkl.cliente.nombre}</span>
                                                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${estadoInfo?.color || 'bg-gray-500'} !text-white`}>
                                                             {estadoInfo?.label || pkl.estado.actual}
                                                         </span>
@@ -527,7 +527,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                                                 </div>
 
                                                 {/* ID */}
-                                                <span className="text-gray-400 dark:text-gray-600 text-xs font-mono shrink-0">{pkl.pkl_id}</span>
+                                                <span className="text-gray-600 text-xs font-mono shrink-0">{pkl.pkl_id}</span>
 
                                                 {/* Check */}
                                                 {selectedPKLId === pkl.pkl_id && (
@@ -544,30 +544,30 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                         <div className="space-y-4">
                             {/* Preview ID */}
                             <div className="flex items-center gap-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-                                <span className="text-xs text-cyan-600 dark:text-cyan-400 font-bold uppercase">ID:</span>
-                                <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{generatePKLId(pkls)}</span>
+                                <span className="text-xs text-cyan-400 font-bold uppercase">ID:</span>
+                                <span className="font-mono text-cyan-400 font-bold">{generatePKLId(pkls)}</span>
                                 <span className="text-xs text-gray-500">(auto-generado)</span>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Descripción</label>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Descripción</label>
                                 <input
                                     type="text"
                                     value={nuevoPKL.descripcion}
                                     onChange={(e) => setNuevoPKL(prev => ({ ...prev, descripcion: e.target.value.toUpperCase() }))}
                                     placeholder={getEventoDescripcion().toUpperCase()}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-cyan-500 outline-none uppercase"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none uppercase"
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Tipo de Operación</label>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Tipo de Operación</label>
                                     <input
                                         type="text"
                                         list="tipos-operacion-sync-list"
                                         value={nuevoPKL.tipoOperacion}
                                         onChange={(e) => setNuevoPKL(prev => ({ ...prev, tipoOperacion: e.target.value as TipoOperacionPKL }))}
-                                        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-cyan-500 outline-none"
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
                                         placeholder="Escribe para buscar..."
                                     />
                                     <datalist id="tipos-operacion-sync-list">
@@ -577,13 +577,13 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                                     </datalist>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Estado Inicial</label>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Estado Inicial</label>
                                     <input
                                         type="text"
                                         list="estados-pkl-sync-list"
                                         value={nuevoPKL.estado}
                                         onChange={(e) => setNuevoPKL(prev => ({ ...prev, estado: e.target.value as EstadoPKL }))}
-                                        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-cyan-500 outline-none"
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 outline-none"
                                         placeholder="Escribe para buscar..."
                                     />
                                     <datalist id="estados-pkl-sync-list">
@@ -594,7 +594,7 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                                 </div>
                             </div>
                             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
-                                <p className="text-emerald-600 dark:text-emerald-400 text-sm">
+                                <p className="text-emerald-400 text-sm">
                                     Se creará un nuevo PKL para <strong>{clienteEvento || 'Sin Cliente'}</strong> y se vinculará automáticamente con este evento.
                                 </p>
                             </div>
@@ -603,10 +603,10 @@ export function SincronizarEventoModal({ isOpen, onClose, tipo, evento }: Props)
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex gap-3 p-6 border-t border-gray-800">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                        className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
                     >
                         Cancelar
                     </button>

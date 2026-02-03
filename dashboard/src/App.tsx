@@ -456,7 +456,7 @@ function PagoRendicionModal({ isOpen, onClose }: PagoRendicionModalProps) {
 }
 
 function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: DashboardProps) {
-  const { pedidos, clientes, proveedores, loadDatabase, pkls } = useDatabase();
+  const { pedidos, clientes, proveedores, pkls } = useDatabase();
   const { createBackup } = useAutoBackup();
   const [activeSidebar, setActiveSidebar] = useState<'shortcuts' | 'alerts' | 'recent_orders'>('shortcuts');
   const [modalType, setModalType] = useState<'cliente' | 'proveedor' | 'nuevo_cliente' | 'nuevo_proveedor' | null>(null);
@@ -509,19 +509,6 @@ function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: Dashbo
           />
         </div>
         <div className="flex gap-3 relative">
-          <input
-            type="file"
-            id="header-file-upload"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) {
-                loadDatabase(e.target.files);
-              }
-            }}
-            accept=".json,.jsonl,.db"
-          />
-
           {/* Botones de navegación elegantes */}
           <button
             onClick={() => onNavigate('clientes')}
@@ -577,12 +564,6 @@ function Dashboard({ onNavigate, onNuevoRequerimiento, onNavigateToPKL }: Dashbo
             title="Descargar backup completo"
           >
             <span className="text-base">💾</span> Backup
-          </button>
-          <button
-            onClick={() => document.getElementById('header-file-upload')?.click()}
-            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-750 transition-all duration-200 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 font-semibold text-sm"
-          >
-            <span className="text-base">📂</span> Cargar
           </button>
         </div>
       </header>

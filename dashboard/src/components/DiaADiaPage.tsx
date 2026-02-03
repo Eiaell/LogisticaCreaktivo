@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDatabase } from '../context/DatabaseContext';
 import { useToast } from '../context/ToastContext';
+import { useTheme } from '../context/ThemeContext';
 import type { MovimientoLogistico, Rendicion, EventoProduccion, PKL, TaskPKL, TipoMovimientoLogistico } from '../types';
 import { TIPOS_OPERACION_PKL, ESTADOS_PKL } from '../types';
 import { EditarEventoModal } from './EditarEventoModal';
@@ -306,7 +307,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
 
     return createPortal(
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-900 border border-green-500/30 rounded-2xl w-full max-w-lg shadow-2xl">
+            <div className="bg-gray-900 border border-green-500/30 rounded-2xl w-full max-w-lg shadow-2xl">
                 {/* Header */}
                 <div className={`bg-gradient-to-r ${currentCategoria?.color || 'from-green-500 to-emerald-500'} p-4 rounded-t-2xl`}>
                     <div className="flex items-center justify-between">
@@ -325,7 +326,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                 <div className="p-4 space-y-3">
                     {/* Categoría - Chips */}
                     <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">Tipo de Evento</label>
+                        <label className="block text-xs text-gray-400 mb-2">Tipo de Evento</label>
                         <div className="flex flex-wrap gap-2">
                             {CATEGORIAS_EVENTO.map(cat => (
                                 <button
@@ -334,7 +335,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                                         categoria === cat.value
                                             ? `bg-gradient-to-r ${cat.color} text-white`
-                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                     }`}
                                 >
                                     {cat.label}
@@ -346,13 +347,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {/* Subtipo */}
                     {subtipos.length > 0 && (
                         <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Subtipo</label>
+                            <label className="block text-xs text-gray-400 mb-1">Subtipo</label>
                             <input
                                 type="text"
                                 list={`subtipos-${categoria}-list`}
                                 value={subtipo}
                                 onChange={(e) => setSubtipo(e.target.value)}
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                 placeholder="Tipo de operación"
                             />
                             <datalist id={`subtipos-${categoria}-list`}>
@@ -367,13 +368,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {categoria === 'movimiento' && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
+                                <label className="block text-xs text-gray-400 mb-1">Cliente</label>
                                 <input
                                     type="text"
                                     list="clientes-add-list"
                                     value={formData.cliente}
                                     onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder="Para quién es"
                                 />
                                 <datalist id="clientes-add-list">
@@ -381,13 +382,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                 </datalist>
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsable *</label>
+                                <label className="block text-xs text-gray-400 mb-1">Responsable *</label>
                                 <input
                                     type="text"
                                     list="responsable-add-list"
                                     value={formData.proveedor}
                                     onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none"
                                     placeholder="Escribe para buscar..."
                                 />
                                 <datalist id="responsable-add-list">
@@ -403,13 +404,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {categoria === 'cotizacion' && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente *</label>
+                                <label className="block text-xs text-gray-400 mb-1">Cliente *</label>
                                 <input
                                     type="text"
                                     list="clientes-add-list-cot"
                                     value={formData.cliente}
                                     onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder="A quién cotizas"
                                 />
                                 <datalist id="clientes-add-list-cot">
@@ -417,13 +418,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                 </datalist>
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Proveedor</label>
+                                <label className="block text-xs text-gray-400 mb-1">Proveedor</label>
                                 <input
                                     type="text"
                                     list="proveedores-add-list-cot"
                                     value={formData.proveedor}
                                     onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder="De quién cotizas"
                                 />
                                 <datalist id="proveedores-add-list-cot">
@@ -436,13 +437,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {/* RENDICIÓN: Solo beneficiario (a quién se paga) */}
                     {categoria === 'rendicion' && (
                         <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Beneficiario *</label>
+                            <label className="block text-xs text-gray-400 mb-1">Beneficiario *</label>
                             <input
                                 type="text"
                                 list="beneficiarios-add-list"
                                 value={formData.proveedor}
                                 onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                 placeholder="A quién se le paga"
                             />
                             <datalist id="beneficiarios-add-list">
@@ -457,13 +458,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {categoria === 'produccion' && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
+                                <label className="block text-xs text-gray-400 mb-1">Cliente</label>
                                 <input
                                     type="text"
                                     list="clientes-add-list-prod"
                                     value={formData.cliente}
                                     onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder="Para quién es"
                                 />
                                 <datalist id="clientes-add-list-prod">
@@ -471,13 +472,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                 </datalist>
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Proveedor *</label>
+                                <label className="block text-xs text-gray-400 mb-1">Proveedor *</label>
                                 <input
                                     type="text"
                                     list="proveedores-add-list-prod"
                                     value={formData.proveedor}
                                     onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder="Quién produce"
                                 />
                                 <datalist id="proveedores-add-list-prod">
@@ -490,13 +491,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {/* COMPRA: Solo proveedor (dónde compro) */}
                     {categoria === 'compra' && (
                         <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tienda / Proveedor *</label>
+                            <label className="block text-xs text-gray-400 mb-1">Tienda / Proveedor *</label>
                             <input
                                 type="text"
                                 list="proveedores-add-list-compra"
                                 value={formData.proveedor}
                                 onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                 placeholder="Ej: Promart, Sodimac, Mercado..."
                             />
                             <datalist id="proveedores-add-list-compra">
@@ -513,7 +514,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {categoria === 'coordinacion' && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                <label className="block text-xs text-gray-400 mb-1">
                                     {subtipo.includes('cliente') ? 'Cliente *' : 'Cliente'}
                                 </label>
                                 <input
@@ -521,7 +522,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                     list="clientes-add-list-coord"
                                     value={formData.cliente}
                                     onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder="Con quién coordinas"
                                 />
                                 <datalist id="clientes-add-list-coord">
@@ -529,7 +530,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                 </datalist>
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                <label className="block text-xs text-gray-400 mb-1">
                                     {subtipo.includes('proveedor') ? 'Proveedor *' : subtipo.includes('motorizado') ? 'Motorizado' : 'Contacto'}
                                 </label>
                                 <input
@@ -537,7 +538,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                     list="contactos-add-list-coord"
                                     value={formData.proveedor}
                                     onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder={subtipo.includes('motorizado') ? 'Nombre del motorizado' : 'Nombre'}
                                 />
                                 <datalist id="contactos-add-list-coord">
@@ -551,12 +552,12 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {/* Descripción - Ocultar para compras (el proveedor ya es el lugar) */}
                     {categoria !== 'compra' && (
                         <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Descripción *</label>
+                            <label className="block text-xs text-gray-400 mb-1">Descripción *</label>
                             <input
                                 type="text"
                                 value={formData.descripcion}
                                 onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                 placeholder="Descripción del evento"
                             />
                         </div>
@@ -566,7 +567,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                     {(categoria === 'cotizacion' || categoria === 'compra') ? (
                         <div className={`border rounded-lg p-3 ${categoria === 'compra' ? 'border-green-500/30 bg-green-500/5' : 'border-yellow-500/30 bg-yellow-500/5'}`}>
                             <div className="flex items-center justify-between mb-2">
-                                <label className={`text-xs font-medium ${categoria === 'compra' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                                <label className={`text-xs font-medium ${categoria === 'compra' ? 'text-green-400' : 'text-yellow-400'}`}>
                                     {categoria === 'compra' ? '🛒 Productos Comprados' : '📦 Productos Cotizados'}
                                 </label>
                                 {itemsCotizacion.length > 0 && (
@@ -580,13 +581,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                             {itemsCotizacion.length > 0 && (
                                 <div className="space-y-1 mb-3">
                                     {itemsCotizacion.map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded px-2 py-1.5 text-sm">
+                                        <div key={idx} className="flex items-center justify-between bg-gray-800 rounded px-2 py-1.5 text-sm">
                                             <div className="flex-1 truncate">
-                                                <span className="text-gray-900 dark:text-white">{item.cantidad}x</span>
-                                                <span className="text-gray-600 dark:text-gray-400 ml-1">{item.descripcion}</span>
+                                                <span className="text-white">{item.cantidad}x</span>
+                                                <span className="text-gray-400 ml-1">{item.descripcion}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                                <span className="text-amber-400 font-medium">
                                                     S/ {item.precio_total.toFixed(2)}
                                                     {item.incluye_igv && <span className="text-gray-400 text-xs ml-1">(+IGV)</span>}
                                                 </span>
@@ -612,7 +613,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                             value={nuevoItem.descripcion}
                                             onChange={(e) => setNuevoItem(prev => ({ ...prev, descripcion: e.target.value }))}
                                             placeholder={categoria === 'compra' ? 'Producto (ej: tornillos, cinta, pintura)' : 'Producto (ej: 50 polos)'}
-                                            className={`w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
+                                            className={`w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
                                         />
                                     </div>
                                     <div className="w-16">
@@ -622,7 +623,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                             onChange={(e) => setNuevoItem(prev => ({ ...prev, cantidad: parseInt(e.target.value) || 1 }))}
                                             placeholder="Cant"
                                             min="1"
-                                            className={`w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none text-center ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
+                                            className={`w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none text-center ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
                                         />
                                     </div>
                                     <div className="w-20">
@@ -632,13 +633,13 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                             value={nuevoItem.precio || ''}
                                             onChange={(e) => setNuevoItem(prev => ({ ...prev, precio: parseFloat(e.target.value) || 0 }))}
                                             placeholder="S/."
-                                            className={`w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
+                                            className={`w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none ${categoria === 'compra' ? 'focus:border-green-500' : 'focus:border-yellow-500'}`}
                                         />
                                     </div>
                                     <select
                                         value={nuevoItem.esPrecioUnitario ? 'u' : 't'}
                                         onChange={(e) => setNuevoItem(prev => ({ ...prev, esPrecioUnitario: e.target.value === 'u' }))}
-                                        className="w-14 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-1 py-1.5 text-gray-900 dark:text-white text-xs outline-none"
+                                        className="w-14 bg-gray-800 border border-gray-600 rounded px-1 py-1.5 text-white text-xs outline-none"
                                     >
                                         <option value="u">c/u</option>
                                         <option value="t">total</option>
@@ -651,12 +652,12 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                         +
                                     </button>
                                 </div>
-                                <label className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs cursor-pointer">
+                                <label className="flex items-center gap-2 text-gray-400 text-xs cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={nuevoItem.incluye_igv}
                                         onChange={(e) => setNuevoItem(prev => ({ ...prev, incluye_igv: e.target.checked }))}
-                                        className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600"
+                                        className="w-3.5 h-3.5 rounded border-gray-600"
                                     />
                                     Incluye IGV
                                 </label>
@@ -664,14 +665,14 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
 
                             {/* Monto simple (opcional si no hay items) */}
                             {itemsCotizacion.length === 0 && (
-                                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                <div className="mt-2 pt-2 border-t border-gray-700">
                                     <div className="text-xs text-gray-400 mb-1">O ingresa un monto simple:</div>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={formData.monto || ''}
                                         onChange={(e) => setFormData(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
-                                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500"
+                                        className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-yellow-500"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -679,18 +680,18 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                         </div>
                     ) : (
                         <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monto (S/.)</label>
+                            <label className="block text-xs text-gray-400 mb-1">Monto (S/.)</label>
                             <div className="flex gap-2 items-center">
                                 <input
                                     type="number"
                                     step="0.01"
                                     value={formData.monto || ''}
                                     onChange={(e) => setFormData(prev => ({ ...prev, monto: parseFloat(e.target.value) || 0 }))}
-                                    className="flex-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
+                                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none placeholder-gray-400"
                                     placeholder="0.00"
                                 />
                                 {categoria === 'compra' && (
-                                    <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap cursor-pointer">
+                                    <label className="flex items-center gap-1.5 text-xs text-gray-400 whitespace-nowrap cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={formData.incluye_igv}
@@ -702,7 +703,7 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                                 )}
                             </div>
                             {categoria === 'compra' && formData.incluye_igv && (
-                                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                <p className="text-xs text-amber-400 mt-1">
                                     El precio no incluye IGV (18%)
                                 </p>
                             )}
@@ -711,11 +712,11 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
 
                     {/* Observaciones */}
                     <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Observaciones</label>
+                        <label className="block text-xs text-gray-400 mb-1">Observaciones</label>
                         <textarea
                             value={formData.observaciones}
                             onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none resize-none placeholder-gray-400"
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-green-500 outline-none resize-none placeholder-gray-400"
                             rows={2}
                             placeholder="Notas adicionales..."
                         />
@@ -723,10 +724,10 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex gap-3 p-4 border-t border-gray-800">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                        className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
                     >
                         Cancelar
                     </button>
@@ -760,6 +761,9 @@ interface CalendarioProps {
 }
 
 function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClose }: CalendarioProps) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
     const [currentMonth, setCurrentMonth] = useState(() => {
         const fechas = Object.keys(fechasConEventos).sort().reverse();
         if (fechas.length > 0) {
@@ -866,8 +870,12 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
         <div
             className="w-full max-w-4xl mx-auto rounded-3xl overflow-hidden shadow-2xl"
             style={{
-                background: 'linear-gradient(145deg, #1e293b 0%, #334155 100%)',
-                border: '2px solid rgba(100, 116, 139, 0.5)',
+                background: isDark
+                    ? 'linear-gradient(145deg, #1e293b 0%, #334155 100%)'
+                    : 'linear-gradient(145deg, #ffffff 0%, #f5f5f7 100%)',
+                border: isDark
+                    ? '2px solid rgba(100, 116, 139, 0.5)'
+                    : '2px solid rgba(210, 210, 215, 0.8)',
                 minWidth: '700px'
             }}
         >
@@ -962,7 +970,9 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
 
                 {/* Selector de mes */}
                 {showMonthPicker && (
-                    <div className="absolute left-4 right-4 top-full mt-2 p-4 bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl z-50 grid grid-cols-3 gap-2">
+                    <div className={`absolute left-4 right-4 top-full mt-2 p-4 rounded-2xl shadow-2xl z-50 grid grid-cols-3 gap-2 ${
+                        isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+                    }`}>
                         {MESES.map((mes, idx) => (
                             <button
                                 key={mes}
@@ -973,7 +983,7 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                                 className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                                     currentMonth.getMonth() === idx
                                         ? 'bg-cyan-500 text-white'
-                                        : 'text-gray-300 hover:bg-gray-700'
+                                        : isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
                                 }`}
                             >
                                 {mes.substring(0, 3)}
@@ -990,9 +1000,13 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                     onClick={goToToday}
                     className="w-full mb-6 py-4 px-6 rounded-xl font-bold text-base transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02]"
                     style={{
-                        background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%)',
-                        border: '2px solid rgba(34, 211, 238, 0.6)',
-                        color: '#67e8f9'
+                        background: isDark
+                            ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(99, 102, 241, 0.3) 100%)'
+                            : 'linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(99, 102, 241, 0.12) 100%)',
+                        border: isDark
+                            ? '2px solid rgba(34, 211, 238, 0.6)'
+                            : '2px solid rgba(6, 182, 212, 0.4)',
+                        color: isDark ? '#67e8f9' : '#0891b2'
                     }}
                 >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1007,7 +1021,9 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                         <div
                             key={dia}
                             className={`text-center text-sm font-bold uppercase tracking-wider py-3 rounded-lg ${
-                                idx === 0 || idx === 6 ? 'text-rose-300' : 'text-slate-300'
+                                idx === 0 || idx === 6
+                                    ? (isDark ? 'text-rose-300' : 'text-rose-500')
+                                    : (isDark ? 'text-slate-300' : 'text-slate-600')
                             }`}
                         >
                             {dia}
@@ -1052,24 +1068,24 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                                         ? 'linear-gradient(135deg, #0891b2 0%, #6366f1 100%)'
                                         : hasEvents
                                             ? isHovered
-                                                ? 'rgba(100, 116, 139, 0.7)'
-                                                : 'rgba(71, 85, 105, 0.6)'
+                                                ? (isDark ? 'rgba(100, 116, 139, 0.7)' : 'rgba(6, 182, 212, 0.15)')
+                                                : (isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(6, 182, 212, 0.08)')
                                             : dayInfo.isCurrentMonth && isHovered
-                                                ? 'rgba(100, 116, 139, 0.4)'
-                                                : 'rgba(51, 65, 85, 0.5)',
+                                                ? (isDark ? 'rgba(100, 116, 139, 0.4)' : 'rgba(0, 0, 0, 0.05)')
+                                                : (isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(245, 245, 247, 0.8)'),
                                     border: isSelected
                                         ? '2px solid rgba(34, 211, 238, 0.8)'
                                         : dayInfo.isToday
-                                            ? '2px solid rgba(251, 191, 36, 0.8)'
+                                            ? (isDark ? '2px solid rgba(251, 191, 36, 0.8)' : '2px solid rgba(245, 158, 11, 0.7)')
                                             : hasEvents
-                                                ? '2px solid rgba(100, 116, 139, 0.6)'
+                                                ? (isDark ? '2px solid rgba(100, 116, 139, 0.6)' : '2px solid rgba(6, 182, 212, 0.3)')
                                                 : dayInfo.isCurrentMonth
-                                                    ? '1px solid rgba(100, 116, 139, 0.4)'
+                                                    ? (isDark ? '1px solid rgba(100, 116, 139, 0.4)' : '1px solid rgba(210, 210, 215, 0.6)')
                                                     : '1px solid transparent',
                                     boxShadow: isSelected
                                         ? '0 8px 25px rgba(6, 182, 212, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3)'
                                         : hasEvents && isHovered
-                                            ? '0 4px 15px rgba(0, 0, 0, 0.3)'
+                                            ? (isDark ? '0 4px 15px rgba(0, 0, 0, 0.3)' : '0 4px 15px rgba(0, 0, 0, 0.1)')
                                             : 'none'
                                 }}
                             >
@@ -1078,14 +1094,14 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                                         isSelected
                                             ? 'text-white'
                                             : dayInfo.isToday
-                                                ? 'text-amber-300 font-black'
+                                                ? (isDark ? 'text-amber-300' : 'text-amber-600') + ' font-black'
                                                 : hasEvents
-                                                    ? 'text-white'
+                                                    ? (isDark ? 'text-white' : 'text-gray-900')
                                                     : isWeekend && dayInfo.isCurrentMonth
-                                                        ? 'text-rose-300'
+                                                        ? (isDark ? 'text-rose-300' : 'text-rose-500')
                                                         : dayInfo.isCurrentMonth
-                                                            ? 'text-slate-200'
-                                                            : 'text-slate-500'
+                                                            ? (isDark ? 'text-slate-200' : 'text-gray-700')
+                                                            : (isDark ? 'text-slate-500' : 'text-gray-300')
                                     }`}
                                 >
                                     {dayInfo.day}
@@ -1131,68 +1147,72 @@ function CalendarioModerno({ fechasConEventos, selectedDate, onSelectDate, onClo
                 <div
                     className="mt-5 p-4 rounded-xl min-h-[100px]"
                     style={{
-                        background: 'linear-gradient(135deg, rgba(55, 65, 81, 0.5) 0%, rgba(31, 41, 55, 0.5) 100%)',
-                        border: '1px solid rgba(75, 85, 99, 0.5)'
+                        background: isDark
+                            ? 'linear-gradient(135deg, rgba(55, 65, 81, 0.5) 0%, rgba(31, 41, 55, 0.5) 100%)'
+                            : 'linear-gradient(135deg, rgba(245, 245, 247, 0.8) 0%, rgba(255, 255, 255, 0.8) 100%)',
+                        border: isDark
+                            ? '1px solid rgba(75, 85, 99, 0.5)'
+                            : '1px solid rgba(210, 210, 215, 0.6)'
                     }}
                 >
                     {previewData && previewDate ? (
                         <>
                             <div className="flex items-center justify-between mb-3">
                                 <div>
-                                    <p className="text-white font-semibold">
+                                    <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                         {DIAS_SEMANA_FULL[new Date(previewDate + 'T12:00:00').getDay()]}
                                     </p>
-                                    <p className="text-slate-400 text-sm">{previewDate}</p>
+                                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{previewDate}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-2xl font-bold text-amber-400">S/. {previewData.totalMonto.toFixed(2)}</p>
+                                    <p className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>S/. {previewData.totalMonto.toFixed(2)}</p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
                                 {previewData.movimientos > 0 && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)' }}>
                                         <span>🚚</span>
-                                        <span className="text-blue-400 font-medium">{previewData.movimientos}</span>
+                                        <span className={`font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{previewData.movimientos}</span>
                                     </div>
                                 )}
                                 {previewData.rendiciones > 0 && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(249, 115, 22, 0.2)' }}>
                                         <span>💰</span>
-                                        <span className="text-orange-400 font-medium">{previewData.rendiciones}</span>
+                                        <span className={`font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{previewData.rendiciones}</span>
                                     </div>
                                 )}
                                 {previewData.producciones > 0 && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)' }}>
                                         <span>🏭</span>
-                                        <span className="text-violet-400 font-medium">{previewData.producciones}</span>
+                                        <span className={`font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}>{previewData.producciones}</span>
                                     </div>
                                 )}
                                 {previewData.movimientos === 0 && previewData.rendiciones === 0 && previewData.producciones === 0 && (
-                                    <p className="text-slate-500 text-sm">Sin eventos este día</p>
+                                    <p className={`text-sm ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Sin eventos este día</p>
                                 )}
                             </div>
                         </>
                     ) : (
-                        <div className="flex items-center justify-center h-full text-slate-500">
+                        <div className={`flex items-center justify-center h-full ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
                             <p>Pasa el mouse sobre un día para ver detalles</p>
                         </div>
                     )}
                 </div>
 
                 {/* Leyenda */}
-                <div className="mt-6 pt-5 border-t border-slate-500/50">
+                <div className={`mt-6 pt-5 border-t ${isDark ? 'border-slate-500/50' : 'border-gray-200'}`}>
                     <div className="flex items-center justify-center gap-8 text-sm">
                         <div className="flex items-center gap-2">
                             <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#3b82f6' }}></div>
-                            <span className="text-slate-300 font-medium">Movimientos</span>
+                            <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>Movimientos</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#f97316' }}></div>
-                            <span className="text-slate-300 font-medium">Rendiciones</span>
+                            <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>Rendiciones</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></div>
-                            <span className="text-slate-300 font-medium">Producción</span>
+                            <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>Producción</span>
                         </div>
                     </div>
                 </div>
@@ -1415,16 +1435,16 @@ function MovimientoCard({ movimiento, onEdit, onEditDirect, onDelete, onSync, cl
                     {/* Proveedor (visible en cotizaciones, recojos, etc.) */}
                     {movimiento.proveedor && (
                         <p className="text-blue-400 text-sm mt-0.5">
-                            <span className="text-gray-500 dark:text-gray-500">Prov:</span> {movimiento.proveedor}
+                            <span className="text-gray-500">Prov:</span> {movimiento.proveedor}
                         </p>
                     )}
 
                     {/* Detalle adicional (concepto, producto, ubicación, precio) */}
                     {detalle?.concepto && (
-                        <p className="text-gray-300 dark:text-gray-300 text-sm mt-0.5">{detalle.concepto}</p>
+                        <p className="text-gray-300 text-sm mt-0.5">{detalle.concepto}</p>
                     )}
                     {detalle?.producto && (
-                        <p className="text-gray-300 dark:text-gray-300 text-sm mt-0.5">
+                        <p className="text-gray-300 text-sm mt-0.5">
                             {detalle.producto}{detalle.medidas ? ` (${detalle.medidas})` : ''}
                         </p>
                     )}
@@ -1942,9 +1962,9 @@ function PKLEventoAcordeon({
     }, 0) + eventosHuerfanos.reduce((sum, e) => sum + (e.monto || 0), 0);
 
     return (
-        <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-cyan-500/50 transition-colors group/pkl">
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden hover:border-cyan-500/50 transition-colors group/pkl">
             {/* Header del PKL - clickeable para expandir/colapsar */}
-            <div className="w-full p-4 text-left hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors">
+            <div className="w-full p-4 text-left hover:bg-gray-700/80 transition-colors">
                 <div className="flex items-start gap-3">
                     {/* Indicador de expandir - clickeable */}
                     <button
@@ -1959,7 +1979,7 @@ function PKLEventoAcordeon({
                                 return next;
                             });
                         }}
-                        className={`w-6 h-6 rounded flex items-center justify-center transition-transform hover:bg-gray-200 dark:hover:bg-gray-600 ${isExpanded ? 'rotate-90' : ''}`}
+                        className={`w-6 h-6 rounded flex items-center justify-center transition-transform hover:bg-gray-600 ${isExpanded ? 'rotate-90' : ''}`}
                     >
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -2006,12 +2026,12 @@ function PKLEventoAcordeon({
                         className="flex-1 min-w-0 text-left"
                     >
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-gray-900 dark:text-white font-medium truncate">
+                            <span className="text-white font-medium truncate">
                                 {pkl.origen.descripcion_inicial}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 mt-1 text-xs">
-                            <span className="text-gray-600 dark:text-gray-400">{pkl.cliente.nombre}</span>
+                            <span className="text-gray-400">{pkl.cliente.nombre}</span>
                             {tipoInfo && (
                                 <>
                                     <span className="text-gray-600">•</span>
@@ -2074,14 +2094,14 @@ function PKLEventoAcordeon({
                                         onClick={() => setShowLinkInput(false)}
                                     >
                                         <div
-                                            className="bg-white dark:bg-gray-800 border-2 border-purple-400 dark:border-purple-600 rounded-xl shadow-2xl w-full max-w-md"
+                                            className="bg-gray-800 border-2 border-purple-600 rounded-xl shadow-2xl w-full max-w-md"
                                             onClick={(e) => e.stopPropagation()}
                                         >
-                                            <div className="flex items-center justify-between p-4 border-b border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 rounded-t-xl">
-                                                <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">🔗 Vincular a otro PKL</span>
+                                            <div className="flex items-center justify-between p-4 border-b border-purple-700 bg-purple-900/30 rounded-t-xl">
+                                                <span className="text-sm font-semibold text-purple-300">🔗 Vincular a otro PKL</span>
                                                 <button
                                                     onClick={() => setShowLinkInput(false)}
-                                                    className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-lg"
+                                                    className="text-gray-500 hover:text-gray-300 text-lg"
                                                 >
                                                     ✕
                                                 </button>
@@ -2097,11 +2117,11 @@ function PKLEventoAcordeon({
                                                         }
                                                     }}
                                                     placeholder="Escribe número o nombre... (ej: 2)"
-                                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border-2 border-purple-300 dark:border-purple-600 rounded-lg text-gray-900 dark:text-white text-base focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                    className="w-full px-4 py-3 bg-gray-700 border-2 border-purple-600 rounded-lg text-white text-base focus:outline-none focus:ring-2 focus:ring-purple-500"
                                                     autoFocus
                                                 />
                                                 {/* Lista filtrada de PKLs */}
-                                                <div className="mt-3 max-h-[300px] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                                                <div className="mt-3 max-h-[300px] overflow-y-auto border border-gray-700 rounded-lg">
                                                     {(() => {
                                                         const searchLower = linkSearch.toLowerCase().trim();
                                                         const searchNum = linkSearch.replace(/\D/g, '');
@@ -2153,15 +2173,15 @@ function PKLEventoAcordeon({
                                                                         onLinkToOtherPKL?.(pkl, targetPKL.pkl_id, selectedDate);
                                                                     }
                                                                 }}
-                                                                className="w-full text-left px-4 py-3 hover:bg-purple-100 dark:hover:bg-purple-500/30 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                                                                className="w-full text-left px-4 py-3 hover:bg-purple-500/30 transition-colors border-b border-gray-700 last:border-b-0"
                                                             >
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-purple-600 dark:text-purple-400 font-mono text-sm font-bold">{targetPKL.pkl_id}</span>
+                                                                    <span className="text-purple-400 font-mono text-sm font-bold">{targetPKL.pkl_id}</span>
                                                                 </div>
-                                                                <div className="text-gray-800 dark:text-gray-200 text-sm mt-1">
+                                                                <div className="text-gray-200 text-sm mt-1">
                                                                     {targetPKL.origen.descripcion_inicial.substring(0, 50)}{targetPKL.origen.descripcion_inicial.length > 50 ? '...' : ''}
                                                                 </div>
-                                                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                                <div className="text-xs text-gray-400 mt-0.5">
                                                                     {targetPKL.cliente.nombre}
                                                                 </div>
                                                             </button>
@@ -2209,7 +2229,7 @@ function PKLEventoAcordeon({
 
             {/* Tasks del día (acordeón) */}
             {isExpanded && tasksDelDia.length > 0 && (
-                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-3 space-y-2">
+                <div className="border-t border-gray-700 bg-gray-900/50 p-3 space-y-2">
                     {(() => {
                         // Separar tasks raíz de subtasks (parent_task_id)
                         const tasksRaiz = tasksDelDia.filter(t => !t.parent_task_id);
@@ -2263,7 +2283,7 @@ function PKLEventoAcordeon({
                                     key={task.task_id}
                                     className={`rounded-xl p-4 border group hover:border-cyan-500/30 transition-all ${
                                         isVinculado
-                                            ? 'ml-6 bg-purple-100 dark:bg-purple-900/20 border-purple-500/30 border-l-2 border-l-purple-500'
+                                            ? 'ml-6 bg-purple-900/20 border-purple-500/30 border-l-2 border-l-purple-500'
                                             : bgColor
                                     }`}
                                 >
@@ -2302,7 +2322,7 @@ function PKLEventoAcordeon({
                                                                 return next;
                                                             });
                                                         }}
-                                                        className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                                                        className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors flex items-center gap-1 cursor-pointer"
                                                     >
                                                         <span className={`transition-transform duration-200 ${expandedSubtasks.has(task.task_id) ? 'rotate-90' : ''}`}>▶</span>
                                                         {subtaskCount} subtask{subtaskCount > 1 ? 's' : ''}
@@ -2311,7 +2331,7 @@ function PKLEventoAcordeon({
                                             </div>
 
                                             {/* Nombre del task */}
-                                            <p className={`font-medium ${isVinculado ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-white'}`}>
+                                            <p className={`font-medium ${isVinculado ? 'text-purple-300' : 'text-white'}`}>
                                                 {isVinculado ? `💸 ${task.nombre}` : task.nombre}
                                             </p>
 
@@ -2349,8 +2369,8 @@ function PKLEventoAcordeon({
                                                         </svg>
                                                     </button>
                                                     {/* Dropdown de tasks - SE ABRE HACIA ARRIBA para evitar corte */}
-                                                    <div className="absolute right-0 bottom-full mb-1 bg-white dark:bg-gray-800 border-2 border-purple-400 dark:border-purple-600 rounded-lg shadow-2xl z-[100] hidden group-hover/transfer:block min-w-[280px]">
-                                                        <div className="p-2.5 text-xs font-semibold text-purple-700 dark:text-purple-300 border-b border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 rounded-t-lg">
+                                                    <div className="absolute right-0 bottom-full mb-1 bg-gray-800 border-2 border-purple-600 rounded-lg shadow-2xl z-[100] hidden group-hover/transfer:block min-w-[280px]">
+                                                        <div className="p-2.5 text-xs font-semibold text-purple-300 border-b border-purple-700 bg-purple-900/30 rounded-t-lg">
                                                             💸 Transferir S/.{monto.toFixed(2)} a:
                                                         </div>
                                                         {tasksPrincipales.filter(t => t.task_id !== task.task_id).map(targetTask => (
@@ -2360,7 +2380,7 @@ function PKLEventoAcordeon({
                                                                     e.stopPropagation();
                                                                     onTransferCost?.(task, targetTask);
                                                                 }}
-                                                                className="w-full text-left px-3 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-purple-100 dark:hover:bg-purple-500/30 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 last:rounded-b-lg"
+                                                                className="w-full text-left px-3 py-2.5 text-sm font-medium text-gray-100 hover:bg-purple-500/30 transition-colors border-b border-gray-700 last:border-b-0 last:rounded-b-lg"
                                                             >
                                                                 📋 {targetTask.nombre.substring(0, 40)}{targetTask.nombre.length > 40 ? '...' : ''}
                                                             </button>
@@ -2418,24 +2438,24 @@ function PKLEventoAcordeon({
                                             {renderTask(task, false, subtasksDeEsteTask.length)}
                                             {/* Subtasks acordeón */}
                                             {subtasksDeEsteTask.length > 0 && expandedSubtasks.has(task.task_id) && (
-                                                <div className="ml-6 mt-1 mb-1 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-gray-200/50 dark:border-gray-700/30 overflow-hidden">
+                                                <div className="ml-6 mt-1 mb-1 bg-gray-800/40 rounded-lg border border-gray-700/30 overflow-hidden">
                                                     {subtasksDeEsteTask.map((sub, subIdx) => {
                                                         const subCompleted = sub.estado === 'completado';
                                                         return (
-                                                            <div key={sub.task_id} className={`flex items-center gap-2 px-3 py-1.5 text-sm ${subIdx < subtasksDeEsteTask.length - 1 ? 'border-b border-gray-200/50 dark:border-gray-700/30' : ''}`}>
+                                                            <div key={sub.task_id} className={`flex items-center gap-2 px-3 py-1.5 text-sm ${subIdx < subtasksDeEsteTask.length - 1 ? 'border-b border-gray-700/30' : ''}`}>
                                                                 <span className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center text-[9px] ${
                                                                     subCompleted
                                                                         ? 'bg-emerald-500 border-emerald-400 text-white'
                                                                         : sub.estado === 'en_progreso'
                                                                         ? 'border-blue-400 bg-blue-500/20'
-                                                                        : 'border-gray-300 dark:border-gray-600'
+                                                                        : 'border-gray-600'
                                                                 }`}>
                                                                     {subCompleted && '\u2713'}
                                                                 </span>
-                                                                <span className={`${subCompleted ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                                <span className={`${subCompleted ? 'text-gray-400' : 'text-gray-300'}`}>
                                                                     {sub.nombre}
                                                                 </span>
-                                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">subtask</span>
+                                                                <span className="text-[10px] text-gray-500 ml-auto">subtask</span>
                                                             </div>
                                                         );
                                                     })}
@@ -2468,7 +2488,7 @@ function PKLEventoAcordeon({
                                 <span className="text-lg">{emoji}</span>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-gray-900 dark:text-white text-sm">{evento.descripcion}</span>
+                                        <span className="text-white text-sm">{evento.descripcion}</span>
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
                                             vinculado
                                         </span>
@@ -2516,7 +2536,7 @@ function PKLEventoAcordeon({
                     })}
 
                     {/* Footer con acciones */}
-                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-700/50">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -3277,7 +3297,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
 
                         {/* Form para agregar task */}
                         {showAddTask && (
-                            <div className="mt-3 p-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-400 dark:border-purple-500/30 rounded-lg space-y-3">
+                            <div className="mt-3 p-3 bg-purple-900/30 border border-purple-500/30 rounded-lg space-y-3">
                                 {/* Fila 1: Tipo y Descripción */}
                                 <div className="flex gap-2">
                                     <input
@@ -3285,7 +3305,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                         list="tipos-task-add-list"
                                         value={newTaskTipo}
                                         onChange={(e) => setNewTaskTipo(e.target.value)}
-                                        className="w-36 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="w-36 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                         placeholder="Tipo..."
                                     />
                                     <datalist id="tipos-task-add-list">
@@ -3303,7 +3323,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                         value={newTaskDesc}
                                         onChange={(e) => setNewTaskDesc(e.target.value)}
                                         placeholder="Descripción del task..."
-                                        className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                     />
                                 </div>
 
@@ -3313,7 +3333,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                     value={newTaskProveedor}
                                     onChange={(e) => setNewTaskProveedor(e.target.value)}
                                     placeholder="Proveedor (opcional)"
-                                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                 />
 
                                 {/* Fila 3: Precio - cambia según tipo */}
@@ -3325,28 +3345,28 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                                 value={newTaskCantidad}
                                                 onChange={(e) => setNewTaskCantidad(e.target.value)}
                                                 placeholder="Cantidad"
-                                                className="w-24 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                                className="w-24 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                             />
-                                            <span className="text-gray-600 dark:text-gray-400">×</span>
+                                            <span className="text-gray-400">×</span>
                                             <input
                                                 type="number"
                                                 value={newTaskPrecioUnitario}
                                                 onChange={(e) => setNewTaskPrecioUnitario(e.target.value)}
                                                 placeholder={newTaskEsPrecioUnitario ? "Precio unit." : "Total"}
                                                 step="0.01"
-                                                className="w-28 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                                className="w-28 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                             />
                                             <select
                                                 value={newTaskEsPrecioUnitario ? 'unitario' : 'total'}
                                                 onChange={(e) => setNewTaskEsPrecioUnitario(e.target.value === 'unitario')}
-                                                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-gray-900 dark:text-white text-xs outline-none"
+                                                className="bg-gray-800 border border-gray-600 rounded px-2 py-2 text-white text-xs outline-none"
                                             >
                                                 <option value="unitario">Precio Unitario</option>
                                                 <option value="total">Precio Total</option>
                                             </select>
                                         </div>
                                         <div className="flex items-center justify-between">
-                                            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-400 text-sm cursor-pointer">
+                                            <label className="flex items-center gap-2 text-gray-400 text-sm cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={newTaskIncluyeIgv}
@@ -3356,7 +3376,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                                 Precio incluye IGV
                                             </label>
                                             {newTaskCantidad && newTaskPrecioUnitario && (
-                                                <div className="text-amber-600 dark:text-amber-400 text-sm font-medium">
+                                                <div className="text-amber-400 text-sm font-medium">
                                                     Total: S/. {calcularMontoTask().toFixed(2)}
                                                     {!newTaskIncluyeIgv && <span className="text-gray-500 text-xs ml-1">(+IGV)</span>}
                                                 </div>
@@ -3370,7 +3390,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                         onChange={(e) => setNewTaskMonto(e.target.value)}
                                         placeholder="Monto S/. (opcional)"
                                         step="0.01"
-                                        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm outline-none"
+                                        className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm outline-none"
                                     />
                                 )}
 
@@ -3386,7 +3406,7 @@ function MergeEventosToPKLModal({ isOpen, onClose, eventos, clientes, onSuccess,
                                             setNewTaskPrecioUnitario('');
                                             setNewTaskIncluyeIgv(false);
                                         }}
-                                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white text-xs rounded"
+                                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
                                     >
                                         Cancelar
                                     </button>
@@ -4404,7 +4424,7 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                             📅
                         </button>
                         <div>
-                            <h1 className="text-3xl font-black text-gray-800 dark:text-white">
+                            <h1 className="text-3xl font-black text-white">
                                 Día a Día
                             </h1>
                             <p className="text-gray-500 text-sm">Registro de actividades diarias</p>
@@ -5578,8 +5598,6 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                         setShowMergeModal(false);
                         setSelectedEventos(new Set());
                         setMergeSelectionMode(false);
-                        // Navegar al dashboard principal después de crear PKL exitosamente
-                        onBack();
                     }}
                 />
             )}
@@ -5745,8 +5763,6 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                         setShowVincularPKLModal(false);
                         setSelectedEventos(new Set());
                         setMergeSelectionMode(false);
-                        // Navegar al dashboard principal después de vincular a PKL exitosamente
-                        onBack();
                     }}
                 />
             )}
@@ -6216,7 +6232,7 @@ function AddQuickTaskModal({ isOpen, pklId, selectedDate, onClose, onSave }: {
         <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
         >
-            <div className="bg-white dark:bg-gray-900 border border-green-500/30 rounded-2xl w-full max-w-lg shadow-2xl">
+            <div className="bg-gray-900 border border-green-500/30 rounded-2xl w-full max-w-lg shadow-2xl">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 rounded-t-2xl">
                     <div className="flex items-center justify-between">
@@ -6240,7 +6256,7 @@ function AddQuickTaskModal({ isOpen, pklId, selectedDate, onClose, onSave }: {
                 <div className="p-4 space-y-4">
                     {/* Tipo de Task - Chips */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Task</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Tipo de Task</label>
                         <div className="flex flex-wrap gap-2">
                             {tiposTask.map(t => (
                                 <button
@@ -6249,7 +6265,7 @@ function AddQuickTaskModal({ isOpen, pklId, selectedDate, onClose, onSave }: {
                                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                                         tipo === t.value
                                             ? 'bg-green-500 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                     }`}
                                 >
                                     {t.label}
@@ -6260,48 +6276,48 @@ function AddQuickTaskModal({ isOpen, pklId, selectedDate, onClose, onSave }: {
 
                     {/* Nombre */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre *</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Nombre *</label>
                         <input
                             type="text"
                             value={nombre}
                             onChange={(e) => setNombre(e.target.value)}
                             placeholder="Ej: Movilidad por recojo de materiales"
-                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none"
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-green-500 outline-none"
                             autoFocus
                         />
                     </div>
 
                     {/* Descripción */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción (opcional)</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Descripción (opcional)</label>
                         <textarea
                             value={descripcion}
                             onChange={(e) => setDescripcion(e.target.value)}
                             rows={2}
                             placeholder="Detalles adicionales..."
-                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none resize-none"
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-green-500 outline-none resize-none"
                         />
                     </div>
 
                     {/* Monto */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto (S/.)</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Monto (S/.)</label>
                         <input
                             type="number"
                             value={monto || ''}
                             onChange={(e) => setMonto(parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
                             step="0.01"
-                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-green-500 outline-none"
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-green-500 outline-none"
                         />
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex gap-3 p-4 border-t border-gray-800">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                        className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
                     >
                         Cancelar
                     </button>
@@ -6419,7 +6435,7 @@ function MergePKLModal({ isOpen, onClose, sourcePklId, pkls, getClienteLogo, onM
                 </div>
 
                 {/* Source PKL Info */}
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-purple-500/10">
+                <div className="p-4 border-b border-gray-700 bg-purple-500/10">
                     <p className="text-xs text-purple-400 uppercase font-bold mb-2">PKL a Fusionar:</p>
                     <div className="flex items-center gap-3">
                         {getClienteLogo(sourcePkl.cliente.nombre) ? (
@@ -6448,7 +6464,7 @@ function MergePKLModal({ isOpen, onClose, sourcePklId, pkls, getClienteLogo, onM
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Buscar PKL por ID, cliente o descripción..."
-                        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:border-purple-500 outline-none"
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 outline-none"
                     />
 
                     {/* Lista de PKLs */}
@@ -6469,25 +6485,25 @@ function MergePKLModal({ isOpen, onClose, sourcePklId, pkls, getClienteLogo, onM
                                         className={`w-full p-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
                                             selectedTargetId === pkl.pkl_id
                                                 ? 'border-purple-500 bg-purple-500/10'
-                                                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600'
+                                                : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                                         }`}
                                     >
                                         {pklLogo ? (
                                             <img src={pklLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded object-cover shrink-0" />
                                         ) : (
-                                            <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                                            <div className="w-10 h-10 rounded bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-400 shrink-0">
                                                 {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
                                             </div>
                                         )}
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-mono text-purple-600 dark:text-purple-400 text-sm font-bold">{pkl.pkl_id}</span>
+                                                <span className="font-mono text-purple-400 text-sm font-bold">{pkl.pkl_id}</span>
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${estadoInfo?.color || 'bg-gray-500'} !text-white`}>
                                                     {estadoInfo?.label || pkl.estado.actual}
                                                 </span>
                                             </div>
-                                            <p className="text-gray-900 dark:text-white font-medium truncate">{pkl.cliente.nombre}</p>
+                                            <p className="text-white font-medium truncate">{pkl.cliente.nombre}</p>
                                             <p className="text-gray-500 text-xs truncate">{pkl.origen.descripcion_inicial}</p>
                                         </div>
 
@@ -6502,10 +6518,10 @@ function MergePKLModal({ isOpen, onClose, sourcePklId, pkls, getClienteLogo, onM
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex gap-3 p-6 border-t border-gray-800">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                        className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
                     >
                         Cancelar
                     </button>
@@ -6630,7 +6646,7 @@ function ConvertToTaskModal({ isOpen, onClose, eventoTipo, eventoId: _eventoId, 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Buscar PKL por ID, cliente o descripción..."
-                        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:border-purple-500 outline-none"
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 outline-none"
                     />
 
                     {/* Lista de PKLs */}
@@ -6651,25 +6667,25 @@ function ConvertToTaskModal({ isOpen, onClose, eventoTipo, eventoId: _eventoId, 
                                         className={`w-full p-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
                                             selectedTargetId === pkl.pkl_id
                                                 ? 'border-purple-500 bg-purple-500/10'
-                                                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600'
+                                                : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                                         }`}
                                     >
                                         {pklLogo ? (
                                             <img src={pklLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded object-cover shrink-0" />
                                         ) : (
-                                            <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                                            <div className="w-10 h-10 rounded bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-400 shrink-0">
                                                 {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
                                             </div>
                                         )}
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-mono text-purple-600 dark:text-purple-400 text-sm font-bold">{pkl.pkl_id}</span>
+                                                <span className="font-mono text-purple-400 text-sm font-bold">{pkl.pkl_id}</span>
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${estadoInfo?.color || 'bg-gray-500'} !text-white`}>
                                                     {estadoInfo?.label || pkl.estado.actual}
                                                 </span>
                                             </div>
-                                            <p className="text-gray-900 dark:text-white font-medium truncate">{pkl.cliente.nombre}</p>
+                                            <p className="text-white font-medium truncate">{pkl.cliente.nombre}</p>
                                             <p className="text-gray-500 text-xs truncate">{pkl.origen.descripcion_inicial}</p>
                                         </div>
 
@@ -6684,10 +6700,10 @@ function ConvertToTaskModal({ isOpen, onClose, eventoTipo, eventoId: _eventoId, 
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex gap-3 p-6 border-t border-gray-800">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                        className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
                     >
                         Cancelar
                     </button>
@@ -6817,13 +6833,13 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-gray-200 dark:border-gray-700">
+                <div className="flex border-b border-gray-700">
                     <button
                         onClick={() => setMode('vincular')}
                         className={`flex-1 py-3 px-4 font-medium text-sm transition-colors ${
                             mode === 'vincular'
                                 ? 'text-cyan-600 border-b-2 border-cyan-500 bg-cyan-500/10'
-                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                : 'text-gray-500 hover:text-gray-300'
                         }`}
                     >
                         🔗 Vincular a Existente
@@ -6833,7 +6849,7 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                         className={`flex-1 py-3 px-4 font-medium text-sm transition-colors ${
                             mode === 'crear'
                                 ? 'text-emerald-600 border-b-2 border-emerald-500 bg-emerald-500/10'
-                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                : 'text-gray-500 hover:text-gray-300'
                         }`}
                     >
                         ✨ Crear Nuevo PKL
@@ -6850,7 +6866,7 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Buscar PKL por ID, cliente o descripción..."
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:border-cyan-500 outline-none"
+                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-cyan-500 outline-none"
                             />
 
                             {/* Lista de PKLs */}
@@ -6871,25 +6887,25 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                                                 className={`w-full p-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
                                                     selectedPKLId === pkl.pkl_id
                                                         ? 'border-cyan-500 bg-cyan-500/10'
-                                                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600'
+                                                        : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                                                 }`}
                                             >
                                                 {pklLogo ? (
                                                     <img src={pklLogo} alt={pkl.cliente.nombre} className="w-10 h-10 rounded object-cover shrink-0" />
                                                 ) : (
-                                                    <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                                                    <div className="w-10 h-10 rounded bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-400 shrink-0">
                                                         {pkl.cliente.nombre.substring(0, 2).toUpperCase()}
                                                     </div>
                                                 )}
 
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-mono text-cyan-600 dark:text-cyan-400 text-sm font-bold">{pkl.pkl_id}</span>
+                                                        <span className="font-mono text-cyan-400 text-sm font-bold">{pkl.pkl_id}</span>
                                                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${estadoInfo?.color || 'bg-gray-500'} !text-white`}>
                                                             {estadoInfo?.label || pkl.estado.actual}
                                                         </span>
                                                     </div>
-                                                    <p className="text-gray-900 dark:text-white font-medium truncate">{pkl.cliente.nombre}</p>
+                                                    <p className="text-white font-medium truncate">{pkl.cliente.nombre}</p>
                                                     <p className="text-gray-500 text-xs truncate">{pkl.origen.descripcion_inicial}</p>
                                                 </div>
 
@@ -6907,13 +6923,13 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                         <div className="space-y-4">
                             {/* Preview ID */}
                             <div className="flex items-center gap-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase">Nuevo ID:</span>
-                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-lg">{nextPklId}</span>
+                                <span className="text-xs text-emerald-400 font-bold uppercase">Nuevo ID:</span>
+                                <span className="font-mono text-emerald-400 font-bold text-lg">{nextPklId}</span>
                             </div>
 
                             {/* Descripción/Nombre del PKL */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
                                     Nombre / Descripción del PKL *
                                 </label>
                                 <input
@@ -6921,7 +6937,7 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                                     value={nuevoPKL.descripcion}
                                     onChange={(e) => setNuevoPKL(prev => ({ ...prev, descripcion: e.target.value.toUpperCase() }))}
                                     placeholder="Ej: FERIA GRUPO LAR"
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:border-emerald-500 outline-none uppercase text-lg"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-emerald-500 outline-none uppercase text-lg"
                                     autoFocus
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Este nombre aparecerá en el Dashboard de PKLs</p>
@@ -6929,7 +6945,7 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
 
                             {/* Cliente */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
                                     Cliente
                                 </label>
                                 <input
@@ -6937,13 +6953,13 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                                     value={nuevoPKL.cliente}
                                     onChange={(e) => setNuevoPKL(prev => ({ ...prev, cliente: e.target.value }))}
                                     placeholder="Nombre del cliente"
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:border-emerald-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-emerald-500 outline-none"
                                 />
                             </div>
 
                             {/* Tipo de operación */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
                                     Tipo de Operación
                                 </label>
                                 <input
@@ -6951,7 +6967,7 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                                     list="tipos-operacion-nuevo-pkl-list"
                                     value={nuevoPKL.tipoOperacion}
                                     onChange={(e) => setNuevoPKL(prev => ({ ...prev, tipoOperacion: e.target.value }))}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:border-emerald-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-emerald-500 outline-none"
                                     placeholder="Escribe para buscar..."
                                 />
                                 <datalist id="tipos-operacion-nuevo-pkl-list">
@@ -6963,7 +6979,7 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
 
                             {/* Fecha (opcional) - auto agrega año a descripción */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                <label className="block text-sm font-medium text-gray-400 mb-2">
                                     Fecha del Evento <span className="text-gray-400 font-normal">(opcional)</span>
                                 </label>
                                 <input
@@ -6983,21 +6999,21 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                                             return { ...prev, fecha: newFecha, descripcion };
                                         });
                                     }}
-                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:border-emerald-500 outline-none"
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-emerald-500 outline-none"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Al seleccionar fecha, se agrega el año automáticamente al nombre</p>
                             </div>
 
                             {/* Preview de eventos */}
-                            <div className="bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                <p className="text-sm font-medium text-gray-400 mb-2">
                                     Se vincularán {eventos.length} evento{eventos.length > 1 ? 's' : ''}:
                                 </p>
                                 <div className="space-y-1 max-h-32 overflow-y-auto">
                                     {eventos.slice(0, 5).map((ev, idx) => (
                                         <div key={idx} className="flex items-center gap-2 text-sm">
                                             <span>{ev.tipo_evento === 'movimiento' ? '🚚' : ev.tipo_evento === 'rendicion' ? '💰' : '🏭'}</span>
-                                            <span className="text-gray-700 dark:text-gray-300 truncate">{ev.descripcion}</span>
+                                            <span className="text-gray-300 truncate">{ev.descripcion}</span>
                                             {(ev.monto || 0) > 0 && <span className="text-amber-500 font-mono text-xs">S/.{ev.monto}</span>}
                                         </div>
                                     ))}
@@ -7011,10 +7027,10 @@ function VincularAPKLModal({ isOpen, onClose, eventos, pkls, getClienteLogo, onS
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex gap-3 p-6 border-t border-gray-800">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                        className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
                     >
                         Cancelar
                     </button>

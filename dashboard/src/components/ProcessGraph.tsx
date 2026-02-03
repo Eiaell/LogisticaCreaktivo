@@ -78,12 +78,13 @@ export function ProcessGraph() {
 
         networkRef.current = network;
 
-        // Set canvas background to white
+        // Set canvas background to match theme
         const canvas = containerRef.current?.querySelector('canvas') as HTMLCanvasElement;
         if (canvas) {
+            const isDark = !document.documentElement.classList.contains('light');
             const context = canvas.getContext('2d');
             if (context) {
-                context.fillStyle = '#ffffff';
+                context.fillStyle = isDark ? '#1f2937' : '#ffffff';
                 context.fillRect(0, 0, canvas.width, canvas.height);
             }
         }
@@ -172,9 +173,9 @@ export function ProcessGraph() {
     return (
         <div className="flex gap-4">
             {/* Graph Container */}
-            <div className={`bg-white border border-gray-200 rounded-lg shadow-sm p-0 mb-8 transition-all duration-300 ${selectedStateFilter ? 'w-2/3' : 'w-full'}`}>
-                <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <div className={`bg-gray-800 border border-gray-700 rounded-lg shadow-sm p-0 mb-8 transition-all duration-300 ${selectedStateFilter ? 'w-2/3' : 'w-full'}`}>
+                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <span>⚡</span>
                         Process Explorer
                         {selectedStateFilter && <span className="text-gray-500 text-sm font-normal ml-2">Filtered: {selectedStateFilter}</span>}
@@ -182,24 +183,24 @@ export function ProcessGraph() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleZoomOut}
-                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition-colors"
+                            className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors"
                             title="Zoom out"
                         >
                             <span className="text-xl">−</span>
                         </button>
-                        <div className="px-3 py-2 bg-gray-100 rounded text-sm text-gray-700 font-medium min-w-[60px] text-center">
+                        <div className="px-3 py-2 bg-gray-900 rounded text-sm text-gray-300 font-medium min-w-[60px] text-center">
                             {Math.round(zoom * 100)}%
                         </div>
                         <button
                             onClick={handleZoomIn}
-                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition-colors"
+                            className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors"
                             title="Zoom in"
                         >
                             <span className="text-xl">+</span>
                         </button>
                         <button
                             onClick={handleZoomFit}
-                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition-colors ml-2 text-sm"
+                            className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors ml-2 text-sm"
                             title="Fit to view"
                         >
                             🎯
@@ -208,31 +209,31 @@ export function ProcessGraph() {
                 </div>
                 <div
                     ref={containerRef}
-                    className="w-full h-[400px] bg-white rounded-b-lg cursor-grab active:cursor-grabbing"
+                    className="w-full h-[400px] bg-gray-800 rounded-b-lg cursor-grab active:cursor-grabbing"
                 />
             </div>
 
             {/* Detail Panel - Clean List Design */}
             {selectedStateFilter && (
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-8 w-1/3 flex flex-col animate-in slide-in-from-right duration-300">
-                    <div className="px-4 py-3 border-b border-gray-200">
-                        <h3 className="font-semibold text-gray-900 capitalize">{selectedStateFilter.replace('_', ' ')}</h3>
+                <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-sm mb-8 w-1/3 flex flex-col animate-in slide-in-from-right duration-300">
+                    <div className="px-4 py-3 border-b border-gray-700">
+                        <h3 className="font-semibold text-white capitalize">{selectedStateFilter.replace('_', ' ')}</h3>
                         <div className="text-xs text-gray-500">{selectedItemsSummary.length} items</div>
                     </div>
-                    <div className="overflow-y-auto max-h-[350px] divide-y divide-gray-100">
+                    <div className="overflow-y-auto max-h-[350px] divide-y divide-gray-700/50">
                         {selectedItemsSummary.length > 0 ? selectedItemsSummary.map(item => {
                             const clientDetails = clientes[item.cliente];
                             const isPKL = item.type === 'pkl';
 
                             return (
-                                <div key={item.id} className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer">
+                                <div key={item.id} className="px-4 py-3 hover:bg-gray-700/50 transition-colors cursor-pointer">
                                     {/* Header: Logo + Cliente + ID */}
                                     <div className="flex justify-between items-start gap-2">
                                         <div className="flex items-center gap-2 min-w-0">
                                             {clientDetails?.logo && (
                                                 <img src={clientDetails.logo} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                                             )}
-                                            <span className="font-medium text-gray-900 truncate">{item.label}</span>
+                                            <span className="font-medium text-white truncate">{item.label}</span>
                                         </div>
                                         <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">
                                             {isPKL ? item.id.replace('PKL-', '').slice(-9) : item.id.slice(0, 8)}
