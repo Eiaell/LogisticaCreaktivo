@@ -3189,7 +3189,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
                 const rootTasks = allTasks.filter(t => !t.parent_task_id).sort((a, b) => (a.orden || 0) - (b.orden || 0));
                 const getSubtasks = (parentId: string) => allTasks.filter(t => t.parent_task_id === parentId).sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
-                const renderTaskRow = (task: TaskPKL, index: number, isSubtask: boolean, isLastRoot: boolean, isLastSubtask: boolean) => {
+                const renderTaskRow = (task: TaskPKL, _index: number, isSubtask: boolean, isLastRoot: boolean, isLastSubtask: boolean) => {
                     const typeConfig = getTaskTypeConfig(task.tipo);
                     const isCompleted = task.estado === 'completado';
                     const isEditing = editingTask === task.task_id;
@@ -3704,7 +3704,7 @@ function TasksTab({ pkl, onUpdateTask, onCreateTask, onDeleteTask }: { pkl: PKL;
 }
 
 // Eventos Tab
-function EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
+function _EventosTab({ pkl, onUpdate }: { pkl: PKL; onUpdate: UpdatePKLFn }) {
     const [editingEventoId, setEditingEventoId] = useState<string | null>(null);
     const [editDescripcion, setEditDescripcion] = useState('');
     const [showNewEvento, setShowNewEvento] = useState(false);
