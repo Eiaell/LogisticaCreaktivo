@@ -1,0 +1,70 @@
+{
+  "fecha": "2026-02-02",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "DHL",
+      "detalle": {"items": [{"producto": "Uniformes", "cantidad": 2}], "destino": "Huachipa"},
+      "estado": "completado",
+      "observaciones": "Entrega 2 uniformes DHL en Huachipa"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "DHL",
+      "detalle": {"items": [{"producto": "Uniformes", "cantidad": 4}], "destino": "Villa El Salvador"},
+      "estado": "completado",
+      "observaciones": "Entrega 4 uniformes DHL en Villa El Salvador"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "Grupo Lar",
+      "proveedor": "Mercado 2",
+      "detalle": {"items": [{"producto": "Cuadro para certificado A4", "cantidad": 1}]},
+      "estado": "cotizado",
+      "observaciones": "Cotizacion cuadro certificado A4 a S/.35"
+    },
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "Grupo Val",
+      "proveedor": "Patty",
+      "producto": "Stickers 18x6cm",
+      "cantidad": 16,
+      "detalle": {"producto": "Stickers 18x6cm", "cantidad_total": 16, "precio_unitario": 1.25, "uso": "Globos de helio"},
+      "estado": "en_produccion",
+      "observaciones": "16 stickers 18x6 a S/.20 total para globos de helio"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "proveedor": "Decorplas",
+      "cliente": "",
+      "detalle": {"items": [{"producto": "Felpudo 60x45 con logo", "cantidad": 1}]},
+      "estado": "cotizado",
+      "observaciones": "Cotizacion felpudo 60x45 con logo a S/.399"
+    },
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "Grupo Lazo",
+      "proveedor": "Sr. Goicochea",
+      "producto": "Calendario base triangular",
+      "cantidad": 1,
+      "detalle": {"producto": "Calendario base triangular", "cantidad_total": 1, "precio_total": 743.40},
+      "estado": "en_produccion",
+      "observaciones": "Base triangular dura, impresion adelante/atras, 4 hojas couche 200g, anillado doble ring blanco, plastificado mate"
+    },
+    {
+      "seccion": "RENDICION_PAGO",
+      "tipo": "adelanto_produccion",
+      "cliente": "Grupo Lazo",
+      "proveedor": "Sr. Goicochea",
+      "detalle": {"concepto": "Adelanto 50% calendario Grupo Lazo", "monto": 371.70, "moneda": "PEN"},
+      "estado": "registrado",
+      "observaciones": "Deposito mitad del total S/.743.40"
+    }
+  ]
+}

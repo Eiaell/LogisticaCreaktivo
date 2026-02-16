@@ -1,0 +1,66 @@
+{
+  "fecha": "2026-02-03",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "DHL",
+      "detalle": {"items": [{"producto": "Lonchera para kit", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Recojo de lonchera para kit DHL"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Lar",
+      "detalle": {"items": [{"producto": "Certificado para cuadro", "cantidad": 1}], "origen": "Grupo Lar"},
+      "estado": "completado",
+      "observaciones": "Recojo de certificado en Grupo Lar para produccion de cuadro"
+    },
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "Grupo Lar",
+      "proveedor": "Mercado 2",
+      "producto": "Cuadro para certificado A4",
+      "cantidad": 1,
+      "detalle": {"producto": "Cuadro para certificado A4", "cantidad_total": 1, "precio_total": 35},
+      "estado": "en_produccion",
+      "observaciones": "Se llevo certificado a produccion para cuadro A4"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "coordinacion",
+      "cliente": "DHL",
+      "detalle": {"items": [{"producto": "Helados", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Separacion/coordinacion de helados DHL"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Lar",
+      "proveedor": "Sr. Goicochea",
+      "detalle": {"items": [{"producto": "Afiches", "cantidad": 4}]},
+      "estado": "completado",
+      "observaciones": "Recojo 4 afiches de proveedor Goicochea para Grupo Lar"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "instalacion",
+      "cliente": "Grupo Lar",
+      "detalle": {"items": [{"producto": "Afiches", "cantidad": 4}], "destino": "Ascensores proyecto D34"},
+      "estado": "completado",
+      "observaciones": "Instalacion de afiches en ascensores proyecto D34 Grupo Lar"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "",
+      "proveedor": "Sr. Goicochea",
+      "detalle": {"items": [{"producto": "Cuaderno anillado doble ring", "cantidad": 2}]},
+      "estado": "cotizado",
+      "observaciones": "2 cuadernos anillados doble ring, 100 hojas 1 color ambas caras, justificado mate. S/.39 las 2"
+    }
+  ]
+}

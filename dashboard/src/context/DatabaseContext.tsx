@@ -2504,10 +2504,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const updatedData = { ...data, updated_at: new Date().toISOString() };
         setRendiciones(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
 
-        console.log("🔧 updateRendicion:", { id, pedido_id: data.pedido_id, updatedData });
+        // Filtrar campos que no existen en Supabase
+        const { seccion, ...supabaseData } = updatedData as any;
+        void seccion;
+
+        console.log("🔧 updateRendicion:", { id, pedido_id: data.pedido_id, supabaseData });
 
         try {
-            const { error, data: result } = await supabase.from('rendiciones').update(updatedData).eq('id', id).select();
+            const { error, data: result } = await supabase.from('rendiciones').update(supabaseData).eq('id', id).select();
             if (error) {
                 console.error("❌ Error actualizando rendición:", error.message);
                 throw new Error(`Error actualizando rendición: ${error.message}`);
@@ -2618,10 +2622,14 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const updatedData = { ...data, updated_at: new Date().toISOString() };
         setEventosProduccion(prev => prev.map(e => e.id === id ? { ...e, ...updatedData } : e));
 
-        console.log("🔧 updateEventoProduccion:", { id, pedido_id: data.pedido_id, updatedData });
+        // Filtrar campos que no existen en Supabase
+        const { seccion, ...supabaseData } = updatedData as any;
+        void seccion;
+
+        console.log("🔧 updateEventoProduccion:", { id, pedido_id: data.pedido_id, supabaseData });
 
         try {
-            const { error, data: result } = await supabase.from('eventos_produccion').update(updatedData).eq('id', id).select();
+            const { error, data: result } = await supabase.from('eventos_produccion').update(supabaseData).eq('id', id).select();
             if (error) {
                 console.error("❌ Error actualizando evento producción:", error.message);
                 throw new Error(`Error actualizando evento producción: ${error.message}`);

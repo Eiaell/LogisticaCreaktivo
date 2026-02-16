@@ -1,0 +1,76 @@
+{
+  "fecha": "2026-02-04",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Lar",
+      "proveedor": "Mercado 2",
+      "detalle": {"items": [{"producto": "Cuadro certificado A4", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Recojo cuadro terminado de produccion"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Val",
+      "proveedor": "Patty",
+      "detalle": {"items": [{"producto": "Stickers 18x6cm", "cantidad": 16}], "origen": "Centro de Lima"},
+      "estado": "completado",
+      "observaciones": "Recojo stickers de Val en Centro de Lima"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "DHL",
+      "proveedor": "Chiper",
+      "detalle": {"items": [{"producto": "Tomatodos", "cantidad": 100}]},
+      "estado": "cotizado",
+      "observaciones": "Cotizacion tomatodos DHL, 100 unidades a S/.820 total"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "compra",
+      "cliente": "Interno Creaktivo",
+      "detalle": {"items": [{"producto": "Portacelular", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Portacelular para uso interno Creaktivo"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "compra",
+      "cliente": "",
+      "proveedor": "Chiper",
+      "detalle": {"items": [{"producto": "Lapicero de muestra", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Compra lapicero muestra S/.4 en Chiper"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "Grupo Lar",
+      "detalle": {"items": [{"producto": "Cuadro certificado A4 terminado", "cantidad": 1}], "destino": "Oficina principal Grupo Lar"},
+      "estado": "completado",
+      "observaciones": "Entrega cuadro terminado en oficina principal Grupo Lar"
+    },
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "Ortiz Inmobiliaria",
+      "proveedor": "Patty",
+      "producto": "Viniles",
+      "cantidad": 210,
+      "detalle": {"producto": "Viniles", "precio_total": 795, "desglose": "200 de 30x30 (S/.750) + 10 de 33x26 (S/.45)"},
+      "estado": "en_produccion",
+      "observaciones": "NOTA: Pedir a Patty que corte/individualice, sino los da enrollados en vez de sueltos"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "Ortiz Inmobiliaria",
+      "detalle": {"items": [{"producto": "Viniles 30x30", "cantidad": 200}, {"producto": "Viniles 33x26", "cantidad": 10}]},
+      "estado": "completado",
+      "observaciones": "Entrega viniles. Se cortaron 44 viniles internamente antes de entregar"
+    }
+  ]
+}

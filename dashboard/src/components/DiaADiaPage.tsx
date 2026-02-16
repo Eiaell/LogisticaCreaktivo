@@ -752,6 +752,313 @@ function AgregarEventoModal({ isOpen, onClose, fecha, clientes, proveedores, onS
     );
 }
 
+// Modal de Exportación de Informe
+interface ExportarInformeModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    movimientosLogisticos: MovimientoLogistico[];
+    rendiciones: Rendicion[];
+    eventosProduccion: EventoProduccion[];
+}
+
+function ExportarInformeModal({ isOpen, onClose, movimientosLogisticos, rendiciones, eventosProduccion }: ExportarInformeModalProps) {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
+    const [modoSeleccion, setModoSeleccion] = useState<'mes' | 'rango'>('mes');
+    const [mesSeleccionado, setMesSeleccionado] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const [fechaDesde, setFechaDesde] = useState('');
+    const [fechaHasta, setFechaHasta] = useState('');
+
+    // Calcular rango de fechas según modo
+    const rangoFechas = useMemo(() => {
+        if (modoSeleccion === 'mes' && mesSeleccionado) {
+            const [year, month] = mesSeleccionado.split('-').map(Number);
+            const ultimoDia = new Date(year, month, 0);
+            return {
+                desde: `${year}-${String(month).padStart(2, '0')}-01`,
+                hasta: `${year}-${String(month).padStart(2, '0')}-${String(ultimoDia.getDate()).padStart(2, '0')}`
+            };
+        } else if (modoSeleccion === 'rango' && fechaDesde && fechaHasta) {
+            return { desde: fechaDesde, hasta: fechaHasta };
+        }
+        return null;
+    }, [modoSeleccion, mesSeleccionado, fechaDesde, fechaHasta]);
+
+    // Filtrar eventos por rango
+    const eventosFiltrados = useMemo(() => {
+        if (!rangoFechas) return null;
+
+        const { desde, hasta } = rangoFechas;
+
+        const movs = movimientosLogisticos.filter(m => m.fecha >= desde && m.fecha <= hasta);
+        const rends = rendiciones.filter(r => r.fecha >= desde && r.fecha <= hasta);
+        const prods = eventosProduccion.filter(p => p.fecha >= desde && p.fecha <= hasta);
+
+        return { movimientos: movs, rendiciones: rends, producciones: prods };
+    }, [rangoFechas, movimientosLogisticos, rendiciones, eventosProduccion]);
+
+    // Calcular resumen
+    const resumen = useMemo(() => {
+        if (!eventosFiltrados) return null;
+
+        const { movimientos, rendiciones: rends, producciones } = eventosFiltrados;
+
+        const montoMovimientos = movimientos.reduce((acc, m) => {
+            const detalle = m.detalle as any;
+            return acc + (detalle?.costo_movilidad || detalle?.monto || 0);
+        }, 0);
+
+        const montoRendiciones = rends.reduce((acc, r) => acc + (r.monto || 0), 0);
+
+        const montoProducciones = producciones.reduce((acc, p) => {
+            const precio = p.precio_unitario || 0;
+            const cantidad = p.cantidad || 1;
+            return acc + (precio * cantidad);
+        }, 0);
+
+        // Agrupar por cliente
+        const porCliente: Record<string, { movimientos: number; rendiciones: number; producciones: number; monto: number }> = {};
+
+        movimientos.forEach(m => {
+            const cliente = m.cliente || 'Sin cliente';
+            if (!porCliente[cliente]) porCliente[cliente] = { movimientos: 0, rendiciones: 0, producciones: 0, monto: 0 };
+            porCliente[cliente].movimientos++;
+            const detalle = m.detalle as any;
+            porCliente[cliente].monto += detalle?.costo_movilidad || detalle?.monto || 0;
+        });
+
+        rends.forEach(r => {
+            const cliente = r.cliente || 'Sin cliente';
+            if (!porCliente[cliente]) porCliente[cliente] = { movimientos: 0, rendiciones: 0, producciones: 0, monto: 0 };
+            porCliente[cliente].rendiciones++;
+            porCliente[cliente].monto += r.monto || 0;
+        });
+
+        producciones.forEach(p => {
+            const cliente = p.cliente || 'Sin cliente';
+            if (!porCliente[cliente]) porCliente[cliente] = { movimientos: 0, rendiciones: 0, producciones: 0, monto: 0 };
+            porCliente[cliente].producciones++;
+            porCliente[cliente].monto += (p.precio_unitario || 0) * (p.cantidad || 1);
+        });
+
+        // Días únicos con actividad
+        const diasUnicos = new Set([
+            ...movimientos.map(m => m.fecha),
+            ...rends.map(r => r.fecha),
+            ...producciones.map(p => p.fecha)
+        ]);
+
+        return {
+            totalMovimientos: movimientos.length,
+            totalRendiciones: rends.length,
+            totalProducciones: producciones.length,
+            montoTotal: montoMovimientos + montoRendiciones + montoProducciones,
+            diasTrabajados: diasUnicos.size,
+            porCliente
+        };
+    }, [eventosFiltrados]);
+
+    const handleExportar = () => {
+        if (!eventosFiltrados || !rangoFechas || !resumen) return;
+
+        const informe = {
+            generado: new Date().toISOString(),
+            periodo: rangoFechas,
+            resumen: {
+                dias_trabajados: resumen.diasTrabajados,
+                total_movimientos: resumen.totalMovimientos,
+                total_rendiciones: resumen.totalRendiciones,
+                total_producciones: resumen.totalProducciones,
+                monto_total: resumen.montoTotal
+            },
+            por_cliente: resumen.porCliente,
+            eventos: {
+                movimientos: eventosFiltrados.movimientos,
+                rendiciones: eventosFiltrados.rendiciones,
+                producciones: eventosFiltrados.producciones
+            }
+        };
+
+        const blob = new Blob([JSON.stringify(informe, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `informe_${rangoFechas.desde}_${rangoFechas.hasta}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className={`rounded-2xl w-full max-w-lg ${isDark ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+                {/* Header */}
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 rounded-t-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl">📊</span>
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Exportar Informe</h2>
+                                <p className="text-white/70 text-sm">Genera un JSON con los eventos</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-5">
+                    {/* Selector de modo */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setModoSeleccion('mes')}
+                            className={`flex-1 py-2.5 rounded-lg font-medium transition-colors ${
+                                modoSeleccion === 'mes'
+                                    ? 'bg-emerald-600 text-white'
+                                    : isDark ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            📅 Mes completo
+                        </button>
+                        <button
+                            onClick={() => setModoSeleccion('rango')}
+                            className={`flex-1 py-2.5 rounded-lg font-medium transition-colors ${
+                                modoSeleccion === 'rango'
+                                    ? 'bg-emerald-600 text-white'
+                                    : isDark ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            📆 Rango de fechas
+                        </button>
+                    </div>
+
+                    {/* Selector según modo */}
+                    {modoSeleccion === 'mes' ? (
+                        <div>
+                            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Selecciona el mes
+                            </label>
+                            <input
+                                type="month"
+                                value={mesSeleccionado}
+                                onChange={(e) => setMesSeleccionado(e.target.value)}
+                                className={`w-full rounded-lg px-4 py-3 outline-none ${
+                                    isDark
+                                        ? 'bg-gray-800 border border-gray-600 text-white focus:border-emerald-500'
+                                        : 'bg-gray-50 border border-gray-300 text-gray-900 focus:border-emerald-500'
+                                }`}
+                            />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    Desde
+                                </label>
+                                <input
+                                    type="date"
+                                    value={fechaDesde}
+                                    onChange={(e) => setFechaDesde(e.target.value)}
+                                    className={`w-full rounded-lg px-4 py-3 outline-none ${
+                                        isDark
+                                            ? 'bg-gray-800 border border-gray-600 text-white focus:border-emerald-500'
+                                            : 'bg-gray-50 border border-gray-300 text-gray-900 focus:border-emerald-500'
+                                    }`}
+                                />
+                            </div>
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    Hasta
+                                </label>
+                                <input
+                                    type="date"
+                                    value={fechaHasta}
+                                    onChange={(e) => setFechaHasta(e.target.value)}
+                                    className={`w-full rounded-lg px-4 py-3 outline-none ${
+                                        isDark
+                                            ? 'bg-gray-800 border border-gray-600 text-white focus:border-emerald-500'
+                                            : 'bg-gray-50 border border-gray-300 text-gray-900 focus:border-emerald-500'
+                                    }`}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Preview del resumen */}
+                    {resumen && rangoFechas && (
+                        <div className={`rounded-xl p-4 ${isDark ? 'bg-gray-800/50 border border-gray-700' : 'bg-gray-50 border border-gray-200'}`}>
+                            <div className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Vista previa: {rangoFechas.desde} → {rangoFechas.hasta}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className={`text-center p-3 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-white'}`}>
+                                    <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                        {resumen.diasTrabajados}
+                                    </div>
+                                    <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>días con actividad</div>
+                                </div>
+                                <div className={`text-center p-3 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-white'}`}>
+                                    <div className={`text-2xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                        S/. {resumen.montoTotal.toFixed(0)}
+                                    </div>
+                                    <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>monto total</div>
+                                </div>
+                            </div>
+                            <div className="flex justify-center gap-6 mt-3">
+                                <div className="text-center">
+                                    <span className="text-blue-400 font-bold">{resumen.totalMovimientos}</span>
+                                    <span className={`text-xs ml-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>🚚</span>
+                                </div>
+                                <div className="text-center">
+                                    <span className="text-orange-400 font-bold">{resumen.totalRendiciones}</span>
+                                    <span className={`text-xs ml-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>💰</span>
+                                </div>
+                                <div className="text-center">
+                                    <span className="text-purple-400 font-bold">{resumen.totalProducciones}</span>
+                                    <span className={`text-xs ml-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>🏭</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className={`p-4 border-t flex gap-3 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <button
+                        onClick={onClose}
+                        className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
+                            isDark ? 'bg-gray-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleExportar}
+                        disabled={!resumen || (resumen.totalMovimientos + resumen.totalRendiciones + resumen.totalProducciones === 0)}
+                        className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        📥 Descargar JSON
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Componente de Calendario Premium - Inspirado en HeroUI y mejores prácticas
 interface CalendarioProps {
     fechasConEventos: Record<string, { movimientos: number; rendiciones: number; producciones: number; totalMonto: number }>;
@@ -3974,6 +4281,9 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
         tipo: 'movimiento' | 'rendicion' | 'produccion';
     } | null>(null);
 
+    // Estado para modal de exportar informe
+    const [showExportModal, setShowExportModal] = useState(false);
+
     // Resetear PKLs expandidos cuando cambia el día seleccionado
     useEffect(() => {
         setExpandedPKLs(new Set());
@@ -4532,6 +4842,13 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                             ☑️ Seleccionar todo
                         </button>
                     )}
+                    <div className="border-l border-gray-700 h-8 mx-2"></div>
+                    <button
+                        onClick={() => setShowExportModal(true)}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border border-emerald-500/30 text-emerald-400 hover:from-emerald-600/40 hover:to-teal-600/40 hover:border-emerald-400/50 flex items-center gap-2"
+                    >
+                        📊 Exportar Informe
+                    </button>
                 </div>
             </header>
 
@@ -5392,6 +5709,15 @@ export function DiaADiaPage({ onBack, onNavigateToPKL, initialSelectedDate }: Di
                     </div>
                 </div>
             )}
+
+            {/* Modal de Exportar Informe */}
+            <ExportarInformeModal
+                isOpen={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                movimientosLogisticos={movimientosLogisticos}
+                rendiciones={rendiciones}
+                eventosProduccion={eventosProduccion}
+            />
 
             {/* Modal de confirmación de eliminación masiva */}
             {confirmBatchDelete && (

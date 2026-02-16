@@ -1,0 +1,48 @@
+{
+  "fecha": "2026-02-05",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Lazo",
+      "proveedor": "Sr. Goicochea",
+      "detalle": {"items": [{"producto": "Calendarios base triangular", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Recojo calendarios Grupo Lazo de proveedor Goicochea"
+    },
+    {
+      "seccion": "RENDICION_PAGO",
+      "tipo": "pago_saldo",
+      "cliente": "Grupo Lazo",
+      "proveedor": "Sr. Goicochea",
+      "detalle": {"concepto": "Saldo 50% produccion calendario Grupo Lazo", "monto": 371.70, "moneda": "PEN"},
+      "estado": "registrado",
+      "observaciones": "Pago del 50% restante del calendario (total S/.743.40)"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "Grupo Lazo",
+      "proveedor": "Arteck",
+      "detalle": {"items": [{"producto": "Notebooks", "cantidad": 50}]},
+      "estado": "completado",
+      "observaciones": "Recojo 50 notebooks de Arteck para Grupo Lazo"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "entrega",
+      "cliente": "Grupo Lazo",
+      "detalle": {"items": [{"producto": "Calendarios", "cantidad": 1}, {"producto": "Notebooks", "cantidad": 50}], "destino": "Ilo-Pacocha"},
+      "estado": "completado",
+      "observaciones": "Envio de paquetes (calendarios + notebooks) a Ilo-Pacocha"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "cotizacion",
+      "cliente": "DHL",
+      "detalle": {"items": [{"producto": "Libreta ecologica", "cantidad": 134}, {"producto": "Tomatodo", "cantidad": 134}, {"producto": "Llavero", "cantidad": 134}, {"producto": "Portacelular", "cantidad": 134}, {"producto": "Resaltador", "cantidad": 134}, {"producto": "Muneco antiestres", "cantidad": 134}, {"producto": "Pote de 5 resaltadores", "cantidad": 134}, {"producto": "Canguro", "cantidad": 134}]},
+      "estado": "cotizado",
+      "observaciones": "Cotizacion kit DHL: 8 productos x 134 unidades cada uno"
+    }
+  ]
+}

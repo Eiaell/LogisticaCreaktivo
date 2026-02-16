@@ -1,0 +1,50 @@
+{
+  "fecha": "2026-02-06",
+  "eventos_dia": [
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "instalacion",
+      "cliente": "Teleperformance",
+      "detalle": {"items": [{"producto": "Acrilico", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Instalacion de acrilico en Teleperformance con Sr. Julio"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "recojo",
+      "cliente": "DHL",
+      "detalle": {"items": [{"producto": "Laptops", "cantidad": 2}]},
+      "estado": "completado",
+      "observaciones": "Recojo de 2 laptops para DHL"
+    },
+    {
+      "seccion": "PRODUCCION",
+      "tipo": "orden_produccion",
+      "cliente": "Ortiz Inmobiliaria",
+      "proveedor": "",
+      "producto": "Foams 0.80x0.30",
+      "cantidad": 7,
+      "detalle": {"producto": "Foams", "cantidad_total": 7, "dimensiones": "0.80 x 0.30"},
+      "estado": "en_produccion",
+      "observaciones": "7 foams de 0.80x0.30 para Inmobiliaria Ortiz"
+    },
+    {
+      "seccion": "MOVIMIENTO_LOGISTICO",
+      "tipo": "coordinacion",
+      "cliente": "Madrid Inmobiliaria",
+      "proveedor": "Hugo",
+      "detalle": {"items": [{"producto": "Camisas", "cantidad": 1}]},
+      "estado": "completado",
+      "observaciones": "Coordinacion con proveedor Hugo para camisas de Madrid Inmobiliaria"
+    },
+    {
+      "seccion": "RENDICION_PAGO",
+      "tipo": "adelanto_produccion",
+      "cliente": "Grupo Val",
+      "proveedor": "Patty",
+      "detalle": {"concepto": "Deposito para globos de helio Grupo Val", "monto": 182, "moneda": "PEN"},
+      "estado": "registrado",
+      "observaciones": "Deposito S/.182 para globos de helio Grupo Val"
+    }
+  ]
+}
